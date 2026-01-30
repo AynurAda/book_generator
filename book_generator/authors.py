@@ -44,197 +44,173 @@ AUTHOR_PROFILES: Dict[str, AuthorProfile] = {
         name="Dr. Alexandra Chen",
         pen_name="Alexandra Chen",
         background="""Dr. Alexandra Chen spent fifteen years as a research scientist before
-discovering her true calling: making complex ideas accessible to everyone. After her
-viral blog post "Neural Networks Explained to My Grandmother" reached 2 million readers,
-she left academia to write full-time. She lives in Seattle with two cats named
-Gradient and Descent, and firmly believes that if you can't explain something simply,
-you don't understand it well enough.""",
-        expertise="Making complex technical topics accessible through wit and warmth",
-        writing_style="Conversational, patient, metaphor-rich explanations",
-        humor_style="Warm observational humor, witty asides in parentheses, relatable analogies",
+turning to technical writing. Her work bridges the gap between academic rigor and
+practical understanding. She lives in Seattle and believes clarity is the highest
+form of respect for readers.""",
+        expertise="Clear technical communication that maintains rigor",
+        writing_style="Clear, engaging, well-paced explanations",
+        humor_style="Occasional light touches that don't distract from content",
         complexity_level="accessible",
-        tone="warm, conversational, encouraging",
+        tone="clear, engaging, respectful",
         signature_elements=[
-            "Parenthetical asides that add personality",
-            "Vivid metaphors from everyday life",
-            "Questions posed to the reader, then answered",
-            "Patient step-by-step explanations",
-            "Relatable scenarios readers recognize",
-            "'Spoiler:' reveals for common misconceptions",
+            "Clear explanations that build understanding",
+            "Occasional clarifying examples when genuinely helpful",
+            "Logical flow between concepts",
+            "Emphasis on understanding over memorization",
         ],
-        style_instructions="""Rewrite content in the style of a warm, witty friend explaining things over coffee.
+        style_instructions="""Rewrite content to be clear and engaging while maintaining full rigor.
 
-TONE CHARACTERISTICS:
-1. **Conversational and patient**: Take time to explain, use analogies, break concepts down
-2. **Relatable**: Use everyday situations readers recognize from their own lives
-3. **Witty but warm**: Smart observational humor that makes people smile, not cold sarcasm
-4. **Parenthetical personality**: Add color through asides in parentheses - (like this one)
-5. **Vivid metaphors**: Don't shy from comparisons - they clarify concepts beautifully
-6. **Hand-holding**: Guide the reader through, explain the "why" not just the "what"
+CORE PRINCIPLES:
+1. **Clarity first**: Make every sentence earn its place
+2. **Respect intelligence**: Assume capable readers learning new material
+3. **Rigor always**: Never sacrifice accuracy for accessibility
+4. **Judicious examples**: Use analogies only when they genuinely illuminate, not as decoration
+5. **Natural flow**: Guide readers through logical progressions
 
-WRITING PATTERNS:
-- Setup questions then answer: "Why does this matter? Not because..."
-- Use "It seems...", "Many think...", "In practice..." constructions
-- Parenthetical commentary: "(and yes, that's exactly as complicated as it sounds)"
-- Spoiler reveals: "Spoiler: that's not how it works"
-- Relatable scenarios from real life
-- Comparisons with "It's like..." / "Think of it as..."
+WHAT TO DO:
+- Ensure clear logical flow between ideas
+- Explain the "why" behind concepts, not just the "what"
+- Use precise language while remaining readable
+- Add brief clarifying phrases where technical terms first appear
+- Maintain engagement through well-structured prose
 
-HUMOR STYLE:
-- Observational (people recognize the truth in it)
-- Specific to real situations (not generic)
-- Warm, not cutting (laugh with readers, not at them)
-- Naturally embedded (not forced into every sentence)
+WHAT TO AVOID:
+- Excessive analogies or metaphors (use sparingly, only when they truly clarify)
+- Patronizing explanations or "dumbing down"
+- Forced humor or personality quirks
+- Over-explaining obvious points
+- Repetitive sentence structures
 
-Keep all technical accuracy while making the content feel like a conversation with a smart friend."""
+The result should read like a well-written textbook - clear, engaging, and rigorous."""
     ),
 
     "pragmatic_engineer": AuthorProfile(
         name="Marcus Rodriguez",
         pen_name="Marcus Rodriguez",
-        background="""Marcus Rodriguez has been building systems that don't break at 3 AM for
-over two decades. A former principal engineer at three startups (two successful exits,
-one spectacular failure he still learns from), he's known for his "no-nonsense but
-not-no-fun" approach to technical writing. His previous books include "Ship It: A
-Practical Guide to Not Overengineering" and "The Art of Good Enough." When not writing,
-he mentors junior engineers and argues about tabs vs spaces (spaces, obviously).""",
-        expertise="Practical engineering wisdom with battle-tested insights",
-        writing_style="Direct, practical, experience-driven with dry wit",
-        humor_style="Dry humor, self-deprecating engineering jokes, war stories",
+        background="""Marcus Rodriguez has two decades of experience building production systems.
+A former principal engineer at multiple companies, he brings hard-won practical
+insights to technical writing. His focus is on what actually works in practice,
+informed by both successes and failures.""",
+        expertise="Practical insights grounded in real-world experience",
+        writing_style="Direct, practical, grounded in experience",
+        humor_style="Occasional dry observations, never forced",
         complexity_level="moderate",
-        tone="direct, practical, slightly irreverent",
+        tone="direct, practical, honest",
         signature_elements=[
-            "War stories from real projects",
-            "Direct 'here's what actually works' advice",
-            "Dry humor about engineering culture",
-            "Practical trade-off discussions",
-            "'In my experience...' insights",
-            "Warnings about common pitfalls",
+            "Focus on practical implications",
+            "Honest discussion of trade-offs",
+            "Grounded in real-world constraints",
+            "Direct recommendations where appropriate",
         ],
-        style_instructions="""Rewrite content in the style of a senior engineer sharing hard-won wisdom.
+        style_instructions="""Rewrite content with a practical, experience-informed perspective while maintaining rigor.
 
-TONE CHARACTERISTICS:
-1. **Direct and practical**: Get to the point, focus on what actually works
-2. **Experience-driven**: Share insights from real projects (make them up believably)
-3. **Dry wit**: Humor that comes from recognizing industry absurdities
-4. **Trade-off focused**: Always discuss the "it depends" nature of engineering
-5. **Honest about failures**: Learning from what went wrong is valuable
-6. **Opinionated but fair**: Have clear preferences but acknowledge alternatives
+CORE PRINCIPLES:
+1. **Practical focus**: Emphasize real-world applicability
+2. **Trade-off awareness**: Acknowledge that choices have costs and benefits
+3. **Honest assessment**: Be direct about limitations and challenges
+4. **Grounded perspective**: Keep theoretical content connected to practice
+5. **Full rigor**: Practical doesn't mean imprecise
 
-WRITING PATTERNS:
-- "In my experience..." followed by practical insight
-- "Here's the thing..." to introduce key points
-- War stories: "On one project, we learned the hard way that..."
-- Trade-off framing: "The upside is X. The downside? Y."
-- Direct recommendations: "Just use X. Seriously."
-- Caveats: "This works until it doesn't, specifically when..."
+WHAT TO DO:
+- Highlight practical implications of concepts
+- Discuss trade-offs where relevant
+- Be direct about what works and what doesn't
+- Connect theory to application
+- Maintain technical precision throughout
 
-HUMOR STYLE:
-- Dry observations about engineering culture
-- Self-deprecating stories about past mistakes
-- Gentle mockery of over-engineering and buzzwords
-- Recognition of the gap between theory and practice
+WHAT TO AVOID:
+- Overusing "junior engineer" / "senior engineer" framings
+- Repetitive industry anecdotes or war stories
+- Excessive informality or forced personality
+- Analogies that don't add clarity
+- Patronizing explanations
 
-Keep technical depth while making it feel like mentorship from a senior engineer."""
+The result should read like a rigorous technical text written by someone with deep practical experience."""
     ),
 
     "curious_explorer": AuthorProfile(
         name="Dr. Priya Sharma",
         pen_name="Priya Sharma",
-        background="""Dr. Priya Sharma approaches every topic with the wonder of someone
-discovering it for the first time - which, given the breadth of her interests, she
-often is. With a PhD in cognitive science and stints in neuroscience labs, AI research,
-and a brief detour into documentary filmmaking, she brings an interdisciplinary lens
-to everything she writes. Her newsletter "Connecting Dots" explores unexpected links
-between fields. She asks "but why?" more than any reasonable adult should.""",
-        expertise="Finding unexpected connections and asking illuminating questions",
-        writing_style="Exploratory, question-driven, interdisciplinary connections",
-        humor_style="Intellectual playfulness, delightful tangents, curious observations",
+        background="""Dr. Priya Sharma holds a PhD in cognitive science with research experience
+spanning neuroscience and AI. She brings an interdisciplinary perspective to technical
+writing, drawing connections across fields where they illuminate understanding.""",
+        expertise="Interdisciplinary connections that deepen understanding",
+        writing_style="Thoughtful, connection-finding, intellectually engaging",
+        humor_style="Intellectual curiosity, not forced levity",
         complexity_level="moderate",
-        tone="curious, exploratory, intellectually playful",
+        tone="thoughtful, curious, rigorous",
         signature_elements=[
-            "Questions that reframe familiar concepts",
-            "Surprising connections to other fields",
-            "Thought experiments and 'what if' scenarios",
-            "Etymology and history of terms",
-            "Moments of genuine wonder",
-            "Building intuition before formalism",
+            "Illuminating connections to related concepts",
+            "Historical or conceptual context where valuable",
+            "Building intuition alongside formalism",
+            "Questions that guide understanding",
         ],
-        style_instructions="""Rewrite content in the style of a curious explorer making discoveries alongside the reader.
+        style_instructions="""Rewrite content with intellectual depth and meaningful connections while maintaining rigor.
 
-TONE CHARACTERISTICS:
-1. **Genuinely curious**: Approach topics with wonder, not just instruction
-2. **Question-driven**: Use questions to guide exploration, not just rhetoric
-3. **Interdisciplinary**: Draw surprising connections to other fields
-4. **Building intuition**: Start with "why" and build toward "how"
-5. **Intellectually playful**: Enjoy the ideas themselves
-6. **Collaborative discovery**: "Let's figure this out together"
+CORE PRINCIPLES:
+1. **Meaningful connections**: Draw links to other concepts only when they deepen understanding
+2. **Historical context**: Include origins or evolution of ideas when it illuminates
+3. **Intuition and formalism**: Build understanding through both
+4. **Genuine depth**: Explore ideas thoroughly, not superficially
+5. **Full rigor**: Curiosity enhances precision, never replaces it
 
-WRITING PATTERNS:
-- "Here's something interesting..." to introduce concepts
-- "Have you ever wondered why..." questions
-- Connections: "This is surprisingly similar to how X works in Y field"
-- Thought experiments: "Imagine if..."
-- Etymology/history: "The term comes from..."
-- Building blocks: "Before we can understand X, we need to see why Y matters"
+WHAT TO DO:
+- Connect concepts to broader intellectual context where valuable
+- Explain the reasoning behind design choices
+- Build intuitive understanding alongside formal definitions
+- Use questions that genuinely guide the reader's thinking
 
-HUMOR STYLE:
-- Intellectual playfulness with ideas
-- Delightful tangents that illuminate
-- Wonder at surprising connections
-- Gentle self-awareness about going down rabbit holes
+WHAT TO AVOID:
+- Tangents that don't serve understanding
+- Excessive "isn't this fascinating?" enthusiasm
+- Analogies for their own sake
+- Forced interdisciplinary connections
+- Patronizing wonder at basic concepts
 
-Keep rigor while making readers feel they're on an intellectual adventure."""
+The result should read like rigorous technical writing with intellectual depth and meaningful context."""
     ),
 
     "no_nonsense_expert": AuthorProfile(
         name="Professor James Blackwood",
         pen_name="J.R. Blackwood",
-        background="""Professor James Blackwood has written textbooks that students actually
-read - a rare achievement he attributes to respecting his readers' time and intelligence.
-After thirty years teaching at MIT and Stanford, he's developed a reputation for
-cutting through jargon to expose the elegant simplicity (or necessary complexity)
-underneath. His office hours are legendary for turning confusion into clarity. He
-believes every field has maybe five truly important ideas, buried under mountains
-of terminology.""",
-        expertise="Cutting through complexity to reveal core principles",
+        background="""Professor James Blackwood has thirty years of teaching and research
+experience at leading institutions. He is known for cutting through unnecessary
+complexity to reveal essential principles. He respects readers' time and intelligence.""",
+        expertise="Precise exposition of core principles",
         writing_style="Precise, structured, elegantly clear",
-        humor_style="Understated wit, occasional sardonic observations about the field",
+        humor_style="Rare, understated, never at the expense of clarity",
         complexity_level="technical",
         tone="authoritative, clear, respectful",
         signature_elements=[
             "Crystal-clear definitions",
-            "Structured progression of ideas",
-            "Precise language without jargon",
-            "Focus on fundamental principles",
-            "Elegant simplifications",
-            "Occasional dry wit about the field",
+            "Structured logical progression",
+            "Precise language",
+            "Focus on fundamentals",
         ],
-        style_instructions="""Rewrite content in the style of a masterful teacher who respects readers' intelligence.
+        style_instructions="""Rewrite content with precision and clarity, respecting readers' intelligence.
 
-TONE CHARACTERISTICS:
-1. **Precise but not pedantic**: Every word earns its place
-2. **Structured**: Clear logical progression of ideas
-3. **Respectful**: Assume intelligent readers who lack specific knowledge
-4. **Principled**: Focus on fundamentals that enable understanding
-5. **Elegant**: Find the simplest accurate explanation
-6. **Authoritative**: Confidence without arrogance
+CORE PRINCIPLES:
+1. **Precision**: Every term used deliberately and correctly
+2. **Structure**: Clear logical progression of ideas
+3. **Respect**: Assume intelligent readers learning new material
+4. **Fundamentals**: Emphasize principles that enable deeper understanding
+5. **Economy**: No unnecessary words or diversions
 
-WRITING PATTERNS:
-- Clear definitions: "X is precisely Y, no more, no less"
-- Structured exposition: "There are three key aspects..."
-- Precision: "This is often confused with X, but the distinction matters because..."
-- Simplification: "Strip away the jargon, and what remains is..."
-- Connections: "This follows directly from what we established earlier"
-- Occasional wit: Brief, dry observations that don't distract
+WHAT TO DO:
+- Define terms precisely when introduced
+- Structure exposition logically
+- Make connections between ideas explicit
+- Focus on the essential aspects of each concept
+- Write with confident clarity
 
-HUMOR STYLE:
-- Understated and rare
-- Sardonic observations about unnecessary complexity
-- Gentle acknowledgment of field absurdities
-- Never at the expense of clarity
+WHAT TO AVOID:
+- Unnecessary jargon or complexity
+- Diversions from the main thread
+- Condescension or over-explanation
+- Decoration or filler
+- Ambiguity where precision is possible
 
-Maintain technical accuracy while achieving unusual clarity."""
+The result should read like an exemplary textbook - precise, clear, well-structured, and respectful of the reader."""
     ),
 }
 
@@ -288,31 +264,41 @@ async def apply_author_style(
     generator = synalinks.Generator(
         data_model=StyledContent,
         language_model=language_model,
-        instructions=f"""Transform the provided content into the distinctive voice of {author_profile.pen_name}.
+        instructions=f"""Refine the provided content with the voice of {author_profile.pen_name}.
 
-AUTHOR BACKGROUND:
-{author_profile.background}
-
-WRITING STYLE: {author_profile.writing_style}
-HUMOR STYLE: {author_profile.humor_style}
+AUTHOR: {author_profile.pen_name}
+STYLE: {author_profile.writing_style}
 TONE: {author_profile.tone}
-COMPLEXITY LEVEL: {author_profile.complexity_level}
 
-SIGNATURE ELEMENTS to incorporate:
-{chr(10).join(f"- {elem}" for elem in author_profile.signature_elements)}
-
-DETAILED STYLE INSTRUCTIONS:
+STYLE GUIDELINES:
 {author_profile.style_instructions}
 
-CRITICAL REQUIREMENTS:
-1. PRESERVE all technical accuracy and factual content
-2. MAINTAIN the same structure (headings, sections)
-3. TRANSFORM the voice, tone, and style to match the author
-4. ADD the author's characteristic elements naturally
-5. KEEP the same depth and coverage of topics
-6. DO NOT remove or add substantive information
+CRITICAL REQUIREMENTS - RIGOR AND RESPECT:
 
-The output should read as if {author_profile.pen_name} wrote it from scratch."""
+1. **MAINTAIN TEXTBOOK QUALITY**: The output must read like a professional textbook.
+   Style adjustments should be subtle, not transformative.
+
+2. **PRESERVE TECHNICAL RIGOR**: All technical content, definitions, and explanations
+   must remain precise and accurate. Never sacrifice precision for style.
+
+3. **RESPECT READER INTELLIGENCE**: Assume readers are intelligent adults learning
+   new material. Never patronize, over-explain obvious points, or treat readers
+   as if they need hand-holding.
+
+4. **USE ANALOGIES SPARINGLY**: Only include an analogy if it genuinely clarifies
+   a complex concept. Most technical content does not need analogies. When in doubt,
+   leave it out. Excessive analogies hurt rigor and annoy knowledgeable readers.
+
+5. **AVOID FORCED PERSONALITY**: Do not add humor, asides, or stylistic flourishes
+   that feel forced or distract from the content. Subtle voice is fine; performance is not.
+
+6. **NO REPETITIVE TROPES**: Avoid repeatedly using the same framings, metaphors,
+   or patterns (e.g., "junior vs senior engineer", "imagine you're a...", etc.)
+
+7. **STRUCTURE PRESERVATION**: Keep the same headings, sections, and overall organization.
+
+The goal is refined clarity with a subtle authorial voice - NOT a dramatic rewrite.
+Think: 10% style adjustment, 90% the same rigorous content."""
     )
 
     input_data = AuthorStyleInput(

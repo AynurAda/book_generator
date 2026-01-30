@@ -55,31 +55,37 @@ async def polish_chapter(
         language_model=language_model,
         instructions="""Polish this chapter into publication-ready quality.
 
-TARGET AUDIENCE: Ensure the content is perfectly calibrated for the specified audience.
+TARGET AUDIENCE: Calibrate for the specified audience's technical level.
 
-LANGUAGE STYLE: Ensure the writing is ACCESSIBLE yet RIGOROUS:
-- Clear and approachable for the target audience
-- Technically precise without being unnecessarily dense
-- Explain complex ideas through clear reasoning, not jargon
-- Balance intuitive explanations with formal accuracy
+LANGUAGE STYLE: Prioritize CLARITY and RIGOR:
+- Technically precise and accurate throughout
+- Clear logical flow and well-structured prose
+- Professional textbook quality writing
 
 Your polished chapter should:
 
-1. COHESION: Sections should read as one unified piece, not separate articles
-2. TRANSITIONS: Add smooth transitions between sections
-3. DETAIL: Add clarifying examples where concepts feel thin
-4. REDUNDANCY: Remove any repetitive content across sections
-5. NARRATIVE: Create a clear arc from introduction through synthesis
-6. PROSE: Improve writing quality to professional book standards
-7. CONTINUITY: Reference previous/next chapters naturally
+1. COHESION: Sections should read as one unified piece
+2. TRANSITIONS: Add smooth, logical transitions between sections
+3. REDUNDANCY: Remove repetitive content across sections
+4. NARRATIVE: Create a clear arc from introduction through synthesis
+5. PROSE: Professional book standards - clear, precise, well-structured
+6. CONTINUITY: Reference previous/next chapters where natural
 
-The chapter should flow like a well-written book chapter, not a collection of sections.
+CRITICAL - QUALITY CONTROL:
+- REMOVE or REDUCE generic analogies (cooking, sports, traffic, gardening, etc.)
+- Keep ONLY analogies that are domain-relevant and genuinely clarifying
+- Do NOT add new analogies - remove weak ones instead
+- Respect reader intelligence - avoid over-explanation or patronizing tone
+- Maintain technical precision - do not oversimplify
+- Prefer concrete domain examples over loose comparisons
 
-IMPORTANT:
+The chapter should read like a professional textbook chapter.
+
+STRUCTURE:
 - Start with a ## Chapter heading
 - Keep all section headings (### Section Name)
-- Maintain all substantive content
-- Do NOT add introductions like "In this chapter..." unless natural"""
+- Maintain all substantive technical content
+- Do NOT add filler introductions like "In this chapter..." """
     )
 
     input_data = ChapterPolishInput(

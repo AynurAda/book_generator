@@ -236,10 +236,10 @@ class ChapterSectionPlans(synalinks.DataModel):
 class SectionOutput(synalinks.DataModel):
     """Output for a generated book section."""
     concept_explanation: str = synalinks.Field(
-        description="Clear and thorough explanation of the core concepts"
+        description="Clear, rigorous explanation of the core concepts with precise definitions"
     )
     analogies_and_examples: str = synalinks.Field(
-        description="Relatable analogies and practical examples"
+        description="Domain-relevant examples that illustrate the concepts in practice. Use analogies sparingly and only when genuinely clarifying - prefer concrete examples from the same field."
     )
 
 

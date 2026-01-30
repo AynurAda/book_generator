@@ -58,30 +58,40 @@ async def generate_subsection(
     generator = synalinks.Generator(
         data_model=SectionOutput,
         language_model=language_model,
-        instructions="""Generate comprehensive content for this book subsection.
+        instructions="""Generate rigorous content for this book subsection.
 
-TARGET AUDIENCE: Tailor the content specifically for the specified audience.
-- Adjust technical depth and assumed knowledge appropriately
-- Use examples and analogies that resonate with this audience
-- Address their likely questions and concerns
+TARGET AUDIENCE: Write for the specified audience.
+- Match the technical depth to their expected background
+- Use terminology appropriate to their field
+- Address concepts they would find valuable
 
-LANGUAGE STYLE: Write in an ACCESSIBLE yet RIGOROUS style:
-- Use clear, jargon-free language when introducing concepts
+LANGUAGE STYLE: Write with CLARITY and RIGOR:
 - Define technical terms precisely when first used
-- Build complexity gradually - start simple, add depth
-- Be precise and accurate without being dense or impenetrable
+- Be precise and accurate throughout
 - Explain the "why" alongside the "what"
+- Maintain textbook quality
 
 Your content should:
-1. CONCEPT EXPLANATION:
-   - Explain the core concepts clearly and thoroughly
-   - Define key terms and their relationships
-   - Build understanding progressively
 
-2. ANALOGIES AND EXAMPLES:
-   - Provide relatable analogies to clarify concepts
-   - Include practical, real-world examples
-   - Show how concepts apply in practice
+1. CONCEPT EXPLANATION:
+   - Explain core concepts clearly and thoroughly
+   - Define key terms and their relationships
+   - Build understanding progressively with logical flow
+   - Prioritize precision over simplification
+
+2. EXAMPLES (use judiciously):
+   - Provide concrete, domain-relevant examples that illuminate the concept
+   - Examples should come from the SAME FIELD as the book topic
+   - For technical audiences, use technical examples (code, algorithms, systems)
+   - Show how concepts apply in real scenarios within the domain
+
+CRITICAL - ANALOGIES:
+- Use analogies SPARINGLY - only when a concept genuinely benefits from comparison
+- When used, analogies MUST be relevant to the audience and topic domain
+- AVOID generic analogies (cooking, sports, traffic, etc.) - they often feel patronizing
+- For technical audiences, prefer precise explanation over loose analogies
+- If an analogy doesn't add significant clarity, omit it entirely
+- One well-chosen analogy per section maximum, if any
 
 Do NOT include introductions or summaries - these will be added during section assembly."""
     )
@@ -198,23 +208,29 @@ async def rewrite_section(
         language_model=language_model,
         instructions=f"""Rewrite the subsections into a single, coherent book section.
 
-TARGET AUDIENCE: Write specifically for the target audience specified in the input.
+TARGET AUDIENCE: Write for the specified audience with appropriate technical depth.
 
-LANGUAGE STYLE: Write in an ACCESSIBLE yet RIGOROUS style:
-- Clear and approachable without sacrificing precision
-- Technical accuracy with reader-friendly explanations
-- Build from intuition to formalism where appropriate
+LANGUAGE STYLE: Write with CLARITY and RIGOR:
+- Precise and technically accurate throughout
+- Clear logical flow between concepts
+- Professional textbook quality
 
 INTRODUCTION STYLE: {intro_style}
 
 Your rewritten section should:
 1. Begin with the specified introduction style
-2. Flow naturally between topics
-3. Maintain all key information from the subsections
+2. Flow naturally between topics with clear logical connections
+3. Maintain all key technical information from the subsections
 4. Eliminate redundancy and repetition
 5. Add smooth transitions between ideas
-6. Create a clear narrative arc
-7. End with a synthesis or forward reference
+6. End with a synthesis or forward reference
+
+CRITICAL GUIDELINES:
+- Preserve technical precision - do not oversimplify
+- Remove or reduce generic analogies (cooking, sports, etc.)
+- Keep only analogies that are domain-relevant and genuinely illuminating
+- Respect the reader's intelligence - avoid over-explanation
+- Maintain consistent technical terminology
 
 Write in flowing prose without bullet points or sub-headers within the section.
 The section header (## Section Name) will be added separately."""
