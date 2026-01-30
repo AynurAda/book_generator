@@ -35,7 +35,7 @@ CONFIG = {
     # Generation settings
     "test_mode": False,
     "test_max_chapters": 1,
-    "resume_from_dir": 'output/20260130_203255',  # Set to "output/YYYYMMDD_HHMMSS" to resume
+    "resume_from_dir": None,  # Set to "output/YYYYMMDD_HHMMSS" to resume
 
     # Model settings
     "model_name": "gemini/gemini-3-flash-preview",
@@ -51,7 +51,7 @@ CONFIG = {
     # Illustration settings
     "enable_illustrations": True,  # Set to True to add Mermaid diagrams and images
     "enable_generated_images": True,  # Set to False for Mermaid diagrams only
-    "image_model": "gemini/imagen-3.0-generate-002",  # AI image generation model
+    "image_model": "gemini/gemini-3-pro-image-preview",  # AI image generation model
 }
 
 

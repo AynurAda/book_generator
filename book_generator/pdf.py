@@ -197,9 +197,9 @@ def process_mermaid_blocks(content: str, output_dir: str) -> str:
             # Return an image reference
             return f'\n\n<div class="mermaid-diagram"><img src="{image_filename}" alt="Diagram {diagram_counter}"></div>\n\n'
         else:
-            # If rendering failed, keep the code block but style it
-            logger.warning(f"Failed to render Mermaid diagram {diagram_counter}")
-            return f'\n\n<div class="mermaid-code"><pre><code>{mermaid_code}</code></pre><p class="mermaid-error"><em>(Diagram could not be rendered)</em></p></div>\n\n'
+            # If rendering failed, remove the diagram entirely
+            logger.warning(f"Failed to render Mermaid diagram {diagram_counter} - removing from output")
+            return '\n\n'  # Just remove it, don't show raw code
 
     processed_content = mermaid_pattern.sub(replace_mermaid, content)
 

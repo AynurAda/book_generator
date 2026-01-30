@@ -15,7 +15,7 @@ import synalinks
 
 from .models import ChapterPolishInput, PolishedChapter
 from .utils import sanitize_filename, output_exists, load_from_file, save_to_file
-from .planning import format_book_plan, format_chapter_plan, get_chapter_plan_by_name
+from .planning import format_book_plan, format_chapters_overview, format_chapter_plan, get_chapter_plan_by_index
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +26,8 @@ async def polish_chapter(
     chapter_content: str,
     chapter_number: int,
     total_chapters: int,
+    book_plan: dict,
+    chapters_overview: dict,
     chapter_plan: dict,
     previous_summary: str,
     next_summary: str,
@@ -54,6 +56,9 @@ async def polish_chapter(
         data_model=PolishedChapter,
         language_model=language_model,
         instructions="""Polish this chapter into publication-ready quality.
+
+You have access to the full book plan and chapters overview for context.
+Use this to ensure the chapter connects well with the broader narrative.
 
 TARGET AUDIENCE: Calibrate for the specified audience's technical level.
 
@@ -93,6 +98,8 @@ STRUCTURE:
         goal=topic_data["goal"],
         book_name=topic_data["book_name"],
         audience=topic_data.get("audience", "technical readers"),
+        book_plan=format_book_plan(book_plan),
+        chapters_overview=format_chapters_overview(chapters_overview),
         chapter_name=chapter_name,
         chapter_number=chapter_number,
         total_chapters=total_chapters,
@@ -115,6 +122,8 @@ STRUCTURE:
 async def polish_chapters(
     topic_data: dict,
     rewritten_chapters: List[tuple],
+    book_plan: dict,
+    chapters_overview: dict,
     chapter_plans: dict,
     language_model,
     output_dir: str
@@ -128,22 +137,20 @@ async def polish_chapters(
     polished_chapters = []
     total_chapters = len(rewritten_chapters)
 
-    for i, (chapter_name, chapter_data) in enumerate(rewritten_chapters, 1):
+    for i, (chapter_name, chapter_data) in enumerate(rewritten_chapters):
         chapter_content = chapter_data.get("chapter_content", "")
-        chapter_plan = get_chapter_plan_by_name(chapter_plans, chapter_name)
+        chapter_plan = get_chapter_plan_by_index(chapter_plans, i)
 
         # Get context for continuity
         prev_summary = ""
         next_summary = ""
 
-        if i > 1:
-            prev_name = rewritten_chapters[i-2][0]
-            prev_plan = get_chapter_plan_by_name(chapter_plans, prev_name)
+        if i > 0:
+            prev_plan = get_chapter_plan_by_index(chapter_plans, i - 1)
             prev_summary = prev_plan.get("chapter_summary", "") if prev_plan else ""
 
-        if i < total_chapters:
-            next_name = rewritten_chapters[i][0]
-            next_plan = get_chapter_plan_by_name(chapter_plans, next_name)
+        if i < total_chapters - 1:
+            next_plan = get_chapter_plan_by_index(chapter_plans, i + 1)
             next_summary = next_plan.get("chapter_summary", "") if next_plan else ""
 
         try:
@@ -151,8 +158,10 @@ async def polish_chapters(
                 topic_data,
                 chapter_name,
                 chapter_content,
-                i,
+                i + 1,  # chapter_number is 1-indexed for display
                 total_chapters,
+                book_plan,
+                chapters_overview,
                 chapter_plan,
                 prev_summary,
                 next_summary,
@@ -161,7 +170,7 @@ async def polish_chapters(
             )
             polished_chapters.append((chapter_name, polished))
         except Exception as e:
-            logger.warning(f"Polish failed for chapter {i}: {e}")
+            logger.warning(f"Polish failed for chapter {i + 1}: {e}")
             polished_chapters.append((chapter_name, chapter_data))
 
     return polished_chapters

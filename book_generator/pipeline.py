@@ -237,13 +237,14 @@ async def generate_book(config: Config) -> str:
 
     max_chapters = config.test_max_chapters if config.test_mode else None
 
-    book_plan, chapter_plans, all_section_plans, hierarchy = await run_hierarchical_planning(
+    book_plan, chapters_overview, chapter_plans, all_section_plans, hierarchy = await run_hierarchical_planning(
         topic_data, results, language_model, output_dir, max_chapters
     )
 
     print(f"\n{'='*60}")
     print("Hierarchical planning complete:")
     print(f"  - Book plan: {'generated' if book_plan else 'failed'}")
+    print(f"  - Chapters overview: {'generated' if chapters_overview else 'failed'}")
     print(f"  - Chapter plans: {len(chapter_plans.get('chapter_plans', [])) if chapter_plans else 0}")
     print(f"  - Section plans: {len(all_section_plans)} chapters")
     print(f"{'='*60}\n")
@@ -285,7 +286,8 @@ async def generate_book(config: Config) -> str:
     logger.info("Polishing chapters for final cohesion and flow...")
 
     polished_chapters = await polish_chapters(
-        topic_data, rewritten_chapters, chapter_plans, language_model, output_dir
+        topic_data, rewritten_chapters, book_plan, chapters_overview, chapter_plans,
+        language_model, output_dir
     )
 
     print(f"\n{'='*60}")

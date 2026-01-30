@@ -21,7 +21,7 @@ from .utils import (
     save_json_to_file,
     format_subsections_for_rewrite,
 )
-from .planning import format_book_plan, format_chapter_plan, format_section_plan, get_section_plan_by_name
+from .planning import format_book_plan, format_chapter_plan, format_section_plan
 
 logger = logging.getLogger(__name__)
 
@@ -138,7 +138,7 @@ async def generate_all_subsections(
     Returns:
         Nested dictionary: chapter -> section -> [(subsection_name, content)]
     """
-    from .planning import get_chapter_plan_by_name
+    from .planning import get_chapter_plan_by_index
 
     all_generated = {}
     subsection_counter = 1
@@ -147,15 +147,17 @@ async def generate_all_subsections(
     if max_chapters:
         chapter_names = chapter_names[:max_chapters]
 
-    for chapter_name in chapter_names:
-        chapter_plan = get_chapter_plan_by_name(chapter_plans, chapter_name)
+    for chapter_idx, chapter_name in enumerate(chapter_names):
+        chapter_plan = get_chapter_plan_by_index(chapter_plans, chapter_idx)
         section_plans = all_section_plans.get(chapter_name, {})
         chapter_sections = hierarchy.get(chapter_name, {})
 
         all_generated[chapter_name] = {}
 
-        for section_name, subsections in chapter_sections.items():
-            section_plan = get_section_plan_by_name(section_plans, section_name)
+        section_plans_list = section_plans.get("section_plans", [])
+
+        for section_idx, (section_name, subsections) in enumerate(chapter_sections.items()):
+            section_plan = section_plans_list[section_idx] if section_idx < len(section_plans_list) else None
             section_content = []
 
             for subsection_name in subsections:
@@ -270,12 +272,12 @@ async def rewrite_sections(
     Returns:
         List of (chapter_name, chapter_content_dict) tuples
     """
-    from .planning import get_chapter_plan_by_name
+    from .planning import get_chapter_plan_by_index
 
     rewritten_chapters = []
     style_idx = 0
 
-    for chapter_name, sections in all_generated.items():
+    for chapter_idx, (chapter_name, sections) in enumerate(all_generated.items()):
         safe_chapter = sanitize_filename(chapter_name)
         chapter_filename = f"04_chapter_{safe_chapter}.txt"
 
@@ -289,7 +291,7 @@ async def rewrite_sections(
 
         logger.info(f"Rewriting chapter: {chapter_name}")
 
-        chapter_plan = get_chapter_plan_by_name(chapter_plans, chapter_name)
+        chapter_plan = get_chapter_plan_by_index(chapter_plans, chapter_idx)
         chapter_content_parts = []
 
         section_names = list(sections.keys())

@@ -37,8 +37,9 @@ flowchart TD
 
     subgraph Stage2["Stage 2: Hierarchical Planning"]
         H4 --> I[Generate Book Plan]
-        I --> J[Generate Chapter Plans]
-        J --> K[Generate Section Plans<br/>per chapter]
+        I --> J1[Generate Chapters Overview<br/>one-shot for coherence]
+        J1 --> J2[Generate Chapter Plans<br/>per chapter with overview context]
+        J2 --> K[Generate Section Plans<br/>per chapter with full context]
     end
 
     subgraph Stage3["Stage 3: Subsection Generation"]
@@ -107,8 +108,11 @@ flowchart LR
 
     subgraph Planning["Planning Context Flow"]
         direction TB
-        BP["Book Plan"] --> CP["Chapter Plan"]
-        CP --> SP["Section Plan"]
+        BP["Book Plan"] --> CO["Chapters Overview<br/>(all chapters coherence)"]
+        CO --> CP["Chapter Plan<br/>(per chapter)"]
+        BP --> SP["Section Plan"]
+        CO --> SP
+        CP --> SP
         SP --> SUB["Subsection<br/>Generation"]
     end
 
@@ -168,7 +172,7 @@ If the current order is already optimal or reorganization doesn't apply:
 
 ### Stage 2: Hierarchical Planning
 
-Planning happens at three levels: book → chapters → sections. This ensures coherent narrative flow throughout.
+Planning happens at four levels: book → chapters overview → individual chapter plans → sections. This ensures coherent narrative flow throughout while giving each chapter focused attention.
 
 #### 2a: Book Plan Generation
 
@@ -185,35 +189,63 @@ Planning happens at three levels: book → chapters → sections. This ensures c
 - `02_book_plan.json` - Book plan in JSON format
 - `02_book_plan.txt` - Human-readable book plan
 
-#### 2b: Chapter Plans Generation
+#### 2b: Chapters Overview Generation (One-Shot for Coherence)
 
-**Input:** `ChapterPlansInput` (topic, goal, book_name, full_outline, book_plan, chapters)
+**Input:** `ChaptersOverviewInput` (topic, goal, book_name, full_outline, book_plan, chapters)
 
 **Process:**
-- Generate plans for all chapters in a single LLM call
-- Each plan describes the chapter's content, role in the book, and connections to adjacent chapters
-- In test mode, only chapters that will be generated are planned
+- Generate a high-level overview of ALL chapters in a single LLM call
+- This provides the "birds-eye view" showing how chapters connect
+- Includes narrative flow and brief role for each chapter
+- Generated once for coherence, then used as context for individual chapter planning
 
-**Output:** `AllChapterPlans` - List of `ChapterPlan` (chapter_name, chapter_summary, role_in_book, connection_to_previous, connection_to_next)
+**Output:** `ChaptersOverview` (narrative_flow, chapter_briefs: List of `ChapterBrief`)
+
+Each `ChapterBrief` contains: chapter_name, brief_role, key_concepts, builds_on, leads_to
 
 **Files saved:**
-- `02_chapter_plans.json` - All chapter plans in JSON format
+- `02_chapters_overview.json` - Chapters overview in JSON format
+- `02_chapters_overview.txt` - Human-readable chapters overview
 
-#### 2c: Section Plans Generation (per chapter)
+#### 2c: Individual Chapter Plans Generation (Per-Chapter with Full Context)
 
-**Input:** `SectionPlansInput` (topic, goal, book_name, book_plan, chapter_plan, chapter_name, sections, subsections_by_section)
+**Input:** `SingleChapterPlanInput` (topic, goal, book_name, full_outline, book_plan, chapters_overview, chapter_name, chapter_number, total_chapters)
+
+**Process:**
+- For each chapter individually, generate a detailed plan
+- Uses the chapters overview as context for coherence
+- Each plan uses the EXACT chapter name provided (no name drift)
+- Plans are generated one at a time for focused attention
+
+**Output:** `ChapterPlan` (chapter_name, chapter_summary, role_in_book, connection_to_previous, connection_to_next)
+
+**Files saved:**
+- `02_chapter_plan_NN_<chapter>.json` - Individual chapter plan files
+- `02_chapter_plans.json` - Combined chapter plans in JSON format
+
+**Why two-stage chapter planning?**
+- **Stage 1 (one-shot overview)**: Ensures coherence - the LLM sees all chapters together to plan cross-chapter connections
+- **Stage 2 (per-chapter plans)**: Ensures quality - each chapter gets focused attention with exact name matching
+
+#### 2d: Section Plans Generation (Per-Chapter with Full Context)
+
+**Input:** `SectionPlansInput` (topic, goal, book_name, book_plan, chapters_overview, chapter_plan, chapter_name, sections, subsections_by_section)
 
 **Process:**
 - For each chapter, generate plans for all sections
+- Receives full context: book plan, chapters overview, and chapter plan
 - Each section plan describes its content, role in the chapter, and overview of subsections
-- Section plans are generated one chapter at a time
 
 **Output:** `ChapterSectionPlans` (chapter_name, section_plans: List of `SectionPlan`)
 
 **Files saved:**
 - `02_section_plans_<chapter>.json` - Section plans for each chapter
 
-**Why hierarchical planning?** The book plan provides context for chapter plans, which provide context for section plans. This top-down approach ensures coherence and prevents overlap at every level.
+**Why hierarchical planning with full context?** Each level receives all context from above:
+- Book plan provides overall narrative arc
+- Chapters overview provides cross-chapter coherence
+- Chapter plan provides specific chapter goals
+This ensures coherence and prevents overlap at every level.
 
 ---
 
@@ -279,17 +311,18 @@ For each sub-subconcept (leaf node in the outline):
 
 ### Stage 5: Chapter Polishing
 
-**Input:** `ChapterPolishInput` (topic, goal, book_name, chapter_name, chapter_number, total_chapters, chapter_plan, chapter_content, previous_chapter_summary, next_chapter_summary)
+**Input:** `ChapterPolishInput` (topic, goal, book_name, audience, book_plan, chapters_overview, chapter_name, chapter_number, total_chapters, chapter_plan, chapter_content, previous_chapter_summary, next_chapter_summary)
 
 **Process:**
-For each chapter, perform a final polish pass that:
-1. Ensures all sections flow together as one unified chapter
-2. Adds smooth transitions between sections
-3. Adds clarifying detail where concepts feel thin
-4. Removes redundant content across sections
-5. Creates a clear narrative arc (beginning, middle, end)
-6. Improves prose quality and professional tone
-7. References previous/next chapters naturally for continuity
+For each chapter, perform a final polish pass with full planning context:
+1. Uses book plan and chapters overview to understand broader narrative
+2. Ensures all sections flow together as one unified chapter
+3. Adds smooth transitions between sections
+4. Adds clarifying detail where concepts feel thin
+5. Removes redundant content across sections
+6. Creates a clear narrative arc (beginning, middle, end)
+7. Improves prose quality and professional tone
+8. References previous/next chapters naturally for continuity
 
 **Output:** `PolishedChapter` (chapter_content)
 
@@ -300,6 +333,7 @@ For each chapter, perform a final polish pass that:
 - REDUNDANCY: Remove repetitive content
 - NARRATIVE: Clear arc from introduction through synthesis
 - PROSE: Professional book-quality writing
+- CONTEXT: Leverage full book plan and chapters overview for coherence
 
 **Files saved:**
 - `05_polished_NNN_<name>.txt` - Each polished chapter
@@ -355,11 +389,12 @@ For each chapter, perform a final polish pass that:
 | `Topic` | topic, goal, book_name | Initial book specification |
 | `OutlineReorganizationInput` | topic, goal, current_outline | Input for outline reorganization analysis |
 | `BookPlanInput` | topic, goal, book_name, full_outline | Input for book plan generation |
-| `ChapterPlansInput` | topic, goal, book_name, full_outline, book_plan, chapters | Input for chapter plans generation |
-| `SectionPlansInput` | topic, goal, book_name, book_plan, chapter_plan, chapter_name, sections, subsections_by_section | Input for section plans generation |
-| `SectionInput` | topic, goal, book_name, book_plan, chapter_plan, section_plan, current_subsection | Input for subsection generation |
-| `ChapterInput` | topic, goal, book_name, chapter_title, subsections_content, previous_chapter_summary, next_chapter_summary, intro_style | Input for section rewriting |
-| `ChapterPolishInput` | topic, goal, book_name, chapter_name, chapter_number, total_chapters, chapter_plan, chapter_content, previous_chapter_summary, next_chapter_summary | Input for chapter polishing |
+| `ChaptersOverviewInput` | topic, goal, book_name, full_outline, book_plan, chapters | Input for chapters overview generation |
+| `SingleChapterPlanInput` | topic, goal, book_name, full_outline, book_plan, chapters_overview, chapter_name, chapter_number, total_chapters | Input for individual chapter plan generation |
+| `SectionPlansInput` | topic, goal, book_name, book_plan, chapters_overview, chapter_plan, chapter_name, sections, subsections_by_section | Input for section plans generation |
+| `SectionInput` | topic, goal, book_name, audience, book_plan, chapter_plan, section_plan, current_subsection | Input for subsection generation |
+| `ChapterInput` | topic, goal, book_name, audience, chapter_title, subsections_content, previous_chapter_summary, next_chapter_summary, intro_style | Input for section rewriting |
+| `ChapterPolishInput` | topic, goal, book_name, audience, book_plan, chapters_overview, chapter_name, chapter_number, total_chapters, chapter_plan, chapter_content, previous_chapter_summary, next_chapter_summary | Input for chapter polishing |
 
 ### Output Models
 | Model | Fields | Purpose |
@@ -367,7 +402,8 @@ For each chapter, perform a final polish pass that:
 | `DeepHierarchy` | concepts (list of ConceptDeep) | 3-level outline structure |
 | `ReorganizedOutline` | should_reorganize, reasoning, chapter_order | Outline reorganization decision and new order |
 | `BookPlan` | book_summary, narrative_arc, chapter_connections | High-level book plan |
-| `AllChapterPlans` | chapter_plans (list of ChapterPlan) | Plans for all chapters |
+| `ChaptersOverview` | narrative_flow, chapter_briefs (list of ChapterBrief) | High-level overview of all chapters for coherence |
+| `AllChapterPlans` | chapter_plans (list of ChapterPlan) | Plans for all chapters (combined) |
 | `ChapterSectionPlans` | chapter_name, section_plans (list of SectionPlan) | Section plans for one chapter |
 | `SectionOutput` | concept_explanation, analogies_and_examples | Generated subsection content |
 | `ChapterOutput` | chapter_content | Rewritten coherent section/chapter content |
@@ -376,7 +412,8 @@ For each chapter, perform a final polish pass that:
 ### Planning Models
 | Model | Fields | Purpose |
 |-------|--------|---------|
-| `ChapterPlan` | chapter_name, chapter_summary, role_in_book, connection_to_previous, connection_to_next | Plan for a single chapter |
+| `ChapterBrief` | chapter_name, brief_role, key_concepts, builds_on, leads_to | Brief overview of a chapter's role (used in ChaptersOverview) |
+| `ChapterPlan` | chapter_name, chapter_summary, role_in_book, connection_to_previous, connection_to_next | Detailed plan for a single chapter |
 | `SectionPlan` | section_name, section_summary, role_in_chapter, subsections_overview | Plan for a single section |
 
 ### Intermediate Models
@@ -404,7 +441,12 @@ output/
     ├── 01_outline_reorganized.txt      # Reorganized outline (if changed)
     ├── 02_book_plan.json               # Book-level plan (JSON)
     ├── 02_book_plan.txt                # Book-level plan (readable)
-    ├── 02_chapter_plans.json           # All chapter plans (JSON)
+    ├── 02_chapters_overview.json       # Chapters overview for coherence (JSON)
+    ├── 02_chapters_overview.txt        # Chapters overview (readable)
+    ├── 02_chapter_plan_01_*.json       # Individual chapter plans (JSON)
+    ├── 02_chapter_plan_02_*.json
+    ├── ...
+    ├── 02_chapter_plans.json           # All chapter plans combined (JSON)
     ├── 02_section_plans_*.json         # Section plans per chapter
     ├── 03_subsection_001_*.txt         # Individual subsections (readable)
     ├── 03_subsection_001_*.json        # Individual subsections (JSON)
@@ -437,17 +479,31 @@ This step only reorganizes if it makes sense for the topic. For topics without c
 Using 8 parallel generators with high temperature produces diverse concept lists. Merging and deduplicating gives comprehensive coverage that a single pass might miss.
 
 ### Why hierarchical planning?
-Planning at three levels (book → chapters → sections) ensures:
+Planning at four levels (book → chapters overview → chapter plans → sections) ensures:
 - The book has a coherent narrative arc from start to finish
-- Each chapter knows its role in the overall story
+- All chapters are planned with awareness of each other (via chapters overview)
+- Each chapter gets focused individual attention (via per-chapter planning)
 - Each section understands how it contributes to its chapter
 - No overlap or redundancy between parts
 
-### Why pass hierarchical context to each subsection?
-Each subsection generator receives the book plan, chapter plan, and section plan. This allows it to:
-- Understand where this subsection fits in the book's narrative
-- Avoid repeating content from other subsections
-- Write content that flows naturally into adjacent material
+### Why two-stage chapter planning?
+Chapter planning uses a two-stage approach:
+1. **Chapters Overview (one-shot)**: Generate a high-level overview of ALL chapters in one LLM call. This ensures coherence - the LLM sees all chapters together and can plan how they connect, what builds on what, and the overall narrative flow.
+2. **Individual Chapter Plans (per-chapter)**: Generate detailed plans for each chapter individually, using the overview as context. This ensures quality - each chapter gets focused attention, and the plan uses the exact chapter name (no name drift issues).
+
+This combines the benefits of one-shot coherence with per-chapter quality and reliability.
+
+### Why pass full context to each stage?
+Each generator receives the complete planning hierarchy:
+- **Subsection generation**: book plan + chapter plan + section plan
+- **Section plans**: book plan + chapters overview + chapter plan
+- **Chapter polishing**: book plan + chapters overview + chapter plan
+
+This allows each stage to:
+- Understand where the content fits in the book's narrative
+- Avoid repeating content from other parts
+- Write content that flows naturally with adjacent material
+- Maintain consistency with the overall book goals
 
 ### Why no intro/summary per subsection?
 Introductions and summaries are generated at the section level during rewriting. This ensures:
@@ -473,8 +529,9 @@ Individual subsections, while comprehensive, read like separate pieces. The sect
 - Creates a professional book section feel
 - Sections are then combined into complete chapters
 
-### Why chapter polishing?
-Even after section rewriting, chapters can feel like assembled pieces rather than unified wholes. The final polish pass:
+### Why chapter polishing with full context?
+Even after section rewriting, chapters can feel like assembled pieces rather than unified wholes. The final polish pass receives the full planning context (book plan, chapters overview, chapter plan) and:
+- Uses the broader narrative context to ensure coherence
 - Ensures sections flow together as one cohesive chapter
 - Adds smooth transitions between sections
 - Adds detail where concepts feel thin
@@ -516,7 +573,8 @@ When resuming:
 - **Outline**: Loaded from `01_outline.json` if it exists
 - **Reorganized Outline**: Loaded from `01_outline_reorganized.json` if it exists
 - **Book Plan**: Loaded from `02_book_plan.json` if it exists
-- **Chapter Plans**: Loaded from `02_chapter_plans.json` if it exists
+- **Chapters Overview**: Loaded from `02_chapters_overview.json` if it exists
+- **Chapter Plans**: Individual plans loaded from `02_chapter_plan_NN_*.json`, or combined from `02_chapter_plans.json`
 - **Section Plans**: Each chapter's section plans loaded from `02_section_plans_*.json` if exists
 - **Subsections**: Each subsection is skipped if `03_subsection_NNN_*.txt` exists
 - **Chapters**: Each chapter is skipped if `04_chapter_NNN_*.txt` exists

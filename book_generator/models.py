@@ -44,12 +44,36 @@ class ChapterPlansInput(synalinks.DataModel):
     chapters: str = synalinks.Field(description="List of chapter names to plan")
 
 
+class ChaptersOverviewInput(synalinks.DataModel):
+    """Input for generating a coherent overview of all chapters."""
+    topic: str = synalinks.Field(description="The main topic of the book")
+    goal: str = synalinks.Field(description="The goal of the book")
+    book_name: str = synalinks.Field(description="The name of the book")
+    full_outline: str = synalinks.Field(description="The complete book outline")
+    book_plan: str = synalinks.Field(description="The high-level book plan")
+    chapters: str = synalinks.Field(description="List of all chapter names")
+
+
+class SingleChapterPlanInput(synalinks.DataModel):
+    """Input for generating a detailed plan for a single chapter."""
+    topic: str = synalinks.Field(description="The main topic of the book")
+    goal: str = synalinks.Field(description="The goal of the book")
+    book_name: str = synalinks.Field(description="The name of the book")
+    full_outline: str = synalinks.Field(description="The complete book outline")
+    book_plan: str = synalinks.Field(description="The high-level book plan")
+    chapters_overview: str = synalinks.Field(description="Overview of all chapters and their connections")
+    chapter_name: str = synalinks.Field(description="The exact name of the chapter to plan")
+    chapter_number: int = synalinks.Field(description="The chapter number (1-indexed)")
+    total_chapters: int = synalinks.Field(description="Total number of chapters in the book")
+
+
 class SectionPlansInput(synalinks.DataModel):
     """Input for generating section plans within a chapter."""
     topic: str = synalinks.Field(description="The main topic of the book")
     goal: str = synalinks.Field(description="The goal of the book")
     book_name: str = synalinks.Field(description="The name of the book")
     book_plan: str = synalinks.Field(description="The high-level book plan")
+    chapters_overview: str = synalinks.Field(description="Overview of all chapters and their connections")
     chapter_plan: str = synalinks.Field(description="The plan for this chapter")
     chapter_name: str = synalinks.Field(description="The name of the chapter")
     sections: str = synalinks.Field(description="List of section names in this chapter")
@@ -87,6 +111,8 @@ class ChapterPolishInput(synalinks.DataModel):
     goal: str = synalinks.Field(description="The goal of the book")
     book_name: str = synalinks.Field(description="The name of the book")
     audience: str = synalinks.Field(description="The target audience for the book")
+    book_plan: str = synalinks.Field(description="The high-level book plan")
+    chapters_overview: str = synalinks.Field(description="Overview of all chapters and their connections")
     chapter_name: str = synalinks.Field(description="The name of the chapter being polished")
     chapter_number: int = synalinks.Field(description="The chapter number (1-indexed)")
     total_chapters: int = synalinks.Field(description="Total number of chapters in the book")
@@ -208,6 +234,25 @@ class AllChapterPlans(synalinks.DataModel):
     """Plans for all chapters in the book."""
     chapter_plans: list[ChapterPlan] = synalinks.Field(
         description="List of plans for each chapter"
+    )
+
+
+class ChapterBrief(synalinks.DataModel):
+    """Brief overview of a single chapter's role in the book."""
+    chapter_name: str = synalinks.Field(description="The exact name of the chapter")
+    brief_role: str = synalinks.Field(description="1-2 sentence description of this chapter's purpose")
+    key_concepts: str = synalinks.Field(description="Main concepts this chapter introduces or covers")
+    builds_on: str = synalinks.Field(description="What prior knowledge or chapters this builds upon")
+    leads_to: str = synalinks.Field(description="What this chapter enables or prepares the reader for")
+
+
+class ChaptersOverview(synalinks.DataModel):
+    """High-level overview of all chapters for coherent planning."""
+    narrative_flow: str = synalinks.Field(
+        description="2-3 paragraphs describing how the book flows from start to end"
+    )
+    chapter_briefs: list[ChapterBrief] = synalinks.Field(
+        description="Brief overview for each chapter"
     )
 
 
