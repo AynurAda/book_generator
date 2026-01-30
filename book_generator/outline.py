@@ -42,88 +42,99 @@ async def build_outline_pipeline(language_model) -> synalinks.Program:
     """
     inputs = synalinks.Input(data_model=Topic)
 
-    # Multi-branch concept extraction with high temperature for diversity
-    branches = []
-    for i in range(8):
-        branch = await synalinks.Generator(
-            data_model=ConceptExtractor,
-            language_model=language_model,
-            instructions="""You are designing the table of contents for a comprehensive book on the given topic.
+    # Use temperature > 0 to get diverse outputs from each branch
+    branch1 = await synalinks.Generator(
+        data_model=ConceptExtractor,
+        language_model=language_model,
+        temperature=1.0
+    )(inputs)
 
-Extract 10-15 main concepts that MUST be covered. Focus on:
-- Core theoretical foundations
-- Key techniques and methods
-- Important applications
-- Essential background knowledge
+    branch2 = await synalinks.Generator(
+        data_model=ConceptExtractor,
+        language_model=language_model,
+        temperature=1.0
+    )(inputs)
 
-Be comprehensive but focused on the topic. Avoid generic concepts."""
-        )(inputs, hint=f"Branch {i+1}: Generate a diverse set of concepts")
-        branches.append(branch)
+    branch3 = await synalinks.Generator(
+        data_model=ConceptExtractor,
+        language_model=language_model,
+        temperature=1.0
+    )(inputs)
 
-    # Merge all branches
-    merged = synalinks.Concatenate()(branches)
+    branch4 = await synalinks.Generator(
+        data_model=ConceptExtractor,
+        language_model=language_model,
+        temperature=1.0
+    )(inputs)
 
-    # Deduplicate and consolidate
+    branch5 = await synalinks.Generator(
+        data_model=ConceptExtractor,
+        language_model=language_model,
+        temperature=1.0
+    )(inputs)
+
+    branch6 = await synalinks.Generator(
+        data_model=ConceptExtractor,
+        language_model=language_model,
+        temperature=1.0
+    )(inputs)
+
+    branch7 = await synalinks.Generator(
+        data_model=ConceptExtractor,
+        language_model=language_model,
+        temperature=1.0
+    )(inputs)
+
+    branch8 = await synalinks.Generator(
+        data_model=ConceptExtractor,
+        language_model=language_model,
+        temperature=1.0
+    )(inputs)
+
+    # Merge all branches using & operator
+    merged = branch1 & branch2 & branch3 & branch4 & branch5 & branch6 & branch7 & branch8
+
+    # Final generator to deduplicate and consolidate the merged lists
     merged_concepts = await synalinks.Generator(
         data_model=MergedConcepts,
-        language_model=language_model,
-        instructions="""Consolidate the concepts from all branches into a single, deduplicated list.
+        description="Take all the concepts from the merged branches and create a comprehensive, deduplicated list of main concepts",
+        language_model=language_model
+    )(inputs & merged)
 
-- Merge similar concepts into broader categories
-- Remove exact or near duplicates
-- Keep 12-18 main concepts that comprehensively cover the topic
-- Ensure logical grouping"""
-    )(merged)
-
-    # Expand each concept with subconcepts
-    hierarchical = await synalinks.Generator(
+    # Expand each main concept with its subconcepts
+    hierarchy = await synalinks.Generator(
         data_model=HierarchicalConcepts,
-        language_model=language_model,
-        instructions="""For each main concept, generate 3-5 specific subconcepts.
+        instructions="For each main concept provided, generate 5-10 specific subconcepts that belong to that domain. Subconcepts should be concrete techniques, methods, tools, or topics that fall under the main concept.",
+        language_model=language_model
+    )(inputs & merged_concepts)
 
-Subconcepts should be:
-- Specific techniques, methods, or topics within the main concept
-- Detailed enough to form a book section
-- Logically organized within the concept"""
-    )(merged_concepts)
-
-    # Review and add missing concepts
+    # Review and add any missing concepts
     reviewed = await synalinks.Generator(
         data_model=HierarchicalConcepts,
-        language_model=language_model,
-        instructions="""Review the hierarchical concepts and add any missing important topics.
+        instructions="Review the provided concepts and subconcepts. Add any important main concepts that are missing, and add any missing subconcepts to existing concepts. Return the complete enriched hierarchy.",
+        language_model=language_model
+    )(inputs & hierarchy)
 
-- Add concepts that are essential but were missed
-- Add subconcepts where coverage is thin
-- Ensure comprehensive coverage of the field
-- Do NOT remove anything, only add"""
-    )(hierarchical)
-
-    # Expand to three-level hierarchy (sub-subconcepts)
-    deep_hierarchy = await synalinks.Generator(
+    # Expand subconcepts with sub-subconcepts
+    deep = await synalinks.Generator(
         data_model=DeepHierarchy,
-        language_model=language_model,
-        instructions="""Expand each subconcept with 3-7 specific sub-subconcepts.
+        instructions="For each subconcept provided, generate 3-7 specific sub-subconcepts that belong to that subdomain. Sub-subconcepts should be concrete techniques, methods, algorithms, or specific topics.",
+        language_model=language_model
+    )(inputs & reviewed)
 
-Sub-subconcepts should be:
-- Concrete, specific topics that can be explained in 2-3 paragraphs
-- Building blocks for the book's content
-- Properly scoped (not too broad or too narrow)"""
-    )(reviewed)
-
-    # Final relevance verification
-    final = await synalinks.Generator(
+    # Verify relevance to the book topic and goal
+    outputs = await synalinks.Generator(
         data_model=DeepHierarchy,
-        language_model=language_model,
-        instructions="""Verify the outline for relevance and completeness.
+        instructions="Review the entire hierarchy and verify each concept, subconcept, and sub-subconcept is relevant to the book topic and goal. Remove any items that are off-topic, too generic, or not directly useful for the book. Keep only what truly belongs.",
+        language_model=language_model
+    )(inputs & deep)
 
-- Remove any off-topic or tangential items
-- Remove items that are too generic or vague
-- Ensure everything directly relates to the book's topic and goal
-- Maintain the 3-level hierarchy structure"""
-    )(deep_hierarchy)
-
-    return synalinks.Program(inputs=inputs, outputs=final)
+    return synalinks.Program(
+        inputs=inputs,
+        outputs=outputs,
+        name="verified_concept_extractor",
+        description="Extract and verify three-level hierarchy of concepts for book writing",
+    )
 
 
 async def reorganize_outline(
@@ -149,9 +160,9 @@ async def reorganize_outline(
     generator = synalinks.Generator(
         data_model=ReorganizedOutline,
         language_model=language_model,
-        instructions="""You are an expert at organizing educational content.
+        instructions="""You are an expert at organizing educational content to follow the natural evolution of ideas.
 
-Analyze the book outline and determine if reorganizing chapters would better reflect:
+Analyze the given book outline and determine if reorganizing the chapters would better reflect:
 1. Historical/temporal evolution (how concepts developed over time)
 2. Conceptual progression (foundational concepts before advanced ones)
 3. Logical dependencies (concepts that build on each other)

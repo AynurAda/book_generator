@@ -32,12 +32,12 @@ CONFIG = {
     "authors": "Aynur Adanbekova, Gemini & Claude",
 
     # Generation settings
-    "test_mode": False,
+    "test_mode": True,
     "test_max_chapters": 2,
     "resume_from_dir": None,  # Set to "output/YYYYMMDD_HHMMSS" to resume
 
     # Model settings
-    "model_name": "gemini/gemini-2.5-flash-preview-05-20",
+    "model_name": "gemini/gemini-3-flash-preview",
 }
 
 

@@ -43,7 +43,7 @@ class Config:
     output_dir: Optional[str] = None
 
     # Model settings
-    model_name: str = "gemini/gemini-2.5-flash-preview-05-20"
+    model_name: str = "gemini/gemini-3-flash-preview"
 
     # Introduction styles for variety
     intro_styles: List[str] = field(default_factory=lambda: [
@@ -91,7 +91,7 @@ class Config:
             test_mode=data.get("test_mode", False),
             test_max_chapters=data.get("test_max_chapters", 2),
             resume_from_dir=data.get("resume_from_dir"),
-            model_name=data.get("model_name", "gemini/gemini-2.5-flash-preview-05-20"),
+            model_name=data.get("model_name", "gemini/gemini-3-flash-preview"),
         )
 
 
