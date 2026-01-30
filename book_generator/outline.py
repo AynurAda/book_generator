@@ -104,7 +104,7 @@ async def build_outline_pipeline(language_model) -> synalinks.Program:
     # Expand each main concept with its subconcepts
     hierarchy = await synalinks.Generator(
         data_model=HierarchicalConcepts,
-        instructions="For each main concept provided, generate 5-10 specific subconcepts that belong to that domain. Subconcepts should be concrete techniques, methods, tools, or topics that fall under the main concept.",
+        instructions="For each main concept provided, generate ALL relevant subconcepts that belong to that domain. Be comprehensive - include every important technique, method, tool, or topic that falls under the main concept. Do not limit the number.",
         language_model=language_model
     )(inputs & merged_concepts)
 
@@ -118,7 +118,7 @@ async def build_outline_pipeline(language_model) -> synalinks.Program:
     # Expand subconcepts with sub-subconcepts
     deep = await synalinks.Generator(
         data_model=DeepHierarchy,
-        instructions="For each subconcept provided, generate 3-7 specific sub-subconcepts that belong to that subdomain. Sub-subconcepts should be concrete techniques, methods, algorithms, or specific topics.",
+        instructions="For each subconcept provided, generate ALL relevant sub-subconcepts that belong to that subdomain. Be comprehensive - include every concrete technique, method, algorithm, or specific topic. Do not limit the number.",
         language_model=language_model
     )(inputs & reviewed)
 
