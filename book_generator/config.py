@@ -46,6 +46,9 @@ class Config:
     # Model settings
     model_name: str = "gemini/gemini-3-flash-preview"
 
+    # Author settings
+    author_key: Optional[str] = None  # Key from authors.AUTHOR_PROFILES, None for no styling
+
     # Introduction styles for variety
     intro_styles: List[str] = field(default_factory=lambda: [
         "Start with a thought-provoking question that challenges common assumptions",
@@ -95,6 +98,7 @@ class Config:
             test_max_chapters=data.get("test_max_chapters", 2),
             resume_from_dir=data.get("resume_from_dir"),
             model_name=data.get("model_name", "gemini/gemini-3-flash-preview"),
+            author_key=data.get("author_key"),
         )
 
 

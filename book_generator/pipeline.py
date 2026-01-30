@@ -29,6 +29,7 @@ from .content import generate_all_subsections, rewrite_sections
 from .polish import polish_chapters
 from .cover import generate_cover
 from .pdf import generate_pdf
+from .authors import get_author_profile, style_all_chapters, generate_about_author
 
 logger = logging.getLogger(__name__)
 
@@ -288,6 +289,39 @@ async def generate_book(config: Config) -> str:
     print(f"{'='*60}\n")
 
     # ==========================================================================
+    # STAGE 5b: AUTHOR STYLE APPLICATION (Optional)
+    # ==========================================================================
+    final_chapters = polished_chapters
+    author_profile = None
+    about_author = ""
+
+    if config.author_key:
+        author_profile = get_author_profile(config.author_key)
+        if author_profile:
+            logger.info(f"Applying author style: {author_profile.pen_name}")
+
+            final_chapters = await style_all_chapters(
+                polished_chapters, author_profile, language_model, output_dir
+            )
+
+            print(f"\n{'='*60}")
+            print(f"Applied {author_profile.pen_name}'s style to {len(final_chapters)} chapters")
+            print(f"{'='*60}\n")
+
+            # Generate About the Author section
+            about_author = await generate_about_author(
+                author_profile,
+                topic_data["book_name"],
+                topic_data["topic"],
+                language_model,
+                output_dir
+            )
+
+            print(f"Generated About the Author section")
+        else:
+            logger.warning(f"Author profile not found: {config.author_key}")
+
+    # ==========================================================================
     # STAGE 6: INTRODUCTION GENERATION
     # ==========================================================================
     logger.info("Generating book introduction...")
@@ -306,11 +340,16 @@ async def generate_book(config: Config) -> str:
     # ==========================================================================
     logger.info("Generating book cover...")
 
+    # Use author's pen name if author style is applied
+    display_authors = config.authors
+    if author_profile:
+        display_authors = author_profile.pen_name
+
     cover_path = os.path.join(output_dir, "book_cover.png")
     generate_cover(
         topic_data["book_name"],
         config.subtitle,
-        config.authors,
+        display_authors,
         cover_path
     )
 
@@ -331,12 +370,18 @@ async def generate_book(config: Config) -> str:
         combined_output.append("## Introduction\n\n")
         combined_output.append(f"{introduction}\n\n")
 
-    for chapter_title, chapter_content in polished_chapters:
+    for chapter_title, chapter_content in final_chapters:
         if chapter_content:
             combined_output.append(f"{chapter_content.get('chapter_content', '')}\n\n")
         else:
             combined_output.append(f"## {chapter_title}\n\n")
             combined_output.append("*Content generation failed for this chapter*\n\n")
+
+    # Add About the Author section
+    if about_author:
+        combined_output.append("---\n\n")
+        combined_output.append("## About the Author\n\n")
+        combined_output.append(f"{about_author}\n\n")
 
     book_content = "".join(combined_output)
     save_to_file(output_dir, "06_full_book.txt", book_content)

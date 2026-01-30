@@ -272,3 +272,39 @@ class BookIntroduction(synalinks.DataModel):
     introduction: str = synalinks.Field(
         description="The complete introduction section for the book"
     )
+
+
+# =============================================================================
+# Author Style Models
+# =============================================================================
+
+class AuthorStyleInput(synalinks.DataModel):
+    """Input for applying author style to content."""
+    original_content: str = synalinks.Field(description="The original chapter content to restyle")
+    author_name: str = synalinks.Field(description="The author's name")
+    author_style: str = synalinks.Field(description="Description of the author's writing style")
+    author_tone: str = synalinks.Field(description="The author's characteristic tone")
+    chapter_name: str = synalinks.Field(description="The name of the chapter being styled")
+
+
+class StyledContent(synalinks.DataModel):
+    """Output for author-styled content."""
+    styled_content: str = synalinks.Field(
+        description="The content rewritten in the author's distinctive voice and style"
+    )
+
+
+class AboutAuthorInput(synalinks.DataModel):
+    """Input for generating About the Author section."""
+    author_name: str = synalinks.Field(description="The author's pen name")
+    author_background: str = synalinks.Field(description="The author's biographical background")
+    author_expertise: str = synalinks.Field(description="The author's area of expertise")
+    book_name: str = synalinks.Field(description="The name of the book")
+    book_topic: str = synalinks.Field(description="The main topic of the book")
+
+
+class AboutAuthorOutput(synalinks.DataModel):
+    """Output for About the Author section."""
+    about_author: str = synalinks.Field(
+        description="The complete About the Author section in flowing prose"
+    )

@@ -39,6 +39,13 @@ CONFIG = {
 
     # Model settings
     "model_name": "gemini/gemini-3-flash-preview",
+
+    # Author style (None for no styling, or one of:)
+    # - "warm_educator": Warm, witty "for dummies" style with observational humor
+    # - "pragmatic_engineer": Direct, practical with dry wit and war stories
+    # - "curious_explorer": Question-driven, interdisciplinary connections
+    # - "no_nonsense_expert": Precise, elegant, authoritative
+    "author_key": "warm_educator",
 }
 
 
@@ -101,7 +108,13 @@ async def main():
     print("=" * 60)
     print(f"Topic: {config.topic}")
     print(f"Book Name: {config.book_name}")
+    print(f"Audience: {config.audience}")
     print(f"Test Mode: {config.test_mode}")
+    if config.author_key:
+        from book_generator.authors import get_author_profile
+        author = get_author_profile(config.author_key)
+        if author:
+            print(f"Author Style: {author.pen_name} ({config.author_key})")
     if config.resume_from_dir:
         print(f"Resuming from: {config.resume_from_dir}")
     print("=" * 60)
