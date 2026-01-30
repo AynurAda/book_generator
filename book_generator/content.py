@@ -60,6 +60,13 @@ async def generate_subsection(
         language_model=language_model,
         instructions="""Generate comprehensive content for this book subsection.
 
+LANGUAGE STYLE: Write in an ACCESSIBLE yet RIGOROUS style:
+- Use clear, jargon-free language when introducing concepts
+- Define technical terms precisely when first used
+- Build complexity gradually - start simple, add depth
+- Be precise and accurate without being dense or impenetrable
+- Explain the "why" alongside the "what"
+
 Your content should:
 1. CONCEPT EXPLANATION:
    - Explain the core concepts clearly and thoroughly
@@ -71,7 +78,6 @@ Your content should:
    - Include practical, real-world examples
    - Show how concepts apply in practice
 
-Write in an engaging, educational tone. Be thorough but concise.
 Do NOT include introductions or summaries - these will be added during section assembly."""
     )
 
@@ -185,6 +191,11 @@ async def rewrite_section(
         data_model=ChapterOutput,
         language_model=language_model,
         instructions=f"""Rewrite the subsections into a single, coherent book section.
+
+LANGUAGE STYLE: Write in an ACCESSIBLE yet RIGOROUS style:
+- Clear and approachable without sacrificing precision
+- Technical accuracy with reader-friendly explanations
+- Build from intuition to formalism where appropriate
 
 INTRODUCTION STYLE: {intro_style}
 

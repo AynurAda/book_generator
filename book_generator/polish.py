@@ -55,6 +55,12 @@ async def polish_chapter(
         language_model=language_model,
         instructions="""Polish this chapter into publication-ready quality.
 
+LANGUAGE STYLE: Ensure the writing is ACCESSIBLE yet RIGOROUS:
+- Clear and approachable for educated readers new to the topic
+- Technically precise without being unnecessarily dense
+- Explain complex ideas through clear reasoning, not jargon
+- Balance intuitive explanations with formal accuracy
+
 Your polished chapter should:
 
 1. COHESION: Sections should read as one unified piece, not separate articles

@@ -13,7 +13,7 @@ from typing import Optional
 import synalinks
 
 from .config import Config
-from .models import Topic
+from .models import Topic, IntroductionInput, BookIntroduction
 from .utils import (
     build_outline_string,
     build_outline_text,
@@ -31,6 +31,75 @@ from .cover import generate_cover
 from .pdf import generate_pdf
 
 logger = logging.getLogger(__name__)
+
+
+async def generate_introduction(
+    topic_data: dict,
+    book_plan: dict,
+    outline_text: str,
+    language_model,
+    output_dir: str
+) -> str:
+    """
+    Generate the book introduction.
+
+    Returns:
+        The introduction content as a string
+    """
+    intro_filename = "00_introduction.txt"
+
+    # Check for existing introduction
+    if output_dir and output_exists(output_dir, intro_filename):
+        existing = load_json_from_file(output_dir, intro_filename.replace('.txt', '.json'))
+        if existing:
+            logger.info("Loaded existing introduction")
+            return existing.get("introduction", "")
+
+    logger.info("Generating book introduction...")
+
+    from .planning import format_book_plan
+
+    generator = synalinks.Generator(
+        data_model=BookIntroduction,
+        language_model=language_model,
+        instructions="""Write a compelling introduction for this book.
+
+LANGUAGE STYLE: Write in an ACCESSIBLE yet RIGOROUS style:
+- Welcoming to readers new to the topic
+- Clear about what they will learn and why it matters
+- Intellectually honest about the complexity of the subject
+
+The introduction should:
+1. HOOK: Open with a compelling observation about the field
+2. CONTEXT: Explain why this topic matters now
+3. PROBLEM: Describe the challenges or questions the book addresses
+4. APPROACH: Briefly explain the book's approach and methodology
+5. ROADMAP: Give a high-level overview of what each major section covers
+6. AUDIENCE: Indicate who will benefit most from this book
+7. INVITATION: End with an encouraging note to the reader
+
+Write 4-6 paragraphs. Do NOT use headers within the introduction - write in flowing prose.
+The introduction will be placed after the Table of Contents."""
+    )
+
+    input_data = IntroductionInput(
+        topic=topic_data["topic"],
+        goal=topic_data["goal"],
+        book_name=topic_data["book_name"],
+        book_plan=format_book_plan(book_plan),
+        outline=outline_text
+    )
+
+    result = await generator(input_data)
+    result_dict = result.get_json()
+    introduction = result_dict.get("introduction", "")
+
+    # Save the introduction
+    if output_dir:
+        save_to_file(output_dir, intro_filename, introduction)
+        save_json_to_file(output_dir, intro_filename.replace('.txt', '.json'), result_dict)
+
+    return introduction
 
 
 async def generate_book(config: Config) -> str:
@@ -213,7 +282,21 @@ async def generate_book(config: Config) -> str:
     print(f"{'='*60}\n")
 
     # ==========================================================================
-    # STAGE 6: COVER GENERATION
+    # STAGE 6: INTRODUCTION GENERATION
+    # ==========================================================================
+    logger.info("Generating book introduction...")
+
+    introduction = await generate_introduction(
+        topic_data, book_plan, build_outline_text(results),
+        language_model, output_dir
+    )
+
+    print(f"\n{'='*60}")
+    print("Generated book introduction")
+    print(f"{'='*60}\n")
+
+    # ==========================================================================
+    # STAGE 7: COVER GENERATION
     # ==========================================================================
     logger.info("Generating book cover...")
 
@@ -226,7 +309,7 @@ async def generate_book(config: Config) -> str:
     )
 
     # ==========================================================================
-    # STAGE 7: FINAL ASSEMBLY & PDF
+    # STAGE 8: FINAL ASSEMBLY & PDF
     # ==========================================================================
     logger.info("Assembling final book...")
 
@@ -236,6 +319,11 @@ async def generate_book(config: Config) -> str:
     combined_output.append("<h2>Table of Contents</h2>\n\n")
     combined_output.append(build_outline_string(results))
     combined_output.append("\n</div>\n\n")
+
+    # Add introduction
+    if introduction:
+        combined_output.append("## Introduction\n\n")
+        combined_output.append(f"{introduction}\n\n")
 
     for chapter_title, chapter_content in polished_chapters:
         if chapter_content:

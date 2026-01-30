@@ -252,3 +252,19 @@ class PolishedChapter(synalinks.DataModel):
     chapter_content: str = synalinks.Field(
         description="The polished chapter content"
     )
+
+
+class IntroductionInput(synalinks.DataModel):
+    """Input for generating the book introduction."""
+    topic: str = synalinks.Field(description="The main topic of the book")
+    goal: str = synalinks.Field(description="The goal of the book")
+    book_name: str = synalinks.Field(description="The name of the book")
+    book_plan: str = synalinks.Field(description="The high-level book plan")
+    outline: str = synalinks.Field(description="The complete book outline")
+
+
+class BookIntroduction(synalinks.DataModel):
+    """Generated book introduction."""
+    introduction: str = synalinks.Field(
+        description="The complete introduction section for the book"
+    )

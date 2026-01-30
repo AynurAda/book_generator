@@ -43,11 +43,9 @@ def generate_cover(
 
     client = genai.Client(api_key=api_key)
 
-    prompt = f"""Book cover for a technical book about autonomous AI agents.
-
+    prompt = f"""Book cover for a technical book. The cover should be visually striking and professional.
 Title: "{book_name}"
-Subtitle: "{subtitle}"
-Authors: {authors}"""
+Do NOT include any text on the cover - just create an evocative abstract or conceptual image that represents the topic."""
 
     try:
         response = client.models.generate_images(
