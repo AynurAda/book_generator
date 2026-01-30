@@ -36,13 +36,22 @@ WRITING_STYLES: Dict[str, WritingStyle] = {
     "waitbutwhy": WritingStyle(
         key="waitbutwhy",
         name="",
-        description="WaitButWhy blog style - conversational, clear explanations",
+        description="WaitButWhy blog style - conversational, clear explanations with deep dives",
         style_instructions="""Rewrite this content in the style of WaitButWhy blog.
 
+STYLE CHARACTERISTICS:
+- Conversational, engaging tone that makes complex topics accessible
+- Deep dives that thoroughly explore topics (WaitButWhy posts are famously LONG)
+- Clear explanations that build understanding step by step
+- Occasional humor and relatable observations
+- Uses analogies where they genuinely illuminate concepts
+
 IMPORTANT CLARIFICATIONS:
-- Use analogies where they genuinely help understanding, not after every concept
+- PRESERVE ALL DEPTH AND DETAIL - WaitButWhy is known for comprehensive coverage
+- Do NOT condense or summarize - expand explanations where helpful
 - Do NOT patronize the reader - they are intelligent, just learning this topic
-- Keep technical accuracy - simple doesn't mean dumbed down"""
+- Keep technical accuracy - accessible doesn't mean dumbed down
+- Maintain the same comprehensive scope as the original"""
     ),
 
     "for_dummies": WritingStyle(
@@ -161,16 +170,18 @@ async def apply_author_style(
         language_model=language_model,
         instructions=f"""{style.style_instructions}
 
-IMPORTANT - PRESERVE:
-- All technical content and accuracy
+CRITICAL - PRESERVE COMPREHENSIVE DEPTH:
+- Keep ALL technical content, details, and explanations
+- Maintain the SAME LENGTH or make it LONGER with better explanations
 - The same section structure and headings
-- All key information and examples
+- All examples, edge cases, and nuances
+- Do NOT summarize, condense, or shorten any section
 
 IMPORTANT - DO NOT:
 - Add references to any author or persona
-- Add unnecessary filler or padding
+- Remove any substantive content
 - Change the meaning of any technical content
-- Make it longer than necessary"""
+- Shorten or condense the material"""
     )
 
     input_data = AuthorStyleInput(
