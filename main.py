@@ -33,19 +33,20 @@ CONFIG = {
     "audience": "ML researchers and practitioners who want to understand and build neuro-symbolic systems",
 
     # Generation settings
-    "test_mode": True,
-    "test_max_chapters": 2,
-    "resume_from_dir": None,  # Set to "output/YYYYMMDD_HHMMSS" to resume
+    "test_mode": False,
+    "test_max_chapters": 1,
+    "resume_from_dir": 'output/20260130_203255',  # Set to "output/YYYYMMDD_HHMMSS" to resume
 
     # Model settings
     "model_name": "gemini/gemini-3-flash-preview",
 
-    # Author style (None for no styling, or one of:)
-    # - "warm_educator": Warm, witty "for dummies" style with observational humor
-    # - "pragmatic_engineer": Direct, practical with dry wit and war stories
-    # - "curious_explorer": Question-driven, interdisciplinary connections
-    # - "no_nonsense_expert": Precise, elegant, authoritative
-    "author_key": "pragmatic_engineer",
+    # Writing style (None for no styling, or one of:)
+    # - "waitbutwhy": Conversational, simple language, breaks down complex topics
+    # - "for_dummies": Step-by-step, assumes no prior knowledge, friendly
+    # - "oreilly": Technical but clear, practical focus, for practitioners
+    # - "textbook": Rigorous and structured, academic style
+    # - "practical": Minimal theory, focused on application
+    "author_key": "waitbutwhy",
 
     # Illustration settings
     "enable_illustrations": True,  # Set to True to add Mermaid diagrams and images
@@ -116,10 +117,10 @@ async def main():
     print(f"Audience: {config.audience}")
     print(f"Test Mode: {config.test_mode}")
     if config.author_key:
-        from book_generator.authors import get_author_profile
-        author = get_author_profile(config.author_key)
-        if author:
-            print(f"Author Style: {author.pen_name} ({config.author_key})")
+        from book_generator.authors import get_writing_style
+        style = get_writing_style(config.author_key)
+        if style:
+            print(f"Writing Style: {config.author_key} - {style.description}")
     if config.enable_illustrations:
         print(f"Illustrations: Enabled (images: {config.enable_generated_images})")
     if config.resume_from_dir:

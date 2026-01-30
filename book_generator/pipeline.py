@@ -296,34 +296,34 @@ async def generate_book(config: Config) -> str:
     # STAGE 5b: AUTHOR STYLE APPLICATION (Optional)
     # ==========================================================================
     final_chapters = polished_chapters
-    author_profile = None
+    writing_style = None
     about_author = ""
 
     if config.author_key:
-        author_profile = get_author_profile(config.author_key)
-        if author_profile:
-            logger.info(f"Applying author style: {author_profile.pen_name}")
+        writing_style = get_author_profile(config.author_key)
+        if writing_style:
+            logger.info(f"Applying writing style: {writing_style.key}")
 
             final_chapters = await style_all_chapters(
-                polished_chapters, author_profile, language_model, output_dir
+                polished_chapters, writing_style, language_model, output_dir
             )
 
             print(f"\n{'='*60}")
-            print(f"Applied {author_profile.pen_name}'s style to {len(final_chapters)} chapters")
+            print(f"Applied '{writing_style.key}' style to {len(final_chapters)} chapters")
             print(f"{'='*60}\n")
 
-            # Generate About the Author section
-            about_author = await generate_about_author(
-                author_profile,
-                topic_data["book_name"],
-                topic_data["topic"],
-                language_model,
-                output_dir
-            )
-
-            print(f"Generated About the Author section")
+            # Generate About the Author section (only if style has a name)
+            if writing_style.name:
+                about_author = await generate_about_author(
+                    writing_style,
+                    topic_data["book_name"],
+                    topic_data["topic"],
+                    language_model,
+                    output_dir
+                )
+                print(f"Generated About the Author section")
         else:
-            logger.warning(f"Author profile not found: {config.author_key}")
+            logger.warning(f"Writing style not found: {config.author_key}")
 
     # ==========================================================================
     # STAGE 5c: ILLUSTRATION GENERATION (Optional)
@@ -368,10 +368,10 @@ async def generate_book(config: Config) -> str:
     # ==========================================================================
     logger.info("Generating book cover...")
 
-    # Use author's pen name if author style is applied
+    # Use style's name for author display if configured
     display_authors = config.authors
-    if author_profile:
-        display_authors = author_profile.pen_name
+    if writing_style and writing_style.name:
+        display_authors = writing_style.name
 
     cover_path = os.path.join(output_dir, "book_cover.png")
     generate_cover(
