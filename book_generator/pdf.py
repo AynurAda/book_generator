@@ -21,6 +21,84 @@ from weasyprint import HTML, CSS
 logger = logging.getLogger(__name__)
 
 
+def process_latex_math(content: str) -> str:
+    """
+    Convert LaTeX math notation to MathML for PDF rendering.
+
+    Handles:
+    - Display math: $$...$$ or \[...\]
+    - Inline math: $...$ or \(...\)
+    - Escaped parentheses with math: (\mathbb{...})
+
+    Returns:
+        Content with LaTeX converted to MathML
+    """
+    try:
+        import latex2mathml.converter
+        has_latex2mathml = True
+    except ImportError:
+        logger.warning("latex2mathml not installed - math formulas will show as text")
+        has_latex2mathml = False
+        return content
+
+    def latex_to_mathml(latex_code: str, display: bool = False) -> str:
+        """Convert a single LaTeX expression to MathML."""
+        try:
+            mathml = latex2mathml.converter.convert(latex_code)
+            if display:
+                # Wrap display math in a centered div
+                return f'<div class="math-display">{mathml}</div>'
+            else:
+                return f'<span class="math-inline">{mathml}</span>'
+        except Exception as e:
+            logger.warning(f"Failed to convert LaTeX: {latex_code[:50]}... - {e}")
+            # Return formatted code block as fallback
+            return f'<code class="math-fallback">{latex_code}</code>'
+
+    # Pattern for display math: $$...$$ or \[...\]
+    display_pattern1 = re.compile(r'\$\$(.+?)\$\$', re.DOTALL)
+    display_pattern2 = re.compile(r'\\\[(.+?)\\\]', re.DOTALL)
+
+    # Pattern for inline math: $...$ (not $$)
+    inline_pattern1 = re.compile(r'(?<!\$)\$(?!\$)(.+?)(?<!\$)\$(?!\$)')
+
+    # Pattern for \(...\)
+    inline_pattern2 = re.compile(r'\\\((.+?)\\\)')
+
+    # Pattern for (\mathbb{...}) style - common malformed LaTeX
+    paren_math_pattern = re.compile(r'\(\\(math[a-z]*\{[^}]+\}[^)]*)\)')
+
+    # Process display math first (to avoid conflicts with inline)
+    def replace_display(match):
+        return latex_to_mathml(match.group(1).strip(), display=True)
+
+    content = display_pattern1.sub(replace_display, content)
+    content = display_pattern2.sub(replace_display, content)
+
+    # Process inline math
+    def replace_inline(match):
+        return latex_to_mathml(match.group(1).strip(), display=False)
+
+    content = inline_pattern1.sub(replace_inline, content)
+    content = inline_pattern2.sub(replace_inline, content)
+
+    # Process parenthesized math expressions like (\mathbb{R}^d)
+    def replace_paren_math(match):
+        return latex_to_mathml(match.group(1).strip(), display=False)
+
+    content = paren_math_pattern.sub(replace_paren_math, content)
+
+    # Also catch standalone \mathbf, \mathbb, etc. that might be outside delimiters
+    standalone_math = re.compile(r'\\(math(?:bf|bb|cal|rm|it|sf|tt|frak)\{[^}]+\})')
+
+    def replace_standalone(match):
+        return latex_to_mathml(match.group(0), display=False)
+
+    content = standalone_math.sub(replace_standalone, content)
+
+    return content
+
+
 def render_mermaid_to_image(mermaid_code: str, output_path: str, use_cli: bool = True) -> Optional[str]:
     """
     Render Mermaid code to an image file.
@@ -322,6 +400,28 @@ li {
     text-align: center;
     text-indent: 0;
 }
+.math-display {
+    text-align: center;
+    margin: 1em 0;
+    overflow-x: auto;
+}
+.math-display math {
+    font-size: 12pt;
+}
+.math-inline math {
+    font-size: inherit;
+    vertical-align: middle;
+}
+.math-fallback {
+    font-family: 'Courier New', monospace;
+    background: #f5f5f5;
+    padding: 0.2em 0.4em;
+    border-radius: 3px;
+    font-size: 10pt;
+}
+math {
+    font-family: 'STIX Two Math', 'Cambria Math', 'Latin Modern Math', serif;
+}
 '''
 
 
@@ -349,11 +449,12 @@ def generate_pdf(
 
     css = CSS(string=BOOK_CSS)
 
+    # Process LaTeX math - convert to MathML
+    processed_content = process_latex_math(book_content)
+
     # Process Mermaid diagrams - render to images
     if base_url:
-        processed_content = process_mermaid_blocks(book_content, base_url)
-    else:
-        processed_content = book_content
+        processed_content = process_mermaid_blocks(processed_content, base_url)
 
     # Convert markdown to HTML
     md = markdown.Markdown(extensions=['extra', 'toc', 'smarty'])
