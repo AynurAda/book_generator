@@ -1,0 +1,19 @@
+# Book Generator Dependencies
+
+# Core framework
+synalinks>=0.1.0
+
+# Environment and configuration
+python-dotenv>=1.0.0
+
+# PDF generation
+markdown>=3.5.0
+weasyprint>=60.0
+
+# Cover image generation (optional)
+google-genai>=0.1.0
+
+# Note: weasyprint requires system dependencies:
+# - macOS: brew install pango
+# - Ubuntu/Debian: apt-get install libpango-1.0-0 libpangocairo-1.0-0
+# - Windows: See https://doc.courtbouillon.org/weasyprint/stable/first_steps.html

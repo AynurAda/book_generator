@@ -1,0 +1,265 @@
+"""
+Main pipeline orchestration for book generation.
+
+This module coordinates all stages of book generation from
+outline creation to final PDF assembly.
+"""
+
+import os
+import json
+import logging
+from typing import Optional
+
+import synalinks
+
+from .config import Config
+from .models import Topic
+from .utils import (
+    build_outline_string,
+    build_outline_text,
+    output_exists,
+    load_json_from_file,
+    save_to_file,
+    save_json_to_file,
+    get_chapter_names,
+)
+from .outline import build_outline_pipeline, reorganize_outline
+from .planning import run_hierarchical_planning
+from .content import generate_all_subsections, rewrite_sections
+from .polish import polish_chapters
+from .cover import generate_cover
+from .pdf import generate_pdf
+
+logger = logging.getLogger(__name__)
+
+
+async def generate_book(config: Config) -> str:
+    """
+    Generate a complete book from the given configuration.
+
+    This is the main entry point that coordinates all pipeline stages:
+    1. Outline generation
+    2. Outline reorganization
+    3. Hierarchical planning
+    4. Subsection content generation
+    5. Section rewriting
+    6. Chapter polishing
+    7. Cover generation
+    8. PDF assembly
+
+    Args:
+        config: The book generation configuration
+
+    Returns:
+        Path to the generated PDF
+    """
+    # Setup output directory
+    base_path = os.path.dirname(os.path.dirname(__file__))
+    output_dir = config.setup_output_dir(base_path)
+
+    # Get topic data
+    topic_data = config.get_topic_data()
+
+    # Log configuration
+    if config.test_mode:
+        logger.info("=== TEST MODE ENABLED ===")
+        logger.info(f"Max chapters: {config.test_max_chapters}")
+        save_to_file(output_dir, "00_test_mode.txt", f"TEST MODE\nMax chapters: {config.test_max_chapters}")
+
+    save_to_file(
+        output_dir,
+        "00_topic.txt",
+        f"Topic: {topic_data['topic']}\nGoal: {topic_data['goal']}\nBook Name: {topic_data['book_name']}"
+    )
+
+    # Initialize language model
+    language_model = synalinks.LanguageModel(model=config.model_name)
+
+    # ==========================================================================
+    # STAGE 1: OUTLINE GENERATION
+    # ==========================================================================
+    logger.info("Starting outline generation...")
+
+    results = None
+    if config.resume_from_dir and output_exists(output_dir, "01_outline.json"):
+        results = load_json_from_file(output_dir, "01_outline.json")
+        if results:
+            logger.info("Loaded existing outline from file")
+
+    if results is None:
+        outline_program = await build_outline_pipeline(language_model)
+        topic_input = Topic(
+            topic=topic_data["topic"],
+            goal=topic_data["goal"],
+            book_name=topic_data["book_name"]
+        )
+        results = await outline_program(topic_input)
+
+        # Save outline
+        save_json_to_file(output_dir, "01_outline.json", results.get_json())
+        results = results.get_json()
+
+    save_to_file(output_dir, "01_outline.txt", build_outline_text(results))
+
+    # Display outline
+    concepts_list = results.get("concepts", [])
+    print(f"\n{'='*60}")
+    print(f"Generated {len(concepts_list)} main concepts (3-level hierarchy):")
+    print(f"{'='*60}\n")
+
+    for i, concept_data in enumerate(concepts_list, 1):
+        concept_name = concept_data.get("concept", "Unknown")
+        subconcepts = concept_data.get("subconcepts", [])
+        print(f"{i}. {concept_name}")
+        for j, subconcept_data in enumerate(subconcepts, 1):
+            subconcept_name = subconcept_data.get("subconcept", "Unknown")
+            print(f"   {i}.{j} {subconcept_name}")
+        print()
+
+    # ==========================================================================
+    # STAGE 1b: OUTLINE REORGANIZATION
+    # ==========================================================================
+    was_reorganized = False
+    reorg_reasoning = "Not analyzed"
+
+    if config.resume_from_dir and output_exists(output_dir, "01_outline_reorganized.json"):
+        reorganized = load_json_from_file(output_dir, "01_outline_reorganized.json")
+        if reorganized:
+            results = reorganized
+            was_reorganized = True
+            reorg_reasoning = "Loaded from file"
+            logger.info("Loaded existing reorganized outline")
+
+    if not was_reorganized:
+        results, was_reorganized, reorg_reasoning = await reorganize_outline(
+            topic_data, results, language_model
+        )
+        if was_reorganized:
+            save_json_to_file(output_dir, "01_outline_reorganized.json", results)
+            save_to_file(output_dir, "01_outline_reorganized.txt", build_outline_text(results))
+
+    print(f"\n{'='*60}")
+    if was_reorganized:
+        print("Outline REORGANIZED for better conceptual flow:")
+        print(f"Reason: {reorg_reasoning}")
+        print("\nNew chapter order:")
+        for i, concept_data in enumerate(results.get("concepts", []), 1):
+            print(f"  {i}. {concept_data.get('concept', 'Unknown')}")
+    else:
+        print("Outline order KEPT as-is:")
+        print(f"Reason: {reorg_reasoning}")
+    print(f"{'='*60}\n")
+
+    # ==========================================================================
+    # STAGE 2: HIERARCHICAL PLANNING
+    # ==========================================================================
+    logger.info("Starting hierarchical planning...")
+
+    max_chapters = config.test_max_chapters if config.test_mode else None
+
+    book_plan, chapter_plans, all_section_plans, hierarchy = await run_hierarchical_planning(
+        topic_data, results, language_model, output_dir, max_chapters
+    )
+
+    print(f"\n{'='*60}")
+    print("Hierarchical planning complete:")
+    print(f"  - Book plan: {'generated' if book_plan else 'failed'}")
+    print(f"  - Chapter plans: {len(chapter_plans.get('chapter_plans', [])) if chapter_plans else 0}")
+    print(f"  - Section plans: {len(all_section_plans)} chapters")
+    print(f"{'='*60}\n")
+
+    # ==========================================================================
+    # STAGE 3: SUBSECTION GENERATION
+    # ==========================================================================
+    logger.info("Generating subsections with hierarchical context...")
+
+    all_generated = await generate_all_subsections(
+        topic_data, book_plan, chapter_plans, all_section_plans, hierarchy,
+        language_model, output_dir, max_chapters
+    )
+
+    total_subsections = sum(
+        len(subs) for sections in all_generated.values() for subs in sections.values()
+    )
+    print(f"\n{'='*60}")
+    print(f"Generated content for {total_subsections} subsections")
+    print(f"{'='*60}\n")
+
+    # ==========================================================================
+    # STAGE 4: SECTION REWRITING
+    # ==========================================================================
+    logger.info("Rewriting subsections into coherent sections...")
+
+    rewritten_chapters = await rewrite_sections(
+        topic_data, all_generated, book_plan, chapter_plans, all_section_plans,
+        language_model, output_dir, config.intro_styles
+    )
+
+    print(f"\n{'='*60}")
+    print(f"Rewritten {len(rewritten_chapters)} chapters")
+    print(f"{'='*60}\n")
+
+    # ==========================================================================
+    # STAGE 5: CHAPTER POLISHING
+    # ==========================================================================
+    logger.info("Polishing chapters for final cohesion and flow...")
+
+    polished_chapters = await polish_chapters(
+        topic_data, rewritten_chapters, chapter_plans, language_model, output_dir
+    )
+
+    print(f"\n{'='*60}")
+    print(f"Polished {len(polished_chapters)} chapters")
+    print(f"{'='*60}\n")
+
+    # ==========================================================================
+    # STAGE 6: COVER GENERATION
+    # ==========================================================================
+    logger.info("Generating book cover...")
+
+    cover_path = os.path.join(output_dir, "book_cover.png")
+    generate_cover(
+        topic_data["book_name"],
+        config.subtitle,
+        config.authors,
+        cover_path
+    )
+
+    # ==========================================================================
+    # STAGE 7: FINAL ASSEMBLY & PDF
+    # ==========================================================================
+    logger.info("Assembling final book...")
+
+    # Build the book content
+    combined_output = []
+    combined_output.append('<div class="toc">\n\n')
+    combined_output.append("<h2>Table of Contents</h2>\n\n")
+    combined_output.append(build_outline_string(results))
+    combined_output.append("\n</div>\n\n")
+
+    for chapter_title, chapter_content in polished_chapters:
+        if chapter_content:
+            combined_output.append(f"{chapter_content.get('chapter_content', '')}\n\n")
+        else:
+            combined_output.append(f"## {chapter_title}\n\n")
+            combined_output.append("*Content generation failed for this chapter*\n\n")
+
+    book_content = "".join(combined_output)
+    save_to_file(output_dir, "06_full_book.txt", book_content)
+
+    # Generate PDF
+    pdf_path = os.path.join(output_dir, "06_full_book.pdf")
+    generate_pdf(
+        book_content,
+        topic_data["book_name"],
+        pdf_path,
+        cover_path=cover_path if os.path.exists(cover_path) else None,
+        base_url=output_dir
+    )
+
+    logger.info("Book generation complete!")
+    logger.info(f"Text version: {os.path.join(output_dir, '06_full_book.txt')}")
+    logger.info(f"PDF version: {pdf_path}")
+    logger.info(f"Cover image: {cover_path}")
+
+    return pdf_path
