@@ -55,6 +55,7 @@ async def polish_chapter(
     generator = synalinks.Generator(
         data_model=PolishedChapter,
         language_model=language_model,
+        temperature=1.0,
         instructions="""Polish this chapter into publication-ready quality.
 
 You have access to the full book plan and chapters overview for context.

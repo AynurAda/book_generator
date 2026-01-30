@@ -64,6 +64,7 @@ async def generate_book_plan(
     generator = synalinks.Generator(
         data_model=BookPlan,
         language_model=language_model,
+        temperature=1.0,
         instructions="""Create a comprehensive plan for the book.
 
 The plan should:
@@ -146,6 +147,7 @@ async def generate_chapters_overview(
     generator = synalinks.Generator(
         data_model=ChaptersOverview,
         language_model=language_model,
+        temperature=1.0,
         instructions="""Generate a coherent overview of all chapters in this book.
 
 Your task is to create a "birds-eye view" that shows how all chapters fit together.
@@ -244,6 +246,7 @@ async def generate_single_chapter_plan(
     generator = synalinks.Generator(
         data_model=ChapterPlan,
         language_model=language_model,
+        temperature=1.0,
         instructions="""Generate a detailed plan for this specific chapter.
 
 You have access to the full chapters overview showing how all chapters connect.
@@ -405,6 +408,7 @@ async def generate_section_plans(
     generator = synalinks.Generator(
         data_model=ChapterSectionPlans,
         language_model=language_model,
+        temperature=1.0,
         instructions="""Generate detailed plans for each section in this chapter.
 
 You have access to the full book plan and chapters overview for context.

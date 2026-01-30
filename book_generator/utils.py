@@ -121,9 +121,35 @@ def build_outline_string(results: dict) -> str:
 
 def build_outline_text(results: dict) -> str:
     """
-    Convert outline results to simple text format.
+    Convert outline results to full text format including all three levels.
 
-    Used for reorganization analysis and human-readable output.
+    Used for planning stages that need complete visibility of the book structure.
+    """
+    lines = []
+    concepts_list = results.get("concepts", [])
+
+    for i, concept_data in enumerate(concepts_list, 1):
+        concept_name = concept_data.get("concept", "Unknown")
+        subconcepts = concept_data.get("subconcepts", [])
+        lines.append(f"{i}. {concept_name}")
+
+        for j, subconcept_data in enumerate(subconcepts, 1):
+            subconcept_name = subconcept_data.get("subconcept", "Unknown")
+            subsubconcepts = subconcept_data.get("subsubconcepts", [])
+            lines.append(f"   {i}.{j} {subconcept_name}")
+
+            # Include all subsection topics
+            for k, subsubconcept in enumerate(subsubconcepts, 1):
+                lines.append(f"      {i}.{j}.{k} {subsubconcept}")
+
+    return "\n".join(lines)
+
+
+def build_outline_text_short(results: dict) -> str:
+    """
+    Convert outline results to short text format (chapters and sections only).
+
+    Used for book display (table of contents) where subsections are too detailed.
     """
     lines = []
     concepts_list = results.get("concepts", [])

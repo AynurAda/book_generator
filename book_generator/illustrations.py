@@ -47,6 +47,7 @@ async def analyze_illustration_opportunities(
     generator = synalinks.Generator(
         data_model=IllustrationOpportunities,
         language_model=language_model,
+        temperature=1.0,
         instructions="""Analyze this chapter content and identify where visual illustrations would
 significantly enhance understanding.
 
@@ -114,6 +115,7 @@ async def generate_mermaid_diagram(
     generator = synalinks.Generator(
         data_model=MermaidDiagramOutput,
         language_model=language_model,
+        temperature=1.0,
         instructions=f"""Generate a Mermaid diagram based on the description.
 
 DIAGRAM TYPE: {diagram_type}
@@ -179,6 +181,7 @@ async def generate_concept_image(
     prompt_generator = synalinks.Generator(
         data_model=ImagePromptOutput,
         language_model=language_model,
+        temperature=1.0,
         instructions="""Create an optimized prompt for AI image generation.
 
 The image should:

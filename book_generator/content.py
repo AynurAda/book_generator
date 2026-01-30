@@ -4,6 +4,7 @@ Content generation for subsections and sections.
 This module handles the generation of actual book content:
 - Subsection content (explanations, analogies, examples)
 - Section rewriting (combining subsections into coherent sections)
+- Direct section writing (writing sections directly from topic names)
 """
 
 import logging
@@ -21,7 +22,7 @@ from .utils import (
     save_json_to_file,
     format_subsections_for_rewrite,
 )
-from .planning import format_book_plan, format_chapter_plan, format_section_plan
+from .planning import format_book_plan, format_chapters_overview, format_chapter_plan, format_section_plan
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +59,7 @@ async def generate_subsection(
     generator = synalinks.Generator(
         data_model=SectionOutput,
         language_model=language_model,
+        temperature=1.0,
         instructions="""Generate rigorous content for this book subsection.
 
 TARGET AUDIENCE: Write for the specified audience.
@@ -213,6 +215,7 @@ async def rewrite_section(
     generator = synalinks.Generator(
         data_model=ChapterOutput,
         language_model=language_model,
+        temperature=1.0,
         instructions=f"""Rewrite the subsections into a single, coherent book section.
 
 You have access to the full book plan, chapters overview, chapter plan, and section plan.
@@ -365,3 +368,202 @@ async def rewrite_sections(
         rewritten_chapters.append((chapter_name, chapter_data))
 
     return rewritten_chapters
+
+
+# =============================================================================
+# DIRECT WRITE MODE - Write sections directly from topic names
+# =============================================================================
+
+async def write_section_direct(
+    topic_data: dict,
+    chapter_name: str,
+    section_name: str,
+    subsection_names: List[str],
+    book_plan: dict,
+    chapters_overview: dict,
+    chapter_plan: dict,
+    section_plan: dict,
+    previous_summary: str,
+    next_summary: str,
+    intro_style: str,
+    language_model
+) -> str:
+    """
+    Write a section directly from subsection topic names (no pre-generation).
+
+    This is more efficient than generating individual subsections then rewriting.
+    The LLM writes comprehensive flowing prose covering all topics directly.
+
+    Returns:
+        The section content as flowing prose
+    """
+    logger.info(f"Writing section directly: {section_name}")
+
+    # Format subsection names as a list of topics to cover
+    topics_to_cover = "\n".join(f"- {name}" for name in subsection_names)
+
+    generator = synalinks.Generator(
+        data_model=ChapterOutput,
+        language_model=language_model,
+        temperature=1.0,
+        instructions=f"""Write comprehensive book content for this section.
+
+You are given a list of TOPICS TO COVER. Write flowing, professional prose that
+thoroughly explains each topic. This is direct authoring - write the actual book content.
+
+You have access to the full book plan, chapters overview, chapter plan, and section plan.
+Use this context to understand what depth and coverage is expected.
+
+TARGET AUDIENCE: Write for the specified audience with appropriate technical depth.
+
+LANGUAGE STYLE: Write with CLARITY and RIGOR:
+- Precise and technically accurate throughout
+- Clear logical flow between concepts
+- Professional textbook quality
+
+INTRODUCTION STYLE: {intro_style}
+
+COMPREHENSIVE COVERAGE REQUIREMENTS:
+- Cover EVERY topic in the list thoroughly (not just mentions)
+- Each topic should get substantial treatment (multiple paragraphs if needed)
+- Explain the "why" alongside the "what"
+- Include concrete examples where appropriate
+- Define technical terms precisely when first used
+
+Your section should:
+1. Begin with the specified introduction style
+2. Flow naturally between topics with clear logical connections
+3. Cover each listed topic with depth appropriate to its importance
+4. Add smooth transitions between ideas
+5. End with a synthesis or forward reference
+
+CRITICAL GUIDELINES:
+- Do NOT just list or briefly mention topics - explain them thoroughly
+- Preserve technical precision - do not oversimplify
+- Use analogies sparingly and only when they genuinely illuminate
+- Respect the reader's intelligence
+- Maintain consistent technical terminology
+
+Write in flowing prose. You may use sub-headers (###) for major topic shifts if helpful.
+The section header (### Section Name) will be added separately."""
+    )
+
+    input_data = ChapterInput(
+        topic=topic_data["topic"],
+        goal=topic_data["goal"],
+        book_name=topic_data["book_name"],
+        audience=topic_data.get("audience", "technical readers"),
+        book_plan=format_book_plan(book_plan),
+        chapters_overview=format_chapters_overview(chapters_overview),
+        chapter_plan=format_chapter_plan(chapter_plan),
+        section_plan=format_section_plan(section_plan) if section_plan else "No specific section plan available.",
+        chapter_title=chapter_name,
+        section_name=section_name,
+        subsections_content=f"TOPICS TO COVER:\n{topics_to_cover}",
+        previous_section_summary=previous_summary or "This is the first section.",
+        next_section_summary=next_summary or "This is the last section.",
+        intro_style=intro_style
+    )
+
+    result = await generator(input_data)
+    return result.get_json().get("chapter_content", "")
+
+
+async def write_all_sections_direct(
+    topic_data: dict,
+    hierarchy: dict,
+    book_plan: dict,
+    chapters_overview: dict,
+    chapter_plans: dict,
+    all_section_plans: dict,
+    language_model,
+    output_dir: str,
+    intro_styles: List[str],
+    max_chapters: Optional[int] = None
+) -> List[tuple]:
+    """
+    Write all sections directly from topic names (no subsection pre-generation).
+
+    This is the efficient alternative to generate_all_subsections + rewrite_sections.
+
+    Returns:
+        List of (chapter_name, chapter_content_dict) tuples
+    """
+    from .planning import get_chapter_plan_by_index
+
+    written_chapters = []
+    style_idx = 0
+
+    chapter_names = list(hierarchy.keys())
+    if max_chapters:
+        chapter_names = chapter_names[:max_chapters]
+
+    for chapter_idx, chapter_name in enumerate(chapter_names):
+        safe_chapter = sanitize_filename(chapter_name)
+        chapter_filename = f"04_chapter_{safe_chapter}.txt"
+
+        # Check for existing chapter
+        if output_dir and output_exists(output_dir, chapter_filename):
+            existing = load_from_file(output_dir, chapter_filename)
+            if existing:
+                logger.info(f"Loaded existing chapter: {chapter_name}")
+                written_chapters.append((chapter_name, {"chapter_content": existing}))
+                continue
+
+        logger.info(f"Writing chapter directly: {chapter_name}")
+
+        chapter_plan = get_chapter_plan_by_index(chapter_plans, chapter_idx)
+        chapter_sections = hierarchy.get(chapter_name, {})
+
+        # Get section plans for this chapter
+        chapter_section_plans = all_section_plans.get(chapter_name, {})
+        section_plans_list = chapter_section_plans.get("section_plans", [])
+
+        chapter_content_parts = []
+        section_names = list(chapter_sections.keys())
+
+        for i, (section_name, subsection_names) in enumerate(chapter_sections.items()):
+            if not subsection_names:
+                continue
+
+            # Get the section plan for this specific section
+            section_plan = section_plans_list[i] if i < len(section_plans_list) else None
+
+            # Get context for transitions
+            prev_summary = section_names[i-1] if i > 0 else ""
+            next_summary = section_names[i+1] if i < len(section_names) - 1 else ""
+
+            # Get intro style (rotating)
+            intro_style = intro_styles[style_idx % len(intro_styles)]
+            style_idx += 1
+
+            section_content = await write_section_direct(
+                topic_data,
+                chapter_name,
+                section_name,
+                subsection_names,
+                book_plan,
+                chapters_overview,
+                chapter_plan,
+                section_plan,
+                prev_summary,
+                next_summary,
+                intro_style,
+                language_model
+            )
+
+            # Add section header
+            section_header = section_name.split(" ", 1)[-1] if " " in section_name else section_name
+            chapter_content_parts.append(f"### {section_header}\n\n{section_content}")
+
+        # Combine all sections
+        full_chapter = "\n\n".join(chapter_content_parts)
+        chapter_data = {"chapter_content": full_chapter}
+
+        # Save the chapter
+        if output_dir:
+            save_to_file(output_dir, chapter_filename, full_chapter)
+
+        written_chapters.append((chapter_name, chapter_data))
+
+    return written_chapters

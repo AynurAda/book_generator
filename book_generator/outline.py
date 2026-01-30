@@ -98,35 +98,40 @@ async def build_outline_pipeline(language_model) -> synalinks.Program:
     merged_concepts = await synalinks.Generator(
         data_model=MergedConcepts,
         description="Take all the concepts from the merged branches and create a comprehensive, deduplicated list of main concepts",
-        language_model=language_model
+        language_model=language_model,
+        temperature=1.0
     )(inputs & merged)
 
     # Expand each main concept with its subconcepts
     hierarchy = await synalinks.Generator(
         data_model=HierarchicalConcepts,
         instructions="For each main concept provided, generate ALL relevant subconcepts that belong to that domain. Be comprehensive - include every important technique, method, tool, or topic that falls under the main concept. Do not limit the number.",
-        language_model=language_model
+        language_model=language_model,
+        temperature=1.0
     )(inputs & merged_concepts)
 
     # Review and add any missing concepts
     reviewed = await synalinks.Generator(
         data_model=HierarchicalConcepts,
         instructions="Review the provided concepts and subconcepts. Add any important main concepts that are missing, and add any missing subconcepts to existing concepts. Return the complete enriched hierarchy.",
-        language_model=language_model
+        language_model=language_model,
+        temperature=1.0
     )(inputs & hierarchy)
 
     # Expand subconcepts with sub-subconcepts
     deep = await synalinks.Generator(
         data_model=DeepHierarchy,
         instructions="For each subconcept provided, generate ALL relevant sub-subconcepts that belong to that subdomain. Be comprehensive - include every concrete technique, method, algorithm, or specific topic. Do not limit the number.",
-        language_model=language_model
+        language_model=language_model,
+        temperature=1.0
     )(inputs & reviewed)
 
     # Verify relevance to the book topic and goal
     outputs = await synalinks.Generator(
         data_model=DeepHierarchy,
         instructions="Review the entire hierarchy and verify each concept, subconcept, and sub-subconcept is relevant to the book topic and goal. Remove any items that are off-topic, too generic, or not directly useful for the book. Keep only what truly belongs.",
-        language_model=language_model
+        language_model=language_model,
+        temperature=1.0
     )(inputs & deep)
 
     return synalinks.Program(
@@ -160,6 +165,7 @@ async def reorganize_outline(
     generator = synalinks.Generator(
         data_model=ReorganizedOutline,
         language_model=language_model,
+        temperature=1.0,
         instructions="""You are an expert at organizing educational content to follow the natural evolution of ideas.
 
 Analyze the given book outline and determine if reorganizing the chapters would better reflect:

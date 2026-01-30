@@ -168,6 +168,7 @@ async def apply_author_style(
     generator = synalinks.Generator(
         data_model=StyledContent,
         language_model=language_model,
+        temperature=1.0,
         instructions=f"""{style.style_instructions}
 
 CRITICAL - PRESERVE COMPREHENSIVE DEPTH:
@@ -230,6 +231,7 @@ async def generate_about_author(
     generator = synalinks.Generator(
         data_model=AboutAuthorOutput,
         language_model=language_model,
+        temperature=1.0,
         instructions="""Write a brief, professional author bio (2-3 sentences).
 Keep it simple and factual. Do not invent elaborate backstories."""
     )

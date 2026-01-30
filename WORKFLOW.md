@@ -52,8 +52,9 @@ flowchart TD
     subgraph Stage4["Stage 4: Section Rewriting"]
         N --> O{For each section}
         O --> P[Collect subsections]
-        P --> Q[Apply intro style<br/>rotating 1-8]
-        Q --> R[Rewrite as<br/>coherent section]
+        P --> P2[Pass full context:<br/>Book Plan +<br/>Chapters Overview +<br/>Chapter Plan +<br/>Section Plan]
+        P2 --> Q[Apply intro style<br/>rotating 1-8]
+        Q --> R[Rewrite as<br/>coherent section<br/>preserving depth]
         R --> O
         R --> S[Combine sections<br/>into chapter]
     end
@@ -114,6 +115,10 @@ flowchart LR
         CO --> SP
         CP --> SP
         SP --> SUB["Subsection<br/>Generation"]
+        BP --> REW["Section<br/>Rewriting"]
+        CO --> REW
+        CP --> REW
+        SP --> REW
     end
 
     style Hierarchy fill:#e3f2fd
@@ -178,6 +183,8 @@ Planning happens at four levels: book → chapters overview → individual chapt
 
 **Input:** `BookPlanInput` (topic, goal, book_name, full_outline)
 
+**Note:** The `full_outline` includes all three levels (concepts → subconcepts → subsubconcepts), giving the planner complete visibility of every topic that will be covered in the book.
+
 **Process:**
 - Generate high-level book plan covering the overall narrative arc
 - Describe how chapters connect and build upon each other
@@ -192,6 +199,8 @@ Planning happens at four levels: book → chapters overview → individual chapt
 #### 2b: Chapters Overview Generation (One-Shot for Coherence)
 
 **Input:** `ChaptersOverviewInput` (topic, goal, book_name, full_outline, book_plan, chapters)
+
+**Note:** The `full_outline` includes all three levels, so the overview planner sees every subsection topic when planning chapter connections.
 
 **Process:**
 - Generate a high-level overview of ALL chapters in a single LLM call
@@ -273,14 +282,17 @@ For each sub-subconcept (leaf node in the outline):
 
 ### Stage 4: Section Rewriting & Chapter Assembly
 
-**Input:** `ChapterInput` (topic, goal, book_name, chapter_title, subsections_content, previous_chapter_summary, next_chapter_summary, intro_style)
+**Input:** `ChapterInput` (topic, goal, book_name, audience, book_plan, chapters_overview, chapter_plan, section_plan, chapter_title, section_name, subsections_content, previous_section_summary, next_section_summary, intro_style)
+
+**Note:** The section rewriter receives **full planning context** (book plan, chapters overview, chapter plan, section plan) so it understands what depth and coverage is expected for each section. This prevents content condensation during rewriting.
 
 **Process:**
 1. For each section within a chapter:
    - Collect all subsections belonging to that section
+   - Pass full planning context: book plan, chapters overview, chapter plan, section plan
    - Select an introduction style from rotating list of 8 styles
    - Rewrite subsections into a coherent section with the specified intro style
-   - Use section plan to guide the narrative
+   - Use section plan to guide the narrative and maintain comprehensive depth
 2. Combine all rewritten sections into a complete chapter
 
 **Output:** `ChapterOutput` - Full chapter content with coherent sections
@@ -297,7 +309,8 @@ For each sub-subconcept (leaf node in the outline):
 
 **Rewriting goals:**
 - Follow the assigned intro style for each section opening
-- Maintain all key information from subsections
+- **Maintain comprehensive depth** - keep ALL technical content from subsections
+- The rewritten section should be AT LEAST as long as the combined subsections
 - Improve flow and eliminate redundancy within sections
 - Add smooth transitions between topics
 - Create natural narrative arc (beginning, middle, end)
@@ -393,7 +406,7 @@ For each chapter, perform a final polish pass with full planning context:
 | `SingleChapterPlanInput` | topic, goal, book_name, full_outline, book_plan, chapters_overview, chapter_name, chapter_number, total_chapters | Input for individual chapter plan generation |
 | `SectionPlansInput` | topic, goal, book_name, book_plan, chapters_overview, chapter_plan, chapter_name, sections, subsections_by_section | Input for section plans generation |
 | `SectionInput` | topic, goal, book_name, audience, book_plan, chapter_plan, section_plan, current_subsection | Input for subsection generation |
-| `ChapterInput` | topic, goal, book_name, audience, chapter_title, subsections_content, previous_chapter_summary, next_chapter_summary, intro_style | Input for section rewriting |
+| `ChapterInput` | topic, goal, book_name, audience, book_plan, chapters_overview, chapter_plan, section_plan, chapter_title, section_name, subsections_content, previous_section_summary, next_section_summary, intro_style | Input for section rewriting (with full planning context) |
 | `ChapterPolishInput` | topic, goal, book_name, audience, book_plan, chapters_overview, chapter_name, chapter_number, total_chapters, chapter_plan, chapter_content, previous_chapter_summary, next_chapter_summary | Input for chapter polishing |
 
 ### Output Models
@@ -475,6 +488,13 @@ The initial outline extraction captures all relevant concepts, but the order may
 
 This step only reorganizes if it makes sense for the topic. For topics without clear evolution patterns, the original order is preserved.
 
+### Why full outline for planners, short outline for book display?
+The system uses two outline formats:
+- **Full outline** (3 levels: concepts → subconcepts → subsubconcepts): Used by planners (book plan, chapters overview, chapter plans) so they can see ALL topics that will be covered
+- **Short outline** (2 levels: concepts → subconcepts): Used for book display (introduction, table of contents) where subsection detail is too granular
+
+This ensures planners have complete visibility when designing the book structure, while the book itself shows a cleaner, more readable table of contents.
+
 ### Why multi-branch concept extraction?
 Using 8 parallel generators with high temperature produces diverse concept lists. Merging and deduplicating gives comprehensive coverage that a single pass might miss.
 
@@ -497,6 +517,7 @@ This combines the benefits of one-shot coherence with per-chapter quality and re
 Each generator receives the complete planning hierarchy:
 - **Subsection generation**: book plan + chapter plan + section plan
 - **Section plans**: book plan + chapters overview + chapter plan
+- **Section rewriting**: book plan + chapters overview + chapter plan + section plan
 - **Chapter polishing**: book plan + chapters overview + chapter plan
 
 This allows each stage to:
@@ -504,6 +525,7 @@ This allows each stage to:
 - Avoid repeating content from other parts
 - Write content that flows naturally with adjacent material
 - Maintain consistency with the overall book goals
+- **Maintain comprehensive depth** - knowing what each section should accomplish prevents content condensation
 
 ### Why no intro/summary per subsection?
 Introductions and summaries are generated at the section level during rewriting. This ensures:
