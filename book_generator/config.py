@@ -31,6 +31,7 @@ class Config:
     book_name: str = ""
     subtitle: str = "A comprehensive guide"
     authors: str = "AI Assistant"
+    audience: str = "technical readers with some background in the field"
 
     # Generation settings
     test_mode: bool = False
@@ -77,6 +78,7 @@ class Config:
             "topic": self.topic,
             "goal": self.goal,
             "book_name": self.book_name,
+            "audience": self.audience,
         }
 
     @classmethod
@@ -88,6 +90,7 @@ class Config:
             book_name=data.get("book_name", ""),
             subtitle=data.get("subtitle", "A comprehensive guide"),
             authors=data.get("authors", "AI Assistant"),
+            audience=data.get("audience", "technical readers with some background in the field"),
             test_mode=data.get("test_mode", False),
             test_max_chapters=data.get("test_max_chapters", 2),
             resume_from_dir=data.get("resume_from_dir"),

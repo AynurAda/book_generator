@@ -30,6 +30,7 @@ CONFIG = {
     "book_name": "Neurosymbolic AI Handbook",
     "subtitle": "Advances in Neurosymbolic AI in the Age of LLMs",
     "authors": "Aynur Adanbekova, Gemini & Claude",
+    "audience": "ML researchers and practitioners who want to understand and build neuro-symbolic systems",
 
     # Generation settings
     "test_mode": True,

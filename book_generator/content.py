@@ -60,6 +60,11 @@ async def generate_subsection(
         language_model=language_model,
         instructions="""Generate comprehensive content for this book subsection.
 
+TARGET AUDIENCE: Tailor the content specifically for the specified audience.
+- Adjust technical depth and assumed knowledge appropriately
+- Use examples and analogies that resonate with this audience
+- Address their likely questions and concerns
+
 LANGUAGE STYLE: Write in an ACCESSIBLE yet RIGOROUS style:
 - Use clear, jargon-free language when introducing concepts
 - Define technical terms precisely when first used
@@ -85,6 +90,7 @@ Do NOT include introductions or summaries - these will be added during section a
         topic=topic_data["topic"],
         goal=topic_data["goal"],
         book_name=topic_data["book_name"],
+        audience=topic_data.get("audience", "technical readers"),
         book_plan=format_book_plan(book_plan),
         chapter_plan=format_chapter_plan(chapter_plan),
         section_plan=format_section_plan(section_plan),
@@ -192,6 +198,8 @@ async def rewrite_section(
         language_model=language_model,
         instructions=f"""Rewrite the subsections into a single, coherent book section.
 
+TARGET AUDIENCE: Write specifically for the target audience specified in the input.
+
 LANGUAGE STYLE: Write in an ACCESSIBLE yet RIGOROUS style:
 - Clear and approachable without sacrificing precision
 - Technical accuracy with reader-friendly explanations
@@ -218,6 +226,7 @@ The section header (## Section Name) will be added separately."""
         topic=topic_data["topic"],
         goal=topic_data["goal"],
         book_name=topic_data["book_name"],
+        audience=topic_data.get("audience", "technical readers"),
         chapter_title=chapter_name,
         subsections_content=formatted_content,
         previous_chapter_summary=previous_summary or "This is the first section.",

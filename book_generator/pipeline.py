@@ -64,6 +64,11 @@ async def generate_introduction(
         language_model=language_model,
         instructions="""Write a compelling introduction for this book.
 
+TARGET AUDIENCE: Tailor the introduction specifically for the specified audience.
+- Address their background and expected knowledge level
+- Speak to their motivations and goals
+- Use language appropriate to their expertise
+
 LANGUAGE STYLE: Write in an ACCESSIBLE yet RIGOROUS style:
 - Welcoming to readers new to the topic
 - Clear about what they will learn and why it matters
@@ -86,6 +91,7 @@ The introduction will be placed after the Table of Contents."""
         topic=topic_data["topic"],
         goal=topic_data["goal"],
         book_name=topic_data["book_name"],
+        audience=topic_data.get("audience", "technical readers"),
         book_plan=format_book_plan(book_plan),
         outline=outline_text
     )

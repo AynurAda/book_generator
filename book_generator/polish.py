@@ -55,8 +55,10 @@ async def polish_chapter(
         language_model=language_model,
         instructions="""Polish this chapter into publication-ready quality.
 
+TARGET AUDIENCE: Ensure the content is perfectly calibrated for the specified audience.
+
 LANGUAGE STYLE: Ensure the writing is ACCESSIBLE yet RIGOROUS:
-- Clear and approachable for educated readers new to the topic
+- Clear and approachable for the target audience
 - Technically precise without being unnecessarily dense
 - Explain complex ideas through clear reasoning, not jargon
 - Balance intuitive explanations with formal accuracy
@@ -84,6 +86,7 @@ IMPORTANT:
         topic=topic_data["topic"],
         goal=topic_data["goal"],
         book_name=topic_data["book_name"],
+        audience=topic_data.get("audience", "technical readers"),
         chapter_name=chapter_name,
         chapter_number=chapter_number,
         total_chapters=total_chapters,
