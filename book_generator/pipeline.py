@@ -272,8 +272,8 @@ async def generate_book(config: Config) -> str:
     logger.info("Rewriting subsections into coherent sections...")
 
     rewritten_chapters = await rewrite_sections(
-        topic_data, all_generated, book_plan, chapter_plans, all_section_plans,
-        language_model, output_dir, config.intro_styles
+        topic_data, all_generated, book_plan, chapters_overview, chapter_plans,
+        all_section_plans, language_model, output_dir, config.intro_styles
     )
 
     print(f"\n{'='*60}")

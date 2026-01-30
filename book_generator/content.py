@@ -191,7 +191,10 @@ async def rewrite_section(
     chapter_name: str,
     section_name: str,
     subsections_content: List[tuple],
+    book_plan: dict,
+    chapters_overview: dict,
     chapter_plan: dict,
+    section_plan: dict,
     previous_summary: str,
     next_summary: str,
     intro_style: str,
@@ -203,12 +206,18 @@ async def rewrite_section(
     Returns:
         The rewritten section content
     """
+    from .planning import format_book_plan, format_chapters_overview, format_chapter_plan, format_section_plan
+
     logger.info(f"Rewriting section: {section_name}")
 
     generator = synalinks.Generator(
         data_model=ChapterOutput,
         language_model=language_model,
         instructions=f"""Rewrite the subsections into a single, coherent book section.
+
+You have access to the full book plan, chapters overview, chapter plan, and section plan.
+Use this context to understand what this section needs to accomplish and how it fits
+into the broader narrative.
 
 TARGET AUDIENCE: Write for the specified audience with appropriate technical depth.
 
@@ -219,13 +228,19 @@ LANGUAGE STYLE: Write with CLARITY and RIGOR:
 
 INTRODUCTION STYLE: {intro_style}
 
+CRITICAL - MAINTAIN COMPREHENSIVE DEPTH:
+- Keep ALL technical content from the subsections - do not summarize or condense
+- The rewritten section should be AT LEAST as long as the combined subsections
+- Every concept, example, and detail from the input should appear in the output
+- Add transitions and flow, but do NOT remove substantive content
+- If anything, EXPAND on concepts where the section plan indicates importance
+
 Your rewritten section should:
 1. Begin with the specified introduction style
 2. Flow naturally between topics with clear logical connections
-3. Maintain all key technical information from the subsections
-4. Eliminate redundancy and repetition
-5. Add smooth transitions between ideas
-6. End with a synthesis or forward reference
+3. PRESERVE all technical information from the subsections
+4. Add smooth transitions between ideas
+5. End with a synthesis or forward reference
 
 CRITICAL GUIDELINES:
 - Preserve technical precision - do not oversimplify
@@ -234,8 +249,8 @@ CRITICAL GUIDELINES:
 - Respect the reader's intelligence - avoid over-explanation
 - Maintain consistent technical terminology
 
-Write in flowing prose without bullet points or sub-headers within the section.
-The section header (## Section Name) will be added separately."""
+Write in flowing prose. You may use sub-headers (###) for major topic shifts if helpful.
+The section header (### Section Name) will be added separately."""
     )
 
     formatted_content = format_subsections_for_rewrite(subsections_content)
@@ -245,10 +260,15 @@ The section header (## Section Name) will be added separately."""
         goal=topic_data["goal"],
         book_name=topic_data["book_name"],
         audience=topic_data.get("audience", "technical readers"),
+        book_plan=format_book_plan(book_plan),
+        chapters_overview=format_chapters_overview(chapters_overview),
+        chapter_plan=format_chapter_plan(chapter_plan),
+        section_plan=format_section_plan(section_plan) if section_plan else "No specific section plan available.",
         chapter_title=chapter_name,
+        section_name=section_name,
         subsections_content=formatted_content,
-        previous_chapter_summary=previous_summary or "This is the first section.",
-        next_chapter_summary=next_summary or "This is the last section.",
+        previous_section_summary=previous_summary or "This is the first section.",
+        next_section_summary=next_summary or "This is the last section.",
         intro_style=intro_style
     )
 
@@ -260,6 +280,7 @@ async def rewrite_sections(
     topic_data: dict,
     all_generated: dict,
     book_plan: dict,
+    chapters_overview: dict,
     chapter_plans: dict,
     all_section_plans: dict,
     language_model,
@@ -294,10 +315,17 @@ async def rewrite_sections(
         chapter_plan = get_chapter_plan_by_index(chapter_plans, chapter_idx)
         chapter_content_parts = []
 
+        # Get section plans for this chapter
+        chapter_section_plans = all_section_plans.get(chapter_name, {})
+        section_plans_list = chapter_section_plans.get("section_plans", [])
+
         section_names = list(sections.keys())
         for i, (section_name, subsections) in enumerate(sections.items()):
             if not subsections:
                 continue
+
+            # Get the section plan for this specific section
+            section_plan = section_plans_list[i] if i < len(section_plans_list) else None
 
             # Get context for transitions
             prev_summary = section_names[i-1] if i > 0 else ""
@@ -312,7 +340,10 @@ async def rewrite_sections(
                 chapter_name,
                 section_name,
                 subsections,
+                book_plan,
+                chapters_overview,
                 chapter_plan,
+                section_plan,
                 prev_summary,
                 next_summary,
                 intro_style,

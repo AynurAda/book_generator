@@ -98,10 +98,15 @@ class ChapterInput(synalinks.DataModel):
     goal: str = synalinks.Field(description="The goal of the book")
     book_name: str = synalinks.Field(description="The name of the book")
     audience: str = synalinks.Field(description="The target audience for the book")
+    book_plan: str = synalinks.Field(description="The high-level book plan")
+    chapters_overview: str = synalinks.Field(description="Overview of all chapters and their connections")
+    chapter_plan: str = synalinks.Field(description="The detailed plan for this chapter")
+    section_plan: str = synalinks.Field(description="The plan for this specific section")
     chapter_title: str = synalinks.Field(description="The title of the chapter")
+    section_name: str = synalinks.Field(description="The name of the section being rewritten")
     subsections_content: str = synalinks.Field(description="The generated content for each subsection")
-    previous_chapter_summary: str = synalinks.Field(description="Brief summary of the previous chapter for context")
-    next_chapter_summary: str = synalinks.Field(description="Brief summary of the next chapter for context")
+    previous_section_summary: str = synalinks.Field(description="Brief summary of the previous section for context")
+    next_section_summary: str = synalinks.Field(description="Brief summary of the next section for context")
     intro_style: str = synalinks.Field(description="The style to use for the section introduction")
 
 
