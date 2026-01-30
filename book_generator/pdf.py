@@ -6,13 +6,129 @@ styled PDF with cover page, table of contents, and proper typography.
 """
 
 import os
+import re
+import base64
 import logging
+import subprocess
+import tempfile
+import urllib.request
+import urllib.parse
 from typing import Optional
 
 import markdown
 from weasyprint import HTML, CSS
 
 logger = logging.getLogger(__name__)
+
+
+def render_mermaid_to_image(mermaid_code: str, output_path: str, use_cli: bool = True) -> Optional[str]:
+    """
+    Render Mermaid code to an image file.
+
+    Tries mermaid-cli first, falls back to mermaid.ink API.
+
+    Args:
+        mermaid_code: The Mermaid diagram code
+        output_path: Path to save the rendered image (PNG)
+        use_cli: Whether to try mermaid-cli first
+
+    Returns:
+        Path to the rendered image, or None if rendering failed
+    """
+    # Try mermaid-cli (mmdc) first if available
+    if use_cli:
+        try:
+            # Create a temp file for the mermaid code
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.mmd', delete=False) as f:
+                f.write(mermaid_code)
+                mmd_path = f.name
+
+            # Run mmdc
+            result = subprocess.run(
+                ['mmdc', '-i', mmd_path, '-o', output_path, '-b', 'transparent'],
+                capture_output=True,
+                timeout=30
+            )
+
+            os.unlink(mmd_path)
+
+            if result.returncode == 0 and os.path.exists(output_path):
+                logger.info(f"Rendered Mermaid diagram with CLI: {output_path}")
+                return output_path
+        except (subprocess.SubprocessError, FileNotFoundError, OSError) as e:
+            logger.debug(f"mermaid-cli not available: {e}")
+
+    # Fall back to mermaid.ink API
+    try:
+        # Encode the mermaid code for the API
+        encoded = base64.urlsafe_b64encode(mermaid_code.encode('utf-8')).decode('utf-8')
+        url = f"https://mermaid.ink/img/{encoded}?type=png&bgColor=white"
+
+        # Download the image
+        request = urllib.request.Request(
+            url,
+            headers={'User-Agent': 'BookGenerator/1.0'}
+        )
+        with urllib.request.urlopen(request, timeout=30) as response:
+            with open(output_path, 'wb') as f:
+                f.write(response.read())
+
+        if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
+            logger.info(f"Rendered Mermaid diagram with API: {output_path}")
+            return output_path
+
+    except Exception as e:
+        logger.warning(f"Mermaid API rendering failed: {e}")
+
+    return None
+
+
+def process_mermaid_blocks(content: str, output_dir: str) -> str:
+    """
+    Find and render all Mermaid code blocks in the content.
+
+    Replaces ```mermaid ... ``` blocks with image references.
+
+    Args:
+        content: The markdown content
+        output_dir: Directory to save rendered images
+
+    Returns:
+        Content with Mermaid blocks replaced by images
+    """
+    # Pattern to match mermaid code blocks
+    mermaid_pattern = re.compile(
+        r'```mermaid\s*\n(.*?)```',
+        re.DOTALL | re.IGNORECASE
+    )
+
+    diagram_counter = 0
+
+    def replace_mermaid(match):
+        nonlocal diagram_counter
+        diagram_counter += 1
+
+        mermaid_code = match.group(1).strip()
+        image_filename = f"mermaid_diagram_{diagram_counter:03d}.png"
+        image_path = os.path.join(output_dir, image_filename)
+
+        # Render the diagram
+        rendered_path = render_mermaid_to_image(mermaid_code, image_path)
+
+        if rendered_path:
+            # Return an image reference
+            return f'\n\n<div class="mermaid-diagram"><img src="{image_filename}" alt="Diagram {diagram_counter}"></div>\n\n'
+        else:
+            # If rendering failed, keep the code block but style it
+            logger.warning(f"Failed to render Mermaid diagram {diagram_counter}")
+            return f'\n\n<div class="mermaid-code"><pre><code>{mermaid_code}</code></pre><p class="mermaid-error"><em>(Diagram could not be rendered)</em></p></div>\n\n'
+
+    processed_content = mermaid_pattern.sub(replace_mermaid, content)
+
+    if diagram_counter > 0:
+        logger.info(f"Processed {diagram_counter} Mermaid diagrams")
+
+    return processed_content
 
 # CSS stylesheet for the book
 BOOK_CSS = '''
@@ -161,6 +277,51 @@ li {
 .toc-columns strong {
     font-size: 11pt;
 }
+.mermaid-diagram {
+    text-align: center;
+    margin: 1.5em 0;
+    page-break-inside: avoid;
+}
+.mermaid-diagram img {
+    max-width: 100%;
+    height: auto;
+    border: 1px solid #e0e0e0;
+    border-radius: 5px;
+    padding: 0.5em;
+    background: #fafafa;
+}
+.mermaid-code {
+    margin: 1.5em 0;
+    text-align: center;
+}
+.mermaid-code pre {
+    text-align: left;
+    display: inline-block;
+    max-width: 90%;
+}
+.mermaid-error {
+    color: #999;
+    font-size: 9pt;
+}
+.figure {
+    text-align: center;
+    margin: 1.5em 0;
+    page-break-inside: avoid;
+}
+.figure img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 5px;
+}
+.figure figcaption, .mermaid-diagram + p em, .figure + p em {
+    font-size: 9pt;
+    color: #666;
+    font-style: italic;
+    margin-top: 0.5em;
+    display: block;
+    text-align: center;
+    text-indent: 0;
+}
 '''
 
 
@@ -188,9 +349,15 @@ def generate_pdf(
 
     css = CSS(string=BOOK_CSS)
 
+    # Process Mermaid diagrams - render to images
+    if base_url:
+        processed_content = process_mermaid_blocks(book_content, base_url)
+    else:
+        processed_content = book_content
+
     # Convert markdown to HTML
     md = markdown.Markdown(extensions=['extra', 'toc', 'smarty'])
-    html_content = md.convert(book_content)
+    html_content = md.convert(processed_content)
 
     # Add cover page if cover image exists
     cover_html = ""
