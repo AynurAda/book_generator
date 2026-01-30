@@ -308,3 +308,66 @@ class AboutAuthorOutput(synalinks.DataModel):
     about_author: str = synalinks.Field(
         description="The complete About the Author section in flowing prose"
     )
+
+
+# =============================================================================
+# Illustration Models
+# =============================================================================
+
+class IllustrationAnalysisInput(synalinks.DataModel):
+    """Input for analyzing illustration opportunities in content."""
+    chapter_content: str = synalinks.Field(description="The chapter content to analyze")
+    chapter_name: str = synalinks.Field(description="The name of the chapter")
+    topic: str = synalinks.Field(description="The main topic of the book")
+    audience: str = synalinks.Field(description="The target audience")
+
+
+class IllustrationOpportunity(synalinks.DataModel):
+    """A single illustration opportunity."""
+    illustration_type: str = synalinks.Field(
+        description="Type: mermaid_flowchart, mermaid_sequence, mermaid_class, mermaid_state, mermaid_mindmap, or generated_image"
+    )
+    location: str = synalinks.Field(
+        description="The exact text after which to place the illustration"
+    )
+    description: str = synalinks.Field(
+        description="What the illustration should show"
+    )
+    caption: str = synalinks.Field(
+        description="A brief caption for the illustration"
+    )
+
+
+class IllustrationOpportunities(synalinks.DataModel):
+    """Collection of illustration opportunities for a chapter."""
+    opportunities: list[IllustrationOpportunity] = synalinks.Field(
+        description="List of illustration opportunities identified in the content"
+    )
+
+
+class MermaidDiagramInput(synalinks.DataModel):
+    """Input for generating a Mermaid diagram."""
+    diagram_type: str = synalinks.Field(description="The type of Mermaid diagram to generate")
+    description: str = synalinks.Field(description="What the diagram should illustrate")
+    context: str = synalinks.Field(description="Surrounding context from the chapter")
+
+
+class MermaidDiagramOutput(synalinks.DataModel):
+    """Output containing generated Mermaid diagram code."""
+    mermaid_code: str = synalinks.Field(
+        description="Valid Mermaid diagram code (no markdown fences)"
+    )
+
+
+class ImagePromptInput(synalinks.DataModel):
+    """Input for generating an image prompt."""
+    concept_description: str = synalinks.Field(description="The concept to visualize")
+    context: str = synalinks.Field(description="Context from the chapter")
+    chapter_name: str = synalinks.Field(description="The chapter name")
+
+
+class ImagePromptOutput(synalinks.DataModel):
+    """Output containing optimized image generation prompt."""
+    image_prompt: str = synalinks.Field(
+        description="Optimized prompt for AI image generation"
+    )

@@ -45,7 +45,12 @@ CONFIG = {
     # - "pragmatic_engineer": Direct, practical with dry wit and war stories
     # - "curious_explorer": Question-driven, interdisciplinary connections
     # - "no_nonsense_expert": Precise, elegant, authoritative
-    "author_key": "warm_educator",
+    "author_key": "pragmatic_engineer",
+
+    # Illustration settings
+    "enable_illustrations": True,  # Set to True to add Mermaid diagrams and images
+    "enable_generated_images": True,  # Set to False for Mermaid diagrams only
+    "image_model": "gemini/imagen-3.0-generate-002",  # AI image generation model
 }
 
 
@@ -115,6 +120,8 @@ async def main():
         author = get_author_profile(config.author_key)
         if author:
             print(f"Author Style: {author.pen_name} ({config.author_key})")
+    if config.enable_illustrations:
+        print(f"Illustrations: Enabled (images: {config.enable_generated_images})")
     if config.resume_from_dir:
         print(f"Resuming from: {config.resume_from_dir}")
     print("=" * 60)

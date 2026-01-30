@@ -30,6 +30,7 @@ from .polish import polish_chapters
 from .cover import generate_cover
 from .pdf import generate_pdf
 from .authors import get_author_profile, style_all_chapters, generate_about_author
+from .illustrations import illustrate_all_chapters
 
 logger = logging.getLogger(__name__)
 
@@ -322,6 +323,30 @@ async def generate_book(config: Config) -> str:
             logger.warning(f"Author profile not found: {config.author_key}")
 
     # ==========================================================================
+    # STAGE 5c: ILLUSTRATION GENERATION (Optional)
+    # ==========================================================================
+    if config.enable_illustrations:
+        logger.info("Adding illustrations to chapters...")
+
+        final_chapters = await illustrate_all_chapters(
+            final_chapters,
+            topic_data["topic"],
+            topic_data.get("audience", "technical readers"),
+            language_model,
+            output_dir,
+            enable_images=config.enable_generated_images,
+            image_model=config.image_model
+        )
+
+        print(f"\n{'='*60}")
+        print(f"Illustrated {len(final_chapters)} chapters")
+        if config.enable_generated_images:
+            print(f"(with AI-generated images using {config.image_model})")
+        else:
+            print("(Mermaid diagrams only)")
+        print(f"{'='*60}\n")
+
+    # ==========================================================================
     # STAGE 6: INTRODUCTION GENERATION
     # ==========================================================================
     logger.info("Generating book introduction...")
@@ -360,6 +385,14 @@ async def generate_book(config: Config) -> str:
 
     # Build the book content
     combined_output = []
+
+    # Add About the Author section (before TOC)
+    if about_author:
+        combined_output.append("## About the Author\n\n")
+        combined_output.append(f"{about_author}\n\n")
+        combined_output.append("---\n\n")
+
+    # Add Table of Contents
     combined_output.append('<div class="toc">\n\n')
     combined_output.append("<h2>Table of Contents</h2>\n\n")
     combined_output.append(build_outline_string(results))
@@ -370,18 +403,13 @@ async def generate_book(config: Config) -> str:
         combined_output.append("## Introduction\n\n")
         combined_output.append(f"{introduction}\n\n")
 
+    # Add chapters
     for chapter_title, chapter_content in final_chapters:
         if chapter_content:
             combined_output.append(f"{chapter_content.get('chapter_content', '')}\n\n")
         else:
             combined_output.append(f"## {chapter_title}\n\n")
             combined_output.append("*Content generation failed for this chapter*\n\n")
-
-    # Add About the Author section
-    if about_author:
-        combined_output.append("---\n\n")
-        combined_output.append("## About the Author\n\n")
-        combined_output.append(f"{about_author}\n\n")
 
     book_content = "".join(combined_output)
     save_to_file(output_dir, "06_full_book.txt", book_content)
