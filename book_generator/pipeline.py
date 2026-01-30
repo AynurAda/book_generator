@@ -134,6 +134,9 @@ async def generate_book(config: Config) -> str:
     base_path = os.path.dirname(os.path.dirname(__file__))
     output_dir = config.setup_output_dir(base_path)
 
+    # Shuffle introduction styles for variety
+    config.shuffle_intro_styles()
+
     # Get topic data
     topic_data = config.get_topic_data()
 
