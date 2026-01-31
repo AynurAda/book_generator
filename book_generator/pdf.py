@@ -214,19 +214,24 @@ BOOK_CSS = '''
     size: A4;
     margin: 2.5cm 2cm;
     @top-center {
-        content: string(book-title);
-        font-size: 10pt;
-        color: #666;
+        content: string(chapter-title);
+        font-size: 9pt;
+        color: #888;
+        font-style: italic;
     }
     @bottom-center {
         content: counter(page);
-        font-size: 10pt;
+        font-size: 9pt;
+        color: #888;
     }
 }
 @page :first {
     margin: 0;
     @top-center { content: none; }
     @bottom-center { content: none; }
+}
+@page part {
+    @top-center { content: none; }
 }
 .cover-page {
     page-break-after: always;
@@ -240,45 +245,68 @@ BOOK_CSS = '''
     object-fit: contain;
 }
 body {
-    font-family: Georgia, 'Times New Roman', serif;
+    font-family: 'Palatino Linotype', Palatino, Georgia, 'Times New Roman', serif;
     font-size: 11pt;
-    line-height: 1.6;
-    color: #333;
+    line-height: 1.7;
+    color: #222;
     text-align: justify;
     hyphens: auto;
 }
+/* Part titles (h1) - new page, styled header */
 h1 {
-    font-size: 32pt;
-    text-align: center;
-    border-bottom: none;
-    margin-top: 3em;
-}
-h2 {
-    string-set: book-title content();
-    font-size: 18pt;
-    color: #1a1a1a;
-    margin-top: 1.5em;
-    margin-bottom: 0.5em;
+    page: part;
     page-break-before: always;
-    border-bottom: 2px solid #333;
-    padding-bottom: 0.3em;
+    font-size: 26pt;
+    font-weight: bold;
+    text-align: left;
+    border-bottom: 3px solid #333;
+    margin-top: 0;
+    margin-bottom: 1.5em;
+    padding-top: 1em;
+    padding-bottom: 0.5em;
+    color: #1a1a1a;
 }
+/* Chapter titles (h2) */
+h2 {
+    string-set: chapter-title content();
+    font-size: 18pt;
+    font-weight: bold;
+    color: #1a1a1a;
+    margin-top: 2em;
+    margin-bottom: 1em;
+    page-break-before: always;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 0.5em;
+}
+/* Section titles (h3) */
 h3 {
     font-size: 13pt;
-    color: #3a3a3a;
-    margin-top: 1.2em;
+    font-weight: bold;
+    color: #333;
+    margin-top: 2em;
+    margin-bottom: 0.8em;
+    border-left: 4px solid #666;
+    padding-left: 0.8em;
+}
+/* Subsection titles (h4) - for internal structure */
+h4 {
+    font-size: 11pt;
+    font-weight: bold;
+    color: #444;
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
 }
 p {
     margin-bottom: 0.8em;
     text-indent: 1.5em;
 }
-p:first-of-type, h1 + p, h2 + p, h3 + p, hr + p {
+p:first-of-type, h1 + p, h2 + p, h3 + p, h4 + p, hr + p, blockquote + p {
     text-indent: 0;
 }
 hr {
     border: none;
-    border-top: 1px solid #ccc;
-    margin: 2em 0;
+    border-top: 1px solid #ddd;
+    margin: 2.5em 0;
 }
 em {
     font-style: italic;
@@ -287,32 +315,45 @@ strong {
     font-weight: bold;
 }
 blockquote {
-    margin: 1em 2em;
-    padding-left: 1em;
-    border-left: 3px solid #ccc;
+    margin: 1.5em 2em;
+    padding: 0.5em 1em;
+    border-left: 3px solid #999;
     font-style: italic;
     color: #555;
+    background: #fafafa;
 }
 code {
-    font-family: 'Courier New', monospace;
-    font-size: 10pt;
-    background: #f5f5f5;
-    padding: 0.2em 0.4em;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 9.5pt;
+    background: #f4f4f4;
+    padding: 0.15em 0.4em;
     border-radius: 3px;
+    border: 1px solid #e0e0e0;
 }
 pre {
-    background: #f5f5f5;
-    padding: 1em;
+    background: #f8f8f8;
+    padding: 1em 1.2em;
     overflow-x: auto;
     font-size: 9pt;
-    border-radius: 5px;
-    margin: 1em 0;
+    border-radius: 4px;
+    margin: 1.2em 0;
+    border: 1px solid #e0e0e0;
+    line-height: 1.5;
+}
+pre code {
+    background: none;
+    border: none;
+    padding: 0;
 }
 ul, ol {
     margin: 1em 0;
     padding-left: 2em;
 }
 li {
+    margin-bottom: 0.4em;
+}
+li > ul, li > ol {
+    margin-top: 0.3em;
     margin-bottom: 0.3em;
 }
 .title-page {
@@ -323,7 +364,9 @@ li {
     font-size: 36pt;
     border: none;
     margin: 0;
+    padding-top: 0;
     page-break-before: avoid;
+    page-break-after: avoid;
 }
 .title-page .subtitle {
     font-size: 14pt;
@@ -336,37 +379,40 @@ li {
 }
 .toc h2 {
     text-align: center;
-    margin-bottom: 1.5em;
+    margin-bottom: 2em;
     font-size: 20pt;
     page-break-before: avoid;
     border-bottom: none;
+    font-variant: small-caps;
+    letter-spacing: 0.05em;
 }
 .toc-columns {
     column-count: 2;
-    column-gap: 2em;
+    column-gap: 2.5em;
 }
 .toc-columns p {
     text-indent: 0;
-    margin-bottom: 0.8em;
+    margin-bottom: 0.6em;
     break-inside: avoid;
-    font-size: 10pt;
-    line-height: 1.4;
+    font-size: 9.5pt;
+    line-height: 1.5;
 }
 .toc-columns strong {
-    font-size: 11pt;
+    font-size: 10.5pt;
 }
 .mermaid-diagram {
     text-align: center;
-    margin: 1.5em 0;
+    margin: 2em 0;
     page-break-inside: avoid;
 }
 .mermaid-diagram img {
-    max-width: 100%;
+    max-width: 90%;
     height: auto;
-    border: 1px solid #e0e0e0;
-    border-radius: 5px;
-    padding: 0.5em;
-    background: #fafafa;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 1em;
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
 .mermaid-code {
     margin: 1.5em 0;
@@ -383,26 +429,27 @@ li {
 }
 .figure {
     text-align: center;
-    margin: 1.5em 0;
+    margin: 2em 0;
     page-break-inside: avoid;
 }
 .figure img {
-    max-width: 100%;
+    max-width: 90%;
     height: auto;
-    border-radius: 5px;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 .figure figcaption, .mermaid-diagram + p em, .figure + p em {
     font-size: 9pt;
     color: #666;
     font-style: italic;
-    margin-top: 0.5em;
+    margin-top: 0.8em;
     display: block;
     text-align: center;
     text-indent: 0;
 }
 .math-display {
     text-align: center;
-    margin: 1em 0;
+    margin: 1.2em 0;
     overflow-x: auto;
 }
 .math-display math {
@@ -413,14 +460,19 @@ li {
     vertical-align: middle;
 }
 .math-fallback {
-    font-family: 'Courier New', monospace;
+    font-family: 'Consolas', 'Courier New', monospace;
     background: #f5f5f5;
     padding: 0.2em 0.4em;
     border-radius: 3px;
-    font-size: 10pt;
+    font-size: 9.5pt;
 }
 math {
     font-family: 'STIX Two Math', 'Cambria Math', 'Latin Modern Math', serif;
+}
+/* First paragraph after part/chapter - drop cap style indent */
+h1 + p:first-letter, h2 + p:first-letter {
+    font-size: 1.1em;
+    font-weight: bold;
 }
 '''
 

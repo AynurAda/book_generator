@@ -359,7 +359,7 @@ async def generate_book(config: Config) -> str:
 
     # Add About the Author section (before TOC)
     if about_author:
-        combined_output.append("## About the Author\n\n")
+        combined_output.append("# About the Author\n\n")
         combined_output.append(f"{about_author}\n\n")
         combined_output.append("---\n\n")
 
@@ -371,7 +371,7 @@ async def generate_book(config: Config) -> str:
 
     # Add introduction
     if introduction:
-        combined_output.append("## Introduction\n\n")
+        combined_output.append("# Introduction\n\n")
         combined_output.append(f"{introduction}\n\n")
 
     # Add chapters

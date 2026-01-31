@@ -427,20 +427,67 @@ class ImagePromptOutput(synalinks.DataModel):
 # Section Quality Selection Models
 # =============================================================================
 
-class SectionSelectionInput(synalinks.DataModel):
-    """Input for selecting the best section from multiple candidates."""
-    section_name: str = synalinks.Field(description="The name of the section")
-    topics_to_cover: str = synalinks.Field(description="The list of topics that should be covered")
-    candidate_1: str = synalinks.Field(description="First candidate section content")
-    candidate_2: str = synalinks.Field(description="Second candidate section content")
-    candidate_3: str = synalinks.Field(description="Third candidate section content")
+# =============================================================================
+# Subsection Generation Models (with full context)
+# =============================================================================
+
+class SubsectionInput(synalinks.DataModel):
+    """Input for generating a single subsection with full context."""
+    topic: str = synalinks.Field(description="The main topic of the book")
+    goal: str = synalinks.Field(description="The goal of the book")
+    book_name: str = synalinks.Field(description="The name of the book")
+    audience: str = synalinks.Field(description="The target audience")
+    full_outline: str = synalinks.Field(description="The complete book outline for context")
+    book_plan: str = synalinks.Field(description="The high-level book plan")
+    chapters_overview: str = synalinks.Field(description="Overview of all chapters")
+    chapter_name: str = synalinks.Field(description="The name of the current chapter")
+    chapter_plan: str = synalinks.Field(description="The plan for this chapter")
+    section_name: str = synalinks.Field(description="The name of the current section")
+    section_plan: str = synalinks.Field(description="The plan for this section")
+    subsection_name: str = synalinks.Field(description="The name of this subsection to write")
 
 
-class SectionSelection(synalinks.DataModel):
-    """Output for section quality selection."""
-    selected_candidate: int = synalinks.Field(
-        description="The number of the best candidate (1, 2, or 3)"
+class SubsectionContent(synalinks.DataModel):
+    """Output for a generated subsection."""
+    content: str = synalinks.Field(
+        description="The complete subsection content - comprehensive, step-by-step explanation"
     )
-    reasoning: str = synalinks.Field(
-        description="Brief explanation of why this candidate was selected"
+
+
+class SectionIntroInput(synalinks.DataModel):
+    """Input for generating a section introduction."""
+    topic: str = synalinks.Field(description="The main topic of the book")
+    book_name: str = synalinks.Field(description="The name of the book")
+    chapter_name: str = synalinks.Field(description="The name of the current chapter")
+    section_name: str = synalinks.Field(description="The name of this section")
+    section_plan: str = synalinks.Field(description="The plan for this section")
+    subsection_names: str = synalinks.Field(description="List of subsections in this section")
+    intro_style: str = synalinks.Field(description="The style for the introduction")
+
+
+class SectionIntro(synalinks.DataModel):
+    """Output for section introduction."""
+    introduction: str = synalinks.Field(
+        description="The section introduction (2-3 paragraphs)"
+    )
+
+
+class ChapterIntroInput(synalinks.DataModel):
+    """Input for generating a part introduction."""
+    topic: str = synalinks.Field(description="The main topic of the book")
+    book_name: str = synalinks.Field(description="The name of the book")
+    book_plan: str = synalinks.Field(description="The high-level book plan and narrative arc")
+    chapters_overview: str = synalinks.Field(description="Overview of all parts in the book")
+    chapter_name: str = synalinks.Field(description="The name of this part")
+    chapter_number: int = synalinks.Field(description="The part number")
+    total_chapters: int = synalinks.Field(description="Total number of parts")
+    chapter_plan: str = synalinks.Field(description="The plan for this part")
+    section_names: str = synalinks.Field(description="List of chapters in this part")
+    chapter_plans_detail: str = synalinks.Field(description="Detailed plans for each chapter in this part - use this to understand how chapters connect")
+
+
+class ChapterIntro(synalinks.DataModel):
+    """Output for chapter introduction."""
+    introduction: str = synalinks.Field(
+        description="The chapter introduction that puts it in context of the whole book"
     )
