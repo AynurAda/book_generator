@@ -1,0 +1,50 @@
+# Embedded Systems Architecture Handbook
+topic: "Embedded Systems Architecture"
+goal: |
+  A comprehensive handbook covering embedded software architecture and real-time systems.
+
+  The book should cover:
+  1. Embedded SW Architecture fundamentals:
+     - Bare metal vs. RTOS comparison (FreeRTOS, Zephyr, VxWorks, QNX, etc.)
+     - Scheduling models: cyclic executive, event-driven, time-triggered architectures
+     - Software layers: device drivers, Hardware Abstraction Layer (HAL), middleware
+
+  2. AUTOSAR Classic Architecture:
+     - Runtime Environment (RTE) and Basic Software (BSW) structure
+     - Software Components (SWCs) and their compositions
+     - Timing concepts, runnables, and scheduling
+     - Diagnostics stack (UDS, DTC) and communication stack (CAN, LIN, FlexRay, Ethernet)
+
+  3. Real-Time Constraints:
+     - Determinism and predictability requirements
+     - Worst-Case Execution Time (WCET) analysis methods
+     - Low-level timing design, budgeting, and verification
+
+  4. HPC Hardware Platforms for Embedded:
+     - Multi-core CPU architectures and their challenges
+     - GPU computing and hardware accelerators (DSP, NPU, FPGA)
+     - Memory hierarchy, caches, and memory-mapped I/O
+     - Virtualization and hypervisors in embedded systems
+
+  Focus on practical knowledge for embedded systems engineers. Include architecture diagrams, timing diagrams, and real-world examples.
+
+book_name: "Embedded Systems Architecture Handbook"
+subtitle: "From Bare Metal to AUTOSAR and Real-Time HPC"
+authors: "Yernar Nukezhanov"
+audience: "Embedded systems engineers, automotive software developers, and real-time systems practitioners who want to understand modern embedded architectures from low-level drivers to AUTOSAR and high-performance computing platforms"
+
+# Generation settings
+test_mode: true
+test_max_chapters: 2
+resume_from_dir: null
+
+# Model settings
+model_name: "gemini/gemini-3-flash-preview"
+
+# Writing style
+author_key: "waitbutwhy"
+
+# Illustration settings
+enable_illustrations: true
+enable_generated_images: true
+image_model: "gemini/gemini-3-pro-image-preview"

@@ -1,0 +1,28 @@
+# Neurosymbolic AI Handbook
+topic: "Neuro-symbolic AI"
+goal: |
+  A comprehensive handbook that bridges the gap between neural networks and symbolic AI.
+  Cover the theoretical foundations, practical implementations, and cutting-edge research
+  in neuro-symbolic systems. Include both the 'why' (motivation, limitations of pure approaches)
+  and the 'how' (architectures, algorithms, frameworks).
+
+book_name: "Neurosymbolic AI Handbook"
+subtitle: "Bridging Neural Networks and Symbolic Reasoning"
+authors: "AI Research Team"
+audience: "ML researchers and practitioners who want to understand and build neuro-symbolic systems"
+
+# Generation settings
+test_mode: true
+test_max_chapters: 2
+resume_from_dir: null
+
+# Model settings
+model_name: "gemini/gemini-3-flash-preview"
+
+# Writing style
+author_key: "waitbutwhy"
+
+# Illustration settings
+enable_illustrations: true
+enable_generated_images: true
+image_model: "gemini/gemini-3-pro-image-preview"

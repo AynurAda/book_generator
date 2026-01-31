@@ -3,61 +3,41 @@
 Book Generator - AI-powered book generation using Synalinks.
 
 Usage:
-    python main.py                     # Run with default configuration
-    python main.py --test              # Run in test mode (limited chapters)
-    python main.py --resume <dir>      # Resume from a previous run
+    python main.py --config configs/ai_agent_memory.yaml
+    python main.py --config configs/neurosymbolic.yaml --test
+    python main.py --config configs/embedded_systems.yaml --resume output/20240115_143022
 
-Example configurations can be set in the CONFIG dictionary below.
+Available configs:
+    configs/neurosymbolic.yaml      - Neurosymbolic AI Handbook
+    configs/embedded_systems.yaml   - Embedded Systems Architecture Handbook
+    configs/ai_agent_memory.yaml    - AI Agent Memory Handbook
 """
 
 import asyncio
 import argparse
 import sys
+import os
+
+import yaml
 
 from book_generator.config import Config
 from book_generator.pipeline import generate_book
 
 
-# =============================================================================
-# CONFIGURATION
-# =============================================================================
-# Modify this dictionary to configure your book generation
-
-CONFIG = {
-    # Book metadata
-    "topic": "Neuro-symbolic AI",
-    "goal": "a comprehensive handbook of neurosymbolic AI covering main concepts for building neurosymbolic programs. Focus on concepts, not deployment or ethics.",
-    "book_name": "Neurosymbolic AI Handbook",
-    "subtitle": "Advances in Neurosymbolic AI in the Age of LLMs",
-    "authors": "Aynur Adanbekova, Gemini & Claude",
-    "audience": "ML researchers and practitioners who want to understand and build neuro-symbolic systems",
-
-    # Generation settings
-    "test_mode": False,
-    "test_max_chapters": 2,
-    "resume_from_dir":'output/20260131_195213',  # Set to "output/YYYYMMDD_HHMMSS" to resume
-
-    # Model settings
-    "model_name": "gemini/gemini-3-flash-preview",
-
-    # Writing style (None for no styling, or one of:)
-    # - "waitbutwhy": Conversational, simple language, breaks down complex topics
-    # - "for_dummies": Step-by-step, assumes no prior knowledge, friendly
-    # - "oreilly": Technical but clear, practical focus, for practitioners
-    # - "textbook": Rigorous and structured, academic style
-    # - "practical": Minimal theory, focused on application
-    "author_key": "waitbutwhy",
-
-    # Illustration settings
-    "enable_illustrations": True,  # Set to True to add Mermaid diagrams and images
-    "enable_generated_images": True,  # Set to False for Mermaid diagrams only
-    "image_model": "gemini/gemini-3-pro-image-preview",  # AI image generation model
-}
+def load_config(config_path: str) -> dict:
+    """Load configuration from a YAML file."""
+    with open(config_path, 'r') as f:
+        return yaml.safe_load(f)
 
 
-# =============================================================================
-# MAIN
-# =============================================================================
+def list_configs():
+    """List available config files."""
+    configs_dir = os.path.join(os.path.dirname(__file__), 'configs')
+    if os.path.exists(configs_dir):
+        configs = [f for f in os.listdir(configs_dir) if f.endswith('.yaml')]
+        return configs
+    return []
+
 
 def parse_args():
     """Parse command line arguments."""
@@ -66,25 +46,37 @@ def parse_args():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python main.py                          Generate book with default config
-  python main.py --test                   Test mode (2 chapters only)
-  python main.py --resume output/20240115_143022  Resume from previous run
+  python main.py --config configs/ai_agent_memory.yaml
+  python main.py --config configs/neurosymbolic.yaml --test
+  python main.py --config configs/embedded_systems.yaml --test --chapters 3
+  python main.py --list                              List available configs
         """
     )
 
     parser.add_argument(
-        "--test",
+        "--config", "-c",
+        type=str,
+        metavar="FILE",
+        help="Path to YAML config file (e.g., configs/ai_agent_memory.yaml)"
+    )
+    parser.add_argument(
+        "--list", "-l",
+        action="store_true",
+        help="List available config files"
+    )
+    parser.add_argument(
+        "--test", "-t",
         action="store_true",
         help="Run in test mode with limited chapters"
     )
     parser.add_argument(
-        "--resume",
+        "--resume", "-r",
         type=str,
         metavar="DIR",
         help="Resume from a previous output directory"
     )
     parser.add_argument(
-        "--chapters",
+        "--chapters", "-n",
         type=int,
         default=2,
         help="Number of chapters in test mode (default: 2)"
@@ -97,8 +89,27 @@ async def main():
     """Main entry point."""
     args = parse_args()
 
-    # Create configuration from defaults
-    config = Config.from_dict(CONFIG)
+    # List configs if requested
+    if args.list:
+        print("Available configs:")
+        for config_file in list_configs():
+            print(f"  configs/{config_file}")
+        sys.exit(0)
+
+    # Require config file
+    if not args.config:
+        print("Error: --config is required")
+        print("Use --list to see available configs")
+        print("Example: python main.py --config configs/ai_agent_memory.yaml")
+        sys.exit(1)
+
+    # Load config from file
+    if not os.path.exists(args.config):
+        print(f"Error: Config file not found: {args.config}")
+        sys.exit(1)
+
+    config_dict = load_config(args.config)
+    config = Config.from_dict(config_dict)
 
     # Override with command line arguments
     if args.test:
@@ -112,6 +123,7 @@ async def main():
     print("=" * 60)
     print("BOOK GENERATOR")
     print("=" * 60)
+    print(f"Config: {args.config}")
     print(f"Topic: {config.topic}")
     print(f"Book Name: {config.book_name}")
     print(f"Audience: {config.audience}")
