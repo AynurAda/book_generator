@@ -32,10 +32,11 @@ async def build_outline_pipeline(language_model) -> synalinks.Program:
     This creates a multi-branch pipeline that:
     1. Extracts concepts from multiple branches (temperature=1.0)
     2. Merges and deduplicates concepts
-    3. Expands with subconcepts
-    4. Reviews and enriches
-    5. Expands to sub-subconcepts
-    6. Verifies relevance
+    3. Enriches main concepts - adds any important missing ones
+    4. Expands with subconcepts
+    5. Reviews and enriches subconcepts
+    6. Expands to sub-subconcepts
+    7. Verifies relevance
 
     Returns:
         A synalinks Program for outline generation
@@ -102,13 +103,39 @@ async def build_outline_pipeline(language_model) -> synalinks.Program:
         temperature=1.0
     )(inputs & merged)
 
+    # Review and enrich main concepts - add any important missing ones
+    enriched_concepts = await synalinks.Generator(
+        data_model=MergedConcepts,
+        language_model=language_model,
+        temperature=1.0,
+        instructions="""Review the list of main concepts for this book topic.
+
+Your task is to identify and ADD any important main concepts that are MISSING.
+
+Think about:
+1. FOUNDATIONAL concepts - Are the theoretical/mathematical foundations covered?
+2. HISTORICAL concepts - Is the evolution/history of the field represented?
+3. PRACTICAL concepts - Are real-world applications and use cases included?
+4. ADVANCED concepts - Are cutting-edge or emerging topics covered?
+5. CROSS-CUTTING concepts - Are important themes that span multiple areas included?
+6. METHODOLOGY concepts - Are key methods, techniques, and approaches covered?
+
+For the given topic and goal:
+- What would an expert consider essential that might be missing?
+- What would a comprehensive textbook include that isn't here?
+- What concepts are prerequisites for understanding others?
+
+Return the COMPLETE list including both the original concepts AND any new ones you add.
+Do NOT remove any existing concepts - only ADD missing important ones."""
+    )(inputs & merged_concepts)
+
     # Expand each main concept with its subconcepts
     hierarchy = await synalinks.Generator(
         data_model=HierarchicalConcepts,
         instructions="For each main concept provided, generate ALL relevant subconcepts that belong to that domain. Be comprehensive - include every important technique, method, tool, or topic that falls under the main concept. Do not limit the number.",
         language_model=language_model,
         temperature=1.0
-    )(inputs & merged_concepts)
+    )(inputs & enriched_concepts)
 
     # Review and add any missing concepts
     reviewed = await synalinks.Generator(
