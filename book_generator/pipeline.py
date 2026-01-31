@@ -30,7 +30,7 @@ from .content import write_all_sections_direct
 # from .polish import polish_chapters  # Skipped - direct write produces quality prose
 from .cover import generate_cover
 from .pdf import generate_pdf
-from .authors import get_author_profile, style_all_chapters, generate_about_author
+from .authors import get_author_profile, generate_about_author
 from .illustrations import illustrate_all_chapters
 
 logger = logging.getLogger(__name__)
@@ -117,14 +117,13 @@ async def generate_book(config: Config) -> str:
     Generate a complete book from the given configuration.
 
     This is the main entry point that coordinates all pipeline stages:
-    1. Outline generation
-    2. Outline reorganization
-    3. Hierarchical planning
-    4. Subsection content generation
-    5. Section rewriting
-    6. Chapter polishing
-    7. Cover generation
-    8. PDF assembly
+    1. Outline generation & reorganization
+    2. Hierarchical planning (book → chapters → sections)
+    3. Direct write (with optional style applied inline)
+    4. Illustrations (optional)
+    5. Introduction generation
+    6. Cover generation
+    7. Final assembly & PDF
 
     Args:
         config: The book generation configuration
@@ -252,53 +251,47 @@ async def generate_book(config: Config) -> str:
     print(f"{'='*60}\n")
 
     # ==========================================================================
-    # STAGE 3: CONTENT GENERATION (Direct Write)
+    # STAGE 3: CONTENT GENERATION (Direct Write with Style)
     # ==========================================================================
-    logger.info("Writing sections directly from topic names...")
 
-    chapters = await write_all_sections_direct(
-        topic_data, hierarchy, book_plan, chapters_overview, chapter_plans,
-        all_section_plans, language_model, output_dir, config.intro_styles,
-        max_chapters
-    )
-
-    total_sections = sum(len(sections) for sections in hierarchy.values())
-    print(f"\n{'='*60}")
-    print(f"Wrote {len(chapters)} chapters ({total_sections} sections)")
-    print(f"{'='*60}\n")
-
-    # ==========================================================================
-    # STAGE 4: AUTHOR STYLE APPLICATION (Optional)
-    # ==========================================================================
-    final_chapters = chapters
+    # Get writing style if configured (applied during direct write, not as separate pass)
     writing_style = None
     about_author = ""
 
     if config.author_key:
         writing_style = get_author_profile(config.author_key)
         if writing_style:
-            logger.info(f"Applying writing style: {writing_style.key}")
-
-            final_chapters = await style_all_chapters(
-                chapters, writing_style, language_model, output_dir
-            )
-
-            print(f"\n{'='*60}")
-            print(f"Applied '{writing_style.key}' style to {len(final_chapters)} chapters")
-            print(f"{'='*60}\n")
-
-            # Generate About the Author section (only if style has a name)
-            if writing_style.name:
-                about_author = await generate_about_author(
-                    writing_style,
-                    topic_data["book_name"],
-                    topic_data["topic"],
-                    language_model,
-                    output_dir
-                )
-                print(f"Generated About the Author section")
+            logger.info(f"Writing with style: {writing_style.key}")
         else:
             logger.warning(f"Writing style not found: {config.author_key}")
+
+    logger.info("Writing sections directly from topic names...")
+
+    chapters = await write_all_sections_direct(
+        topic_data, hierarchy, book_plan, chapters_overview, chapter_plans,
+        all_section_plans, language_model, output_dir, config.intro_styles,
+        max_chapters, writing_style
+    )
+
+    total_sections = sum(len(sections) for sections in hierarchy.values())
+    print(f"\n{'='*60}")
+    print(f"Wrote {len(chapters)} chapters ({total_sections} sections)")
+    if writing_style:
+        print(f"(with '{writing_style.key}' style applied)")
+    print(f"{'='*60}\n")
+
+    # Generate About the Author section (only if style has a name)
+    if writing_style and writing_style.name:
+        about_author = await generate_about_author(
+            writing_style,
+            topic_data["book_name"],
+            topic_data["topic"],
+            language_model,
+            output_dir
+        )
+        print(f"Generated About the Author section")
+
+    final_chapters = chapters
 
     # ==========================================================================
     # STAGE 5c: ILLUSTRATION GENERATION (Optional)

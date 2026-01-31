@@ -35,7 +35,7 @@ CONFIG = {
     # Generation settings
     "test_mode": False,
     "test_max_chapters": 1,
-    "resume_from_dir": None,  # Set to "output/YYYYMMDD_HHMMSS" to resume
+    "resume_from_dir":'output/test',  # Set to "output/YYYYMMDD_HHMMSS" to resume
 
     # Model settings
     "model_name": "gemini/gemini-3-flash-preview",

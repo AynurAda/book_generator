@@ -386,13 +386,17 @@ async def write_section_direct(
     previous_summary: str,
     next_summary: str,
     intro_style: str,
-    language_model
+    language_model,
+    writing_style: Optional[object] = None
 ) -> str:
     """
     Write a section directly from subsection topic names (no pre-generation).
 
     This is more efficient than generating individual subsections then rewriting.
     The LLM writes comprehensive flowing prose covering all topics directly.
+
+    Args:
+        writing_style: Optional WritingStyle object to apply during writing
 
     Returns:
         The section content as flowing prose
@@ -402,11 +406,24 @@ async def write_section_direct(
     # Format subsection names as a list of topics to cover
     topics_to_cover = "\n".join(f"- {name}" for name in subsection_names)
 
+    # Build style instructions if a writing style is provided
+    style_section = ""
+    if writing_style:
+        style_section = f"""
+=== WRITING STYLE ===
+
+{writing_style.style_instructions}
+
+The style instructions above describe HOW to write. Apply this style while maintaining
+all depth requirements below. Style does NOT mean shorter - it means different voice/tone.
+
+"""
+
     generator = synalinks.Generator(
         data_model=ChapterOutput,
         language_model=language_model,
         temperature=1.0,
-        instructions=f"""Write comprehensive book content for this section.
+        instructions=f"""{style_section}Write comprehensive book content for this section.
 
 You are given a list of TOPICS TO COVER. Write flowing, professional prose that
 thoroughly explains each topic. This is direct authoring - write the actual book content.
@@ -423,28 +440,48 @@ LANGUAGE STYLE: Write with CLARITY and RIGOR:
 
 INTRODUCTION STYLE: {intro_style}
 
-COMPREHENSIVE COVERAGE REQUIREMENTS:
-- Cover EVERY topic in the list thoroughly (not just mentions)
-- Each topic should get substantial treatment (multiple paragraphs if needed)
-- Explain the "why" alongside the "what"
-- Include concrete examples where appropriate
-- Define technical terms precisely when first used
+=== CRITICAL: DEPTH REQUIREMENTS ===
+
+Each topic in the list MUST receive DEEP, THOROUGH treatment. This means:
+
+1. MINIMUM LENGTH PER TOPIC: 500-1000 words (or more if needed to fully explain)
+   - A brief mention or summary is NOT acceptable
+   - Each topic deserves comprehensive, textbook-quality coverage
+   - If a concept is complex, use MORE words, not fewer
+
+2. REQUIRED COVERAGE FOR EACH TOPIC:
+   - DEFINITION: What is this concept? Define it precisely and completely
+   - MECHANICS: How does it work? Explain the underlying principles in detail
+   - SIGNIFICANCE: Why does this matter? What problems does it solve? Why should readers care?
+   - EXAMPLES: Multiple concrete, specific examples that illustrate different aspects
+   - NUANCES: Edge cases, common misconceptions, limitations, and important caveats
+   - CONNECTIONS: How does this relate to other concepts in the section/chapter?
+
+3. TOTAL SECTION LENGTH: With N topics, expect roughly N × 500-1000 words
+   - A section with 3 topics should be at least 1500-3000 words
+   - A section with 5 topics should be at least 2500-5000 words
+   - This is a COMPREHENSIVE TEXTBOOK, not a summary or overview
+
+DO NOT:
+- Mention a topic in 1-2 sentences and move on
+- Write a "survey" that superficially touches each topic
+- Sacrifice depth for brevity
+- Assume the reader already knows these concepts
 
 Your section should:
 1. Begin with the specified introduction style
 2. Flow naturally between topics with clear logical connections
-3. Cover each listed topic with depth appropriate to its importance
+3. Give each topic the DEEP treatment it deserves
 4. Add smooth transitions between ideas
 5. End with a synthesis or forward reference
 
 CRITICAL GUIDELINES:
-- Do NOT just list or briefly mention topics - explain them thoroughly
 - Preserve technical precision - do not oversimplify
 - Use analogies sparingly and only when they genuinely illuminate
 - Respect the reader's intelligence
 - Maintain consistent technical terminology
 
-Write in flowing prose. You may use sub-headers (###) for major topic shifts if helpful.
+Write in flowing prose. Use sub-headers (####) for each major topic to organize the content.
 The section header (### Section Name) will be added separately."""
     )
 
@@ -479,12 +516,16 @@ async def write_all_sections_direct(
     language_model,
     output_dir: str,
     intro_styles: List[str],
-    max_chapters: Optional[int] = None
+    max_chapters: Optional[int] = None,
+    writing_style: Optional[object] = None
 ) -> List[tuple]:
     """
     Write all sections directly from topic names (no subsection pre-generation).
 
     This is the efficient alternative to generate_all_subsections + rewrite_sections.
+
+    Args:
+        writing_style: Optional WritingStyle object to apply during writing
 
     Returns:
         List of (chapter_name, chapter_content_dict) tuples
@@ -549,7 +590,8 @@ async def write_all_sections_direct(
                 prev_summary,
                 next_summary,
                 intro_style,
-                language_model
+                language_model,
+                writing_style
             )
 
             # Add section header
