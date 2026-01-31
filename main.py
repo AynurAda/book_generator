@@ -33,9 +33,9 @@ CONFIG = {
     "audience": "ML researchers and practitioners who want to understand and build neuro-symbolic systems",
 
     # Generation settings
-    "test_mode": True,
+    "test_mode": False,
     "test_max_chapters": 2,
-    "resume_from_dir":'output/20260131_190723',  # Set to "output/YYYYMMDD_HHMMSS" to resume
+    "resume_from_dir":'output/20260131_195213',  # Set to "output/YYYYMMDD_HHMMSS" to resume
 
     # Model settings
     "model_name": "gemini/gemini-3-flash-preview",
