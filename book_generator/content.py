@@ -7,12 +7,13 @@ This module handles the generation of actual book content:
 - Direct section writing (writing sections directly from topic names)
 """
 
+import asyncio
 import logging
 from typing import List, Optional
 
 import synalinks
 
-from .models import SectionInput, SectionOutput, ChapterInput, ChapterOutput
+from .models import SectionInput, SectionOutput, ChapterInput, ChapterOutput, SectionSelectionInput, SectionSelection
 from .utils import (
     sanitize_filename,
     output_exists,
@@ -536,6 +537,153 @@ The section header (### Section Name) will be added separately."""
     return result.get_json().get("chapter_content", "")
 
 
+async def select_best_section(
+    section_name: str,
+    topics_to_cover: str,
+    candidates: List[str],
+    language_model
+) -> tuple:
+    """
+    Select the best section from multiple candidates.
+
+    Args:
+        section_name: Name of the section
+        topics_to_cover: The topics that should be covered
+        candidates: List of candidate section contents (3 candidates)
+        language_model: The language model to use
+
+    Returns:
+        Tuple of (best_content, selected_index, reasoning)
+    """
+    logger.info(f"Selecting best version for section: {section_name}")
+
+    generator = synalinks.Generator(
+        data_model=SectionSelection,
+        language_model=language_model,
+        temperature=1.0,
+        instructions="""You are evaluating three candidate versions of the same book section.
+Your task is to select the ONE candidate that best meets the quality criteria.
+
+SELECTION CRITERIA (in order of importance):
+
+1. COMPREHENSIVENESS: Does it cover ALL the listed topics thoroughly?
+   - Every topic should have substantial treatment (not just mentions)
+   - No topics should be skipped or glossed over
+
+2. DEPTH OF EXPLANATION: Are concepts explained in detail?
+   - Step-by-step explanations that build understanding
+   - Definitions, mechanics, significance, examples for each topic
+   - Goes beyond surface-level to true understanding
+
+3. SELF-CONTAINED: Can it be understood without prior knowledge?
+   - All terms defined when first used
+   - No assumed prior knowledge
+   - "Obvious" steps included
+
+4. EXAMPLES AND ILLUSTRATIONS: Are there concrete, helpful examples?
+   - Multiple examples per major concept
+   - Examples that illuminate different aspects
+
+5. CLARITY AND FLOW: Is it well-organized and readable?
+   - Logical progression of ideas
+   - Smooth transitions between topics
+
+Return the number (1, 2, or 3) of the candidate that BEST meets these criteria.
+If candidates are close in quality, prefer the one with MORE depth and detail."""
+    )
+
+    input_data = SectionSelectionInput(
+        section_name=section_name,
+        topics_to_cover=topics_to_cover,
+        candidate_1=candidates[0],
+        candidate_2=candidates[1],
+        candidate_3=candidates[2]
+    )
+
+    result = await generator(input_data)
+    result_dict = result.get_json()
+
+    selected = result_dict.get("selected_candidate", 1)
+    reasoning = result_dict.get("reasoning", "No reasoning provided")
+
+    # Validate selection
+    if selected not in [1, 2, 3]:
+        selected = 1
+
+    logger.info(f"Selected candidate {selected}: {reasoning[:100]}...")
+
+    return candidates[selected - 1], selected, reasoning
+
+
+async def write_section_with_selection(
+    topic_data: dict,
+    chapter_name: str,
+    section_name: str,
+    subsection_names: List[str],
+    book_plan: dict,
+    chapters_overview: dict,
+    chapter_plan: dict,
+    section_plan: dict,
+    previous_summary: str,
+    next_summary: str,
+    intro_style: str,
+    language_model,
+    writing_style: Optional[object] = None,
+    num_branches: int = 3
+) -> str:
+    """
+    Generate multiple versions of a section in parallel and select the best one.
+
+    Args:
+        num_branches: Number of parallel branches to generate (default 3)
+        Other args: Same as write_section_direct
+
+    Returns:
+        The best section content selected from multiple candidates
+    """
+    logger.info(f"Generating {num_branches} branches for section: {section_name}")
+
+    # Generate multiple versions in parallel
+    tasks = [
+        write_section_direct(
+            topic_data, chapter_name, section_name, subsection_names,
+            book_plan, chapters_overview, chapter_plan, section_plan,
+            previous_summary, next_summary, intro_style, language_model,
+            writing_style
+        )
+        for _ in range(num_branches)
+    ]
+
+    candidates = await asyncio.gather(*tasks)
+
+    # Filter out empty candidates
+    valid_candidates = [c for c in candidates if c and len(c.strip()) > 100]
+
+    if not valid_candidates:
+        logger.warning(f"No valid candidates generated for section: {section_name}")
+        return ""
+
+    if len(valid_candidates) == 1:
+        logger.info(f"Only one valid candidate, using it directly")
+        return valid_candidates[0]
+
+    # Pad to 3 candidates if needed (reuse best-looking ones)
+    while len(valid_candidates) < 3:
+        # Duplicate the longest candidate
+        longest = max(valid_candidates, key=len)
+        valid_candidates.append(longest)
+
+    # Select the best one
+    topics_to_cover = "\n".join(f"- {name}" for name in subsection_names)
+    best_content, selected_idx, reasoning = await select_best_section(
+        section_name, topics_to_cover, valid_candidates[:3], language_model
+    )
+
+    logger.info(f"Selected branch {selected_idx} for section: {section_name}")
+
+    return best_content
+
+
 async def write_all_sections_direct(
     topic_data: dict,
     hierarchy: dict,
@@ -608,7 +756,7 @@ async def write_all_sections_direct(
             intro_style = intro_styles[style_idx % len(intro_styles)]
             style_idx += 1
 
-            section_content = await write_section_direct(
+            section_content = await write_section_with_selection(
                 topic_data,
                 chapter_name,
                 section_name,
@@ -621,7 +769,8 @@ async def write_all_sections_direct(
                 next_summary,
                 intro_style,
                 language_model,
-                writing_style
+                writing_style,
+                num_branches=3  # Generate 3 versions and pick the best
             )
 
             # Add section header

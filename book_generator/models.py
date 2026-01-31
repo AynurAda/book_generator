@@ -421,3 +421,26 @@ class ImagePromptOutput(synalinks.DataModel):
     image_prompt: str = synalinks.Field(
         description="Optimized prompt for AI image generation"
     )
+
+
+# =============================================================================
+# Section Quality Selection Models
+# =============================================================================
+
+class SectionSelectionInput(synalinks.DataModel):
+    """Input for selecting the best section from multiple candidates."""
+    section_name: str = synalinks.Field(description="The name of the section")
+    topics_to_cover: str = synalinks.Field(description="The list of topics that should be covered")
+    candidate_1: str = synalinks.Field(description="First candidate section content")
+    candidate_2: str = synalinks.Field(description="Second candidate section content")
+    candidate_3: str = synalinks.Field(description="Third candidate section content")
+
+
+class SectionSelection(synalinks.DataModel):
+    """Output for section quality selection."""
+    selected_candidate: int = synalinks.Field(
+        description="The number of the best candidate (1, 2, or 3)"
+    )
+    reasoning: str = synalinks.Field(
+        description="Brief explanation of why this candidate was selected"
+    )
