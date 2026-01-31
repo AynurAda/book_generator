@@ -419,7 +419,7 @@ async def write_chapter_with_sections(
         if not subsection_names:
             continue
 
-        section_plan = section_plans_list[i] if i < len(section_plans_list) else None
+        section_plan = chapter_plans_in_part[i] if i < len(chapter_plans_in_part) else None
 
         # Get intro style (rotating)
         intro_style = intro_styles[style_idx % len(intro_styles)]
