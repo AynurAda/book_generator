@@ -7,8 +7,8 @@ This document describes the workflow logic for the AI-powered book generation sy
 The book generator creates comprehensive educational books through a multi-stage pipeline that ensures coherent, well-structured content with minimal repetition.
 
 ```
-Topic Input → Outline Generation → Outline Reorganization → Hierarchical Planning → Direct Write → Style (optional) → Cover Generation → Final Book
-                                   (temporal/conceptual)     (Book → Chapter → Section)
+Topic Input → Outline Generation → Outline Reorganization → Hierarchical Planning → Direct Write (with style) → Cover Generation → Final Book
+              (8 branches + enrich)  (temporal/conceptual)   (Book → Chapter → Section)   (500-1000 words/topic)
 ```
 
 ```mermaid
@@ -20,7 +20,8 @@ flowchart TD
         B1 --> C[Merge & Deduplicate]
         B2 --> C
         B3 --> C
-        C --> D[Expand Subconcepts]
+        C --> C2[Enrich Main Concepts<br/>add missing important ones]
+        C2 --> D[Expand Subconcepts]
         D --> E[Review & Enrich]
         E --> F[Expand Sub-subconcepts]
         F --> G[Verify Relevance]
@@ -42,28 +43,20 @@ flowchart TD
         J2 --> K[Generate Section Plans<br/>per chapter with full context]
     end
 
-    subgraph Stage3["Stage 3: Direct Write"]
+    subgraph Stage3["Stage 3: Direct Write with Style"]
         K --> L{For each section}
-        L --> M[Pass full context:<br/>Book Plan +<br/>Chapters Overview +<br/>Chapter Plan +<br/>Section Plan +<br/>Topic Names]
-        M --> N[Write comprehensive<br/>flowing prose<br/>covering all topics]
+        L --> M[Pass full context +<br/>style instructions:<br/>Book Plan +<br/>Chapters Overview +<br/>Chapter Plan +<br/>Section Plan +<br/>Topic Names +<br/>Writing Style]
+        M --> N[Write in-depth<br/>step-by-step<br/>self-contained prose<br/>500-1000 words/topic]
         N --> L
         N --> O[Combine sections<br/>into chapter]
     end
 
-    subgraph Stage4["Stage 4: Style Application"]
-        O --> P{Author style<br/>configured?}
-        P -->|Yes| Q[Apply writing style]
-        P -->|No| R[Keep original]
-        Q --> S[Styled chapters]
-        R --> S
-    end
-
-    subgraph Stage5["Stage 5: Cover Generation"]
-        S --> CVR[Generate cover<br/>with Imagen 4.0]
+    subgraph Stage4["Stage 4: Cover Generation"]
+        O --> CVR[Generate cover<br/>with Imagen 4.0]
         CVR --> CVRIMG[book_cover.png]
     end
 
-    subgraph Stage6["Stage 6: Final Assembly & PDF"]
+    subgraph Stage5["Stage 5: Final Assembly & PDF"]
         CVRIMG --> Y[Combine all chapters]
         Y --> Z[Add cover & TOC]
         Z --> TXT[06_full_book.txt]
@@ -75,9 +68,8 @@ flowchart TD
     style Stage1b fill:#e0f7fa
     style Stage2 fill:#fff3e0
     style Stage3 fill:#e8f5e9
-    style Stage4 fill:#fce4ec
-    style Stage5 fill:#fff9c4
-    style Stage6 fill:#f3e5f5
+    style Stage4 fill:#fff9c4
+    style Stage5 fill:#f3e5f5
 ```
 
 ```mermaid
@@ -123,10 +115,17 @@ flowchart LR
 **Process:**
 1. **Multi-branch concept extraction** - 8 parallel generators (temperature=1.0) independently extract main concepts from the topic
 2. **Merge & deduplicate** - All branches are merged and deduplicated into a unified concept list
-3. **Subconcept expansion** - Each main concept is expanded with 5-10 specific subconcepts
-4. **Review & enrich** - A review pass adds any missing concepts or subconcepts
-5. **Sub-subconcept expansion** - Each subconcept is expanded with 3-7 detailed sub-subconcepts
-6. **Relevance verification** - Final pass removes off-topic or too-generic items
+3. **Enrich main concepts** - Review and add any important missing main concepts:
+   - Foundational/theoretical concepts
+   - Historical/evolution concepts
+   - Practical/application concepts
+   - Advanced/emerging concepts
+   - Cross-cutting themes
+   - Methodology concepts
+4. **Subconcept expansion** - Each main concept is expanded with 5-10 specific subconcepts
+5. **Review & enrich subconcepts** - A review pass adds any missing subconcepts
+6. **Sub-subconcept expansion** - Each subconcept is expanded with 3-7 detailed sub-subconcepts
+7. **Relevance verification** - Final pass removes off-topic or too-generic items
 
 **Output:** `DeepHierarchy` - 3-level hierarchy (Concepts → Subconcepts → Sub-subconcepts)
 
@@ -247,19 +246,20 @@ This ensures coherence and prevents overlap at every level.
 
 ---
 
-### Stage 3: Direct Write
+### Stage 3: Direct Write (with Style)
 
-**Input:** `ChapterInput` (topic, goal, book_name, audience, book_plan, chapters_overview, chapter_plan, section_plan, chapter_title, section_name, subsections_content (topic names), previous_section_summary, next_section_summary, intro_style)
+**Input:** `ChapterInput` (topic, goal, book_name, audience, book_plan, chapters_overview, chapter_plan, section_plan, chapter_title, section_name, subsections_content (topic names), previous_section_summary, next_section_summary, intro_style) + optional `WritingStyle`
 
 **Process:**
 For each section within a chapter:
 1. Pass full planning context: book plan, chapters overview, chapter plan, section plan
 2. Pass the list of subsection **topic names** to cover (not pre-generated content)
-3. Select an introduction style from the rotating list
-4. Write comprehensive flowing prose covering all topics directly
-5. Combine all sections into a complete chapter
+3. If configured, pass writing style instructions (applied inline, not as separate pass)
+4. Select an introduction style from the rotating list
+5. Write comprehensive flowing prose covering all topics directly
+6. Combine all sections into a complete chapter
 
-**Note:** The LLM writes the section content directly from topic names, receiving full planning context so it knows what depth and coverage is expected. This is more efficient than generating individual subsections then rewriting them.
+**Note:** The LLM writes the section content directly from topic names, receiving full planning context so it knows what depth and coverage is expected. Style is applied during writing (not as a separate rewrite pass) to avoid content compression.
 
 **Output:** `ChapterOutput` - Full chapter content with coherent sections
 
@@ -274,31 +274,31 @@ For each section within a chapter:
 - Contrast-based openings (naive vs sophisticated approaches)
 - Forward-looking openings (previews, roadmaps)
 
-**Writing goals:**
-- Cover EVERY topic in the list thoroughly (not just mentions)
-- Each topic should get substantial treatment
-- Explain the "why" alongside the "what"
-- Include concrete examples where appropriate
-- Define technical terms precisely when first used
-- Flow naturally between topics with clear logical connections
-- Maintain technical precision throughout
+**Depth Requirements:**
+- **500-1000 words per topic** (or more if needed to fully explain)
+- Each topic gets comprehensive, textbook-quality coverage
+- Total section length: N topics × 500-1000 words
+
+**Explanation Approach:**
+- **STEP-BY-STEP**: Break down complex ideas into sequential, logical steps. Start from first principles, build understanding incrementally, make reasoning explicit.
+- **SELF-CONTAINED**: Define ALL terms when first used. Each section should stand on its own - a reader should understand without reading previous chapters.
+- **NO ASSUMED PRIOR KNOWLEDGE**: Explain jargon immediately, don't skip "obvious" steps, build from ground zero for each concept, include the "why" behind every "what".
+- **IN-DEPTH**: Go beyond definitions to true understanding. Explain intuition behind formal concepts, show how things work internally, address "how" and "why" questions.
+
+**Required Coverage for Each Topic:**
+- DEFINITION: What is this concept? Define it precisely and completely
+- MECHANICS: How does it work? Explain the underlying principles in detail
+- SIGNIFICANCE: Why does this matter? What problems does it solve?
+- EXAMPLES: Multiple concrete, specific examples that illustrate different aspects
+- NUANCES: Edge cases, common misconceptions, limitations, important caveats
+- CONNECTIONS: How does this relate to other concepts in the section/chapter?
 
 **Files saved:**
-- `04_chapter_<name>.txt` - Each complete chapter
+- `04_chapter_<name>.txt` - Each complete chapter (with style applied if configured)
 
 ---
 
-### Stage 4: Style Application (Optional)
-
-**Process:**
-If an author style is configured (e.g., "waitbutwhy"), apply the writing style to each chapter while preserving all content and depth.
-
-**Files saved:**
-- `07_styled_NNN_<name>.txt` - Styled chapters (only if style configured)
-
----
-
-### Stage 5: Cover Generation
+### Stage 4: Cover Generation
 
 **Process:**
 - Generate a professional book cover using Google's Imagen 4.0 model
@@ -314,7 +314,7 @@ If an author style is configured (e.g., "waitbutwhy"), apply the writing style t
 
 ---
 
-### Stage 6: Final Book Assembly & PDF Generation
+### Stage 5: Final Book Assembly & PDF Generation
 
 **Process:**
 - Combine all chapters into a single document
@@ -402,11 +402,8 @@ output/
     ├── ...
     ├── 02_chapter_plans.json           # All chapter plans combined (JSON)
     ├── 02_section_plans_*.json         # Section plans per chapter
-    ├── 04_chapter_001_*.txt            # Chapters (direct write)
+    ├── 04_chapter_001_*.txt            # Chapters (with style if configured)
     ├── 04_chapter_002_*.txt
-    ├── ...
-    ├── 07_styled_001_*.txt             # Styled chapters (if author style configured)
-    ├── 07_styled_002_*.txt
     ├── ...
     ├── book_cover.png                  # Generated book cover image
     ├── 06_full_book.txt                # Final combined book (Markdown)
@@ -469,6 +466,33 @@ Instead of generating individual subsections then rewriting them into sections, 
 - Avoids content condensation that occurred during multi-stage processing
 - The LLM has full context of what depth is expected and can allocate space appropriately
 
+### Why apply style during direct write (not as separate pass)?
+Testing showed that a separate styling pass caused significant content compression:
+- Chapters lost 25-55% of their content when restyled
+- The LLM interpreted "rewrite in this style" as "summarize in this style"
+- By applying style during direct write, we get both style AND depth in one pass
+- Style instructions are prepended to depth requirements, making it clear that style ≠ shorter
+
+### Why concept enrichment after merging?
+After 8 branches extract concepts and they're merged, a dedicated enrichment step reviews the list and adds any important missing concepts:
+- Foundational/theoretical concepts that experts would consider essential
+- Historical/evolution concepts showing how the field developed
+- Practical/application concepts for real-world use
+- Advanced/emerging concepts for cutting-edge coverage
+- Cross-cutting themes that span multiple areas
+- Methodology concepts covering key techniques
+
+This happens BEFORE subconcept expansion, ensuring comprehensive coverage from the start.
+
+### Why step-by-step, self-contained explanations?
+Each explanation must be:
+- **Step-by-step**: Complex ideas broken into sequential steps, starting from first principles
+- **Self-contained**: All terms defined when first used; readable without prior chapters
+- **No assumed knowledge**: Jargon explained immediately; "obvious" steps included
+- **In-depth**: Beyond definitions to true understanding; intuition behind formal concepts
+
+This ensures the book is accessible to readers entering at any chapter while maintaining depth.
+
 ### Why rotating intro styles at section level?
 Without explicit style guidance, LLMs tend to fall into repetitive patterns (e.g., "Imagine..."). Each section gets a different introduction style from a rotating list of approaches:
 1. Thought-provoking question
@@ -516,7 +540,6 @@ When resuming:
 - **Chapter Plans**: Individual plans loaded from `02_chapter_plan_NN_*.json`, or combined from `02_chapter_plans.json`
 - **Section Plans**: Each chapter's section plans loaded from `02_section_plans_*.json` if exists
 - **Chapters**: Each chapter is skipped if `04_chapter_NNN_*.txt` exists
-- **Styled Chapters**: Each styled chapter is skipped if `07_styled_NNN_*.txt` exists
 - Only missing outputs are generated
 
 Set `RESUME_FROM_DIR = None` for a fresh run.
