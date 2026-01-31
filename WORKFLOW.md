@@ -7,7 +7,7 @@ This document describes the workflow logic for the AI-powered book generation sy
 The book generator creates comprehensive educational books through a multi-stage pipeline that ensures coherent, well-structured content with minimal repetition.
 
 ```
-Topic Input → Outline Generation → Outline Reorganization → Hierarchical Planning → Subsection Content → Section Rewriting → Chapter Polishing → Cover Generation → Final Book
+Topic Input → Outline Generation → Outline Reorganization → Hierarchical Planning → Direct Write → Style (optional) → Cover Generation → Final Book
                                    (temporal/conceptual)     (Book → Chapter → Section)
 ```
 
@@ -42,37 +42,28 @@ flowchart TD
         J2 --> K[Generate Section Plans<br/>per chapter with full context]
     end
 
-    subgraph Stage3["Stage 3: Subsection Generation"]
-        K --> L{For each subsection}
-        L --> M[Pass Context:<br/>Book Plan +<br/>Chapter Plan +<br/>Section Plan]
-        M --> N[Generate Content:<br/>Explanation +<br/>Analogies/Examples]
+    subgraph Stage3["Stage 3: Direct Write"]
+        K --> L{For each section}
+        L --> M[Pass full context:<br/>Book Plan +<br/>Chapters Overview +<br/>Chapter Plan +<br/>Section Plan +<br/>Topic Names]
+        M --> N[Write comprehensive<br/>flowing prose<br/>covering all topics]
         N --> L
+        N --> O[Combine sections<br/>into chapter]
     end
 
-    subgraph Stage4["Stage 4: Section Rewriting"]
-        N --> O{For each section}
-        O --> P[Collect subsections]
-        P --> P2[Pass full context:<br/>Book Plan +<br/>Chapters Overview +<br/>Chapter Plan +<br/>Section Plan]
-        P2 --> Q[Apply intro style<br/>rotating 1-8]
-        Q --> R[Rewrite as<br/>coherent section<br/>preserving depth]
-        R --> O
-        R --> S[Combine sections<br/>into chapter]
+    subgraph Stage4["Stage 4: Style Application"]
+        O --> P{Author style<br/>configured?}
+        P -->|Yes| Q[Apply writing style]
+        P -->|No| R[Keep original]
+        Q --> S[Styled chapters]
+        R --> S
     end
 
-    subgraph Stage5["Stage 5: Chapter Polishing"]
-        S --> T{For each chapter}
-        T --> U[Polish for cohesion]
-        U --> W[Add transitions<br/>& detail]
-        W --> X[Improve prose<br/>quality]
-        X --> T
-    end
-
-    subgraph Stage6["Stage 6: Cover Generation"]
-        X --> CVR[Generate cover<br/>with Imagen 4.0]
+    subgraph Stage5["Stage 5: Cover Generation"]
+        S --> CVR[Generate cover<br/>with Imagen 4.0]
         CVR --> CVRIMG[book_cover.png]
     end
 
-    subgraph Stage7["Stage 7: Final Assembly & PDF"]
+    subgraph Stage6["Stage 6: Final Assembly & PDF"]
         CVRIMG --> Y[Combine all chapters]
         Y --> Z[Add cover & TOC]
         Z --> TXT[06_full_book.txt]
@@ -85,9 +76,8 @@ flowchart TD
     style Stage2 fill:#fff3e0
     style Stage3 fill:#e8f5e9
     style Stage4 fill:#fce4ec
-    style Stage5 fill:#e8eaf6
-    style Stage6 fill:#fff9c4
-    style Stage7 fill:#f3e5f5
+    style Stage5 fill:#fff9c4
+    style Stage6 fill:#f3e5f5
 ```
 
 ```mermaid
@@ -114,11 +104,10 @@ flowchart LR
         BP --> SP["Section Plan"]
         CO --> SP
         CP --> SP
-        SP --> SUB["Subsection<br/>Generation"]
-        BP --> REW["Section<br/>Rewriting"]
-        CO --> REW
-        CP --> REW
-        SP --> REW
+        BP --> DW["Direct Write<br/>(per section)"]
+        CO --> DW
+        CP --> DW
+        SP --> DW
     end
 
     style Hierarchy fill:#e3f2fd
@@ -258,102 +247,58 @@ This ensures coherence and prevents overlap at every level.
 
 ---
 
-### Stage 3: Subsection Content Generation
+### Stage 3: Direct Write
 
-**Input:** `SectionInput` (topic, goal, book_name, book_plan, chapter_plan, section_plan, current_subsection)
-
-**Process:**
-For each sub-subconcept (leaf node in the outline):
-1. Pass hierarchical context: book plan, chapter plan, and section plan
-2. Generate core content: concept explanation and analogies/examples
-3. Introduction and summary are handled at the section level during rewriting
-
-**Output:** `SectionOutput` for each subsection:
-- `concept_explanation` - Thorough explanation of core concepts
-- `analogies_and_examples` - Relatable analogies and practical examples
-
-**Note:** No introduction or summary is generated per subsection. These are created during section rewriting to ensure cohesive flow across the entire section.
-
-**Files saved:**
-- `03_subsection_NNN_<name>.txt` - Each individual subsection
-- `03_subsection_NNN_<name>.json` - JSON format for resume capability
-
----
-
-### Stage 4: Section Rewriting & Chapter Assembly
-
-**Input:** `ChapterInput` (topic, goal, book_name, audience, book_plan, chapters_overview, chapter_plan, section_plan, chapter_title, section_name, subsections_content, previous_section_summary, next_section_summary, intro_style)
-
-**Note:** The section rewriter receives **full planning context** (book plan, chapters overview, chapter plan, section plan) so it understands what depth and coverage is expected for each section. This prevents content condensation during rewriting.
+**Input:** `ChapterInput` (topic, goal, book_name, audience, book_plan, chapters_overview, chapter_plan, section_plan, chapter_title, section_name, subsections_content (topic names), previous_section_summary, next_section_summary, intro_style)
 
 **Process:**
-1. For each section within a chapter:
-   - Collect all subsections belonging to that section
-   - Pass full planning context: book plan, chapters overview, chapter plan, section plan
-   - Select an introduction style from rotating list of 8 styles
-   - Rewrite subsections into a coherent section with the specified intro style
-   - Use section plan to guide the narrative and maintain comprehensive depth
-2. Combine all rewritten sections into a complete chapter
+For each section within a chapter:
+1. Pass full planning context: book plan, chapters overview, chapter plan, section plan
+2. Pass the list of subsection **topic names** to cover (not pre-generated content)
+3. Select an introduction style from the rotating list
+4. Write comprehensive flowing prose covering all topics directly
+5. Combine all sections into a complete chapter
+
+**Note:** The LLM writes the section content directly from topic names, receiving full planning context so it knows what depth and coverage is expected. This is more efficient than generating individual subsections then rewriting them.
 
 **Output:** `ChapterOutput` - Full chapter content with coherent sections
 
 **Introduction Styles (rotated per section to avoid repetition):**
-1. Thought-provoking question
-2. Real-world problem/challenge
-3. Historical context
-4. Connection to previous chapters
-5. Surprising fact/counterintuitive insight
-6. Practical scenario
-7. Problem space definition
-8. Comparison to familiar concept
+- Question-based openings (thought-provoking, fundamental questions)
+- Problem-based openings (real-world problems, practical scenarios)
+- Context-based openings (historical context, connections to previous sections)
+- Insight-based openings (surprising facts, paradoxes, misconceptions)
+- Definition-based openings (problem space definition, distinguishing concepts)
+- Motivation-based openings (why practitioners care, practical benefits)
+- Example-based openings (concrete examples, running examples)
+- Contrast-based openings (naive vs sophisticated approaches)
+- Forward-looking openings (previews, roadmaps)
 
-**Rewriting goals:**
-- Follow the assigned intro style for each section opening
-- **Maintain comprehensive depth** - keep ALL technical content from subsections
-- The rewritten section should be AT LEAST as long as the combined subsections
-- Improve flow and eliminate redundancy within sections
-- Add smooth transitions between topics
-- Create natural narrative arc (beginning, middle, end)
-- Write in flowing prose (no headers/bullet points within sections)
-- Section headers (`## Section Name`) separate sections within the chapter
+**Writing goals:**
+- Cover EVERY topic in the list thoroughly (not just mentions)
+- Each topic should get substantial treatment
+- Explain the "why" alongside the "what"
+- Include concrete examples where appropriate
+- Define technical terms precisely when first used
+- Flow naturally between topics with clear logical connections
+- Maintain technical precision throughout
 
 **Files saved:**
-- `04_chapter_NNN_<name>.txt` - Each complete chapter with all rewritten sections
+- `04_chapter_<name>.txt` - Each complete chapter
 
 ---
 
-### Stage 5: Chapter Polishing
-
-**Input:** `ChapterPolishInput` (topic, goal, book_name, audience, book_plan, chapters_overview, chapter_name, chapter_number, total_chapters, chapter_plan, chapter_content, previous_chapter_summary, next_chapter_summary)
+### Stage 4: Style Application (Optional)
 
 **Process:**
-For each chapter, perform a final polish pass with full planning context:
-1. Uses book plan and chapters overview to understand broader narrative
-2. Ensures all sections flow together as one unified chapter
-3. Adds smooth transitions between sections
-4. Adds clarifying detail where concepts feel thin
-5. Removes redundant content across sections
-6. Creates a clear narrative arc (beginning, middle, end)
-7. Improves prose quality and professional tone
-8. References previous/next chapters naturally for continuity
-
-**Output:** `PolishedChapter` (chapter_content)
-
-**Polishing goals:**
-- COHESION: Sections should read as one unified piece, not separate articles
-- TRANSITIONS: Smooth flow between topics with no abrupt changes
-- DETAIL: Add examples and explanations where needed
-- REDUNDANCY: Remove repetitive content
-- NARRATIVE: Clear arc from introduction through synthesis
-- PROSE: Professional book-quality writing
-- CONTEXT: Leverage full book plan and chapters overview for coherence
+If an author style is configured (e.g., "waitbutwhy"), apply the writing style to each chapter while preserving all content and depth.
 
 **Files saved:**
-- `05_polished_NNN_<name>.txt` - Each polished chapter
+- `07_styled_NNN_<name>.txt` - Styled chapters (only if style configured)
 
 ---
 
-### Stage 6: Cover Generation
+### Stage 5: Cover Generation
 
 **Process:**
 - Generate a professional book cover using Google's Imagen 4.0 model
@@ -369,10 +314,10 @@ For each chapter, perform a final polish pass with full planning context:
 
 ---
 
-### Stage 7: Final Book Assembly & PDF Generation
+### Stage 6: Final Book Assembly & PDF Generation
 
 **Process:**
-- Combine all polished chapters into a single document
+- Combine all chapters into a single document
 - Add cover image as the first page
 - Add table of contents
 - Convert markdown to styled PDF with professional book formatting
@@ -405,9 +350,7 @@ For each chapter, perform a final polish pass with full planning context:
 | `ChaptersOverviewInput` | topic, goal, book_name, full_outline, book_plan, chapters | Input for chapters overview generation |
 | `SingleChapterPlanInput` | topic, goal, book_name, full_outline, book_plan, chapters_overview, chapter_name, chapter_number, total_chapters | Input for individual chapter plan generation |
 | `SectionPlansInput` | topic, goal, book_name, book_plan, chapters_overview, chapter_plan, chapter_name, sections, subsections_by_section | Input for section plans generation |
-| `SectionInput` | topic, goal, book_name, audience, book_plan, chapter_plan, section_plan, current_subsection | Input for subsection generation |
-| `ChapterInput` | topic, goal, book_name, audience, book_plan, chapters_overview, chapter_plan, section_plan, chapter_title, section_name, subsections_content, previous_section_summary, next_section_summary, intro_style | Input for section rewriting (with full planning context) |
-| `ChapterPolishInput` | topic, goal, book_name, audience, book_plan, chapters_overview, chapter_name, chapter_number, total_chapters, chapter_plan, chapter_content, previous_chapter_summary, next_chapter_summary | Input for chapter polishing |
+| `ChapterInput` | topic, goal, book_name, audience, book_plan, chapters_overview, chapter_plan, section_plan, chapter_title, section_name, subsections_content (topic names), previous_section_summary, next_section_summary, intro_style | Input for direct section writing (with full planning context) |
 
 ### Output Models
 | Model | Fields | Purpose |
@@ -418,9 +361,7 @@ For each chapter, perform a final polish pass with full planning context:
 | `ChaptersOverview` | narrative_flow, chapter_briefs (list of ChapterBrief) | High-level overview of all chapters for coherence |
 | `AllChapterPlans` | chapter_plans (list of ChapterPlan) | Plans for all chapters (combined) |
 | `ChapterSectionPlans` | chapter_name, section_plans (list of SectionPlan) | Section plans for one chapter |
-| `SectionOutput` | concept_explanation, analogies_and_examples | Generated subsection content |
-| `ChapterOutput` | chapter_content | Rewritten coherent section/chapter content |
-| `PolishedChapter` | chapter_content | Final polished chapter with improved flow and detail |
+| `ChapterOutput` | chapter_content | Section/chapter content from direct write |
 
 ### Planning Models
 | Model | Fields | Purpose |
@@ -461,15 +402,11 @@ output/
     ├── ...
     ├── 02_chapter_plans.json           # All chapter plans combined (JSON)
     ├── 02_section_plans_*.json         # Section plans per chapter
-    ├── 03_subsection_001_*.txt         # Individual subsections (readable)
-    ├── 03_subsection_001_*.json        # Individual subsections (JSON)
-    ├── 03_subsection_002_*.txt
-    ├── ...
-    ├── 04_chapter_001_*.txt            # Rewritten chapters with sections
+    ├── 04_chapter_001_*.txt            # Chapters (direct write)
     ├── 04_chapter_002_*.txt
     ├── ...
-    ├── 05_polished_001_*.txt           # Polished chapters (final quality)
-    ├── 05_polished_002_*.txt
+    ├── 07_styled_001_*.txt             # Styled chapters (if author style configured)
+    ├── 07_styled_002_*.txt
     ├── ...
     ├── book_cover.png                  # Generated book cover image
     ├── 06_full_book.txt                # Final combined book (Markdown)
@@ -513,27 +450,27 @@ Chapter planning uses a two-stage approach:
 
 This combines the benefits of one-shot coherence with per-chapter quality and reliability.
 
-### Why pass full context to each stage?
-Each generator receives the complete planning hierarchy:
-- **Subsection generation**: book plan + chapter plan + section plan
-- **Section plans**: book plan + chapters overview + chapter plan
-- **Section rewriting**: book plan + chapters overview + chapter plan + section plan
-- **Chapter polishing**: book plan + chapters overview + chapter plan
+### Why pass full context to direct write?
+Each section writer receives the complete planning hierarchy:
+- **Direct write**: book plan + chapters overview + chapter plan + section plan + topic names
 
-This allows each stage to:
+This allows the writer to:
 - Understand where the content fits in the book's narrative
 - Avoid repeating content from other parts
 - Write content that flows naturally with adjacent material
 - Maintain consistency with the overall book goals
 - **Maintain comprehensive depth** - knowing what each section should accomplish prevents content condensation
 
-### Why no intro/summary per subsection?
-Introductions and summaries are generated at the section level during rewriting. This ensures:
-- One cohesive introduction per section instead of repetitive per-subsection intros
-- The section rewriter can craft transitions knowing all the subsection content
+### Why direct write instead of subsection generation?
+Instead of generating individual subsections then rewriting them into sections, the direct write approach:
+- Writes sections directly from topic names with full planning context
+- Produces flowing prose in a single pass
+- Uses ~75% fewer API calls (no subsection generation, no rewriting, no polishing)
+- Avoids content condensation that occurred during multi-stage processing
+- The LLM has full context of what depth is expected and can allocate space appropriately
 
 ### Why rotating intro styles at section level?
-Without explicit style guidance, LLMs tend to fall into repetitive patterns (e.g., "Imagine..."). Each section gets a different introduction style from a rotating list of 8 approaches:
+Without explicit style guidance, LLMs tend to fall into repetitive patterns (e.g., "Imagine..."). Each section gets a different introduction style from a rotating list of approaches:
 1. Thought-provoking question
 2. Real-world problem/challenge
 3. Historical context
@@ -542,25 +479,6 @@ Without explicit style guidance, LLMs tend to fall into repetitive patterns (e.g
 6. Practical scenario
 7. Problem space definition
 8. Comparison to familiar concept
-
-### Why section rewriting?
-Individual subsections, while comprehensive, read like separate pieces. The section rewriting pass:
-- Merges subsections into flowing narrative within each section
-- Eliminates redundancy between subsections
-- Adds transitions
-- Creates a professional book section feel
-- Sections are then combined into complete chapters
-
-### Why chapter polishing with full context?
-Even after section rewriting, chapters can feel like assembled pieces rather than unified wholes. The final polish pass receives the full planning context (book plan, chapters overview, chapter plan) and:
-- Uses the broader narrative context to ensure coherence
-- Ensures sections flow together as one cohesive chapter
-- Adds smooth transitions between sections
-- Adds detail where concepts feel thin
-- Removes any remaining redundancy across sections
-- Creates a clear narrative arc for the entire chapter
-- Improves prose to publication-quality
-- References adjacent chapters for continuity
 
 ---
 
@@ -574,8 +492,7 @@ TEST_MAX_CHAPTERS = 2  # Number of chapters to rewrite in test mode
 ```
 
 When `TEST_MODE = True`:
-- Only subsections for the first `TEST_MAX_CHAPTERS` chapters are generated
-- Only those chapters are rewritten
+- Only the first `TEST_MAX_CHAPTERS` chapters are generated
 - A `00_test_mode.txt` file is created in the output directory
 
 Set `TEST_MODE = False` for full book generation.
@@ -598,9 +515,8 @@ When resuming:
 - **Chapters Overview**: Loaded from `02_chapters_overview.json` if it exists
 - **Chapter Plans**: Individual plans loaded from `02_chapter_plan_NN_*.json`, or combined from `02_chapter_plans.json`
 - **Section Plans**: Each chapter's section plans loaded from `02_section_plans_*.json` if exists
-- **Subsections**: Each subsection is skipped if `03_subsection_NNN_*.txt` exists
 - **Chapters**: Each chapter is skipped if `04_chapter_NNN_*.txt` exists
-- **Polished Chapters**: Each polished chapter is skipped if `05_polished_NNN_*.txt` exists
+- **Styled Chapters**: Each styled chapter is skipped if `07_styled_NNN_*.txt` exists
 - Only missing outputs are generated
 
 Set `RESUME_FROM_DIR = None` for a fresh run.
@@ -623,9 +539,9 @@ Set `RESUME_FROM_DIR = None` for a fresh run.
 - Add style parameters to input models as needed
 
 ### Parallel processing
-The current implementation is sequential. For parallel subsection generation:
+The current implementation is sequential. For parallel section writing:
 ```python
-results = await asyncio.gather(*[generate_section(s) for s in sections])
+results = await asyncio.gather(*[write_section(s) for s in sections])
 ```
 
 ---

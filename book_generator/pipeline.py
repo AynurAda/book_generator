@@ -26,8 +26,8 @@ from .utils import (
 )
 from .outline import build_outline_pipeline, reorganize_outline
 from .planning import run_hierarchical_planning
-from .content import generate_all_subsections, rewrite_sections, write_all_sections_direct
-from .polish import polish_chapters
+from .content import write_all_sections_direct
+# from .polish import polish_chapters  # Skipped - direct write produces quality prose
 from .cover import generate_cover
 from .pdf import generate_pdf
 from .authors import get_author_profile, style_all_chapters, generate_about_author
@@ -157,14 +157,6 @@ async def generate_book(config: Config) -> str:
     # Initialize language model
     language_model = synalinks.LanguageModel(model=config.model_name)
 
-    print(f"\n{'='*60}")
-    print(f"Generation mode: {config.generation_mode.upper()}")
-    if config.generation_mode == "direct":
-        print("  (Writing sections directly from topic names - faster)")
-    else:
-        print("  (Generating subsections then rewriting - thorough)")
-    print(f"{'='*60}\n")
-
     # ==========================================================================
     # STAGE 1: OUTLINE GENERATION
     # ==========================================================================
@@ -260,68 +252,25 @@ async def generate_book(config: Config) -> str:
     print(f"{'='*60}\n")
 
     # ==========================================================================
-    # STAGE 3 & 4: CONTENT GENERATION
+    # STAGE 3: CONTENT GENERATION (Direct Write)
     # ==========================================================================
-    if config.generation_mode == "direct":
-        # DIRECT MODE: Write sections directly from topic names (faster)
-        logger.info("Writing sections directly from topic names (direct mode)...")
+    logger.info("Writing sections directly from topic names...")
 
-        rewritten_chapters = await write_all_sections_direct(
-            topic_data, hierarchy, book_plan, chapters_overview, chapter_plans,
-            all_section_plans, language_model, output_dir, config.intro_styles,
-            max_chapters
-        )
-
-        total_sections = sum(len(sections) for sections in hierarchy.values())
-        print(f"\n{'='*60}")
-        print(f"Wrote {len(rewritten_chapters)} chapters directly ({total_sections} sections)")
-        print(f"{'='*60}\n")
-
-    else:
-        # SUBSECTIONS MODE: Generate subsections then rewrite (thorough but slower)
-        logger.info("Generating subsections with hierarchical context...")
-
-        all_generated = await generate_all_subsections(
-            topic_data, book_plan, chapter_plans, all_section_plans, hierarchy,
-            language_model, output_dir, max_chapters
-        )
-
-        total_subsections = sum(
-            len(subs) for sections in all_generated.values() for subs in sections.values()
-        )
-        print(f"\n{'='*60}")
-        print(f"Generated content for {total_subsections} subsections")
-        print(f"{'='*60}\n")
-
-        logger.info("Rewriting subsections into coherent sections...")
-
-        rewritten_chapters = await rewrite_sections(
-            topic_data, all_generated, book_plan, chapters_overview, chapter_plans,
-            all_section_plans, language_model, output_dir, config.intro_styles
-        )
-
-        print(f"\n{'='*60}")
-        print(f"Rewritten {len(rewritten_chapters)} chapters")
-        print(f"{'='*60}\n")
-
-    # ==========================================================================
-    # STAGE 5: CHAPTER POLISHING
-    # ==========================================================================
-    logger.info("Polishing chapters for final cohesion and flow...")
-
-    polished_chapters = await polish_chapters(
-        topic_data, rewritten_chapters, book_plan, chapters_overview, chapter_plans,
-        language_model, output_dir
+    chapters = await write_all_sections_direct(
+        topic_data, hierarchy, book_plan, chapters_overview, chapter_plans,
+        all_section_plans, language_model, output_dir, config.intro_styles,
+        max_chapters
     )
 
+    total_sections = sum(len(sections) for sections in hierarchy.values())
     print(f"\n{'='*60}")
-    print(f"Polished {len(polished_chapters)} chapters")
+    print(f"Wrote {len(chapters)} chapters ({total_sections} sections)")
     print(f"{'='*60}\n")
 
     # ==========================================================================
-    # STAGE 5b: AUTHOR STYLE APPLICATION (Optional)
+    # STAGE 4: AUTHOR STYLE APPLICATION (Optional)
     # ==========================================================================
-    final_chapters = polished_chapters
+    final_chapters = chapters
     writing_style = None
     about_author = ""
 
@@ -331,7 +280,7 @@ async def generate_book(config: Config) -> str:
             logger.info(f"Applying writing style: {writing_style.key}")
 
             final_chapters = await style_all_chapters(
-                polished_chapters, writing_style, language_model, output_dir
+                chapters, writing_style, language_model, output_dir
             )
 
             print(f"\n{'='*60}")

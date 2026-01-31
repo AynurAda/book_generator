@@ -55,11 +55,6 @@ class Config:
     enable_generated_images: bool = True  # Whether to generate AI images (vs just Mermaid)
     image_model: str = "gemini/imagen-3.0-generate-002"  # Model for image generation
 
-    # Content generation mode
-    # "subsections": Generate individual subsections then rewrite (thorough but slow)
-    # "direct": Write sections directly from topic names (faster, fewer API calls)
-    generation_mode: str = "direct"
-
     # Introduction styles for variety (will be shuffled at runtime)
     intro_styles: List[str] = field(default_factory=lambda: [
         # Question-based openings
@@ -159,7 +154,6 @@ class Config:
             enable_illustrations=data.get("enable_illustrations", False),
             enable_generated_images=data.get("enable_generated_images", True),
             image_model=data.get("image_model", "gemini/imagen-3.0-generate-002"),
-            generation_mode=data.get("generation_mode", "direct"),
         )
 
 
