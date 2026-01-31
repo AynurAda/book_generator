@@ -3,10 +3,6 @@ topic: "Memory Systems for AI Agents"
 goal: |
   A comprehensive handbook on modern concepts and architectures for implementing memory in AI agents.
 
-  Cover short-term and long-term memory, RAG architectures, vector databases,
-  knowledge graphs, and advanced patterns like MemGPT and hierarchical memory.
-  Include practical implementation with frameworks like LangChain and LlamaIndex.
-
 book_name: "AI Agent Memory Handbook"
 subtitle: "Modern Architectures for Persistent and Contextual AI"
 authors: "AI Systems Team"
