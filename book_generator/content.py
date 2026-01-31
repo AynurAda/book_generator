@@ -462,11 +462,41 @@ Each topic in the list MUST receive DEEP, THOROUGH treatment. This means:
    - A section with 5 topics should be at least 2500-5000 words
    - This is a COMPREHENSIVE TEXTBOOK, not a summary or overview
 
+=== CRITICAL: EXPLANATION APPROACH ===
+
+Every explanation MUST be:
+
+1. STEP-BY-STEP: Break down complex ideas into sequential, logical steps
+   - Start from first principles
+   - Build understanding incrementally
+   - Show how each step leads to the next
+   - Make the reasoning process explicit
+
+2. SELF-CONTAINED: Each section should stand on its own
+   - Define ALL terms when first used - do not assume prior knowledge
+   - Include necessary background within the explanation
+   - A reader should understand this section without reading previous chapters
+   - Re-explain foundational concepts briefly if needed
+
+3. NO ASSUMED PRIOR KNOWLEDGE:
+   - Explain jargon and technical terms immediately upon use
+   - Do not skip "obvious" steps - what's obvious to experts isn't to learners
+   - Build from ground zero for each concept
+   - Include the "why" behind every "what"
+
+4. IN-DEPTH, NOT SURFACE-LEVEL:
+   - Go beyond definitions to true understanding
+   - Explain the intuition behind formal concepts
+   - Show how things work internally, not just what they do
+   - Address "how" and "why" questions a curious reader would ask
+
 DO NOT:
 - Mention a topic in 1-2 sentences and move on
 - Write a "survey" that superficially touches each topic
 - Sacrifice depth for brevity
 - Assume the reader already knows these concepts
+- Use jargon without immediate explanation
+- Skip steps because they seem "obvious"
 
 Your section should:
 1. Begin with the specified introduction style
