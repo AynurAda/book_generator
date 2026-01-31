@@ -1,0 +1,29 @@
+# Neurosymbolic AI for Finance & Investing
+topic: "Neurosymbolic AI for Finance and Investing"
+goal: |
+  A comprehensive handbook on applying neurosymbolic AI to finance and investing.
+
+  Cover modern models (e.g., AlphaGeometry) and frameworks (e.g., SymbolicAI, Synalinks).
+  Focus on practical applications in quantitative finance, with emphasis on
+  interpretability and regulatory compliance unique to financial domains.
+
+book_name: "Neurosymbolic AI for Finance"
+subtitle: "Combining Neural Learning with Symbolic Reasoning for Intelligent Investing"
+authors: "Quantitative AI Team"
+audience: "Quantitative analysts, financial engineers, and fintech developers who want to build interpretable, compliant AI systems for financial applications"
+
+# Generation settings
+test_mode: false
+test_max_chapters: 2
+resume_from_dir: null
+
+# Model settings
+model_name: "gemini/gemini-3-flash-preview"
+
+# Writing style
+author_key: "waitbutwhy"
+
+# Illustration settings
+enable_illustrations: true
+enable_generated_images: true
+image_model: "gemini/gemini-3-pro-image-preview"
