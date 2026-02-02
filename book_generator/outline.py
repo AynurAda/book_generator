@@ -23,6 +23,8 @@ from .models import (
     CoverageCheckInput,
     CoverageAssessment,
     MissingConceptsAddition,
+    ChapterPrioritizationInput,
+    PrioritizedChapters,
 )
 from .utils import build_outline_text
 
@@ -491,3 +493,171 @@ IMPORTANT:
         reasoning = result_dict.get("reasoning", "Current order is optimal")
         logger.info(f"Keeping original order: {reasoning}")
         return outline_results, False, reasoning, result_dict
+
+
+def outline_needs_subsubconcepts(outline: dict) -> bool:
+    """Check if the outline is missing subsubconcepts."""
+    for concept in outline.get("concepts", []):
+        for subconcept in concept.get("subconcepts", []):
+            if subconcept.get("subsubconcepts"):
+                return False  # At least one has content
+    return True  # All empty
+
+
+async def generate_subsubconcepts(
+    topic_data: dict,
+    outline: dict,
+    language_model
+) -> dict:
+    """
+    Generate subsubconcepts for an outline that doesn't have them.
+
+    This is used when a default outline is provided with only
+    concepts and subconcepts.
+
+    Args:
+        topic_data: Dict with topic, goal, book_name
+        outline: The outline with concepts and subconcepts
+        language_model: The LLM to use
+
+    Returns:
+        The outline with subsubconcepts populated
+    """
+    logger.info("Generating subsubconcepts for outline...")
+
+    topic_input = Topic(
+        topic=topic_data["topic"],
+        goal=topic_data["goal"],
+        book_name=topic_data["book_name"]
+    )
+
+    # Convert outline to HierarchicalConcepts format for the generator
+    hierarchical_concepts = []
+    for concept_data in outline.get("concepts", []):
+        hierarchical_concepts.append(ConceptWithSubconcepts(
+            concept=concept_data.get("concept", ""),
+            subconcepts=[s.get("subconcept", "") for s in concept_data.get("subconcepts", [])],
+            thinking=["Expanding subconcepts to subsubconcepts"]
+        ))
+
+    hierarchy_input = HierarchicalConcepts(
+        thinking=["Generating subsubconcepts for provided outline"],
+        concepts=hierarchical_concepts
+    )
+
+    # Generate sub-subconcepts
+    deep_gen = synalinks.Generator(
+        data_model=DeepHierarchy,
+        instructions="""For each subconcept provided, generate 3-5 specific sub-subconcepts that would be covered in that section.
+
+Sub-subconcepts should be:
+- Specific enough to be a single topic/concept
+- Comprehensive coverage of the subconcept
+- Logically ordered (foundational before advanced)
+- Relevant to the book's topic and goal""",
+        language_model=language_model,
+        temperature=1.0
+    )
+    deep = await deep_gen(topic_input & hierarchy_input)
+
+    # Verify relevance
+    verify_gen = synalinks.Generator(
+        data_model=DeepHierarchy,
+        instructions="Verify each sub-subconcept is relevant to the book topic and goal. Remove off-topic items.",
+        language_model=language_model,
+        temperature=1.0
+    )
+    result = await verify_gen(topic_input & deep)
+
+    logger.info("Subsubconcepts generated successfully")
+    return result.get_json()
+
+
+async def prioritize_chapters(
+    topic_data: dict,
+    outline: dict,
+    num_chapters: int,
+    focus: str,
+    language_model
+) -> dict:
+    """
+    Select the most important chapters based on goal, audience, and focus.
+
+    Args:
+        topic_data: Dict with topic, goal, book_name, audience
+        outline: The full outline with all chapters
+        num_chapters: Number of chapters to select
+        focus: Specific focus areas to prioritize
+        language_model: The LLM to use
+
+    Returns:
+        Filtered outline with only the selected chapters
+    """
+    logger.info(f"Prioritizing {num_chapters} chapters from {len(outline.get('concepts', []))} available...")
+
+    # Build chapter descriptions
+    chapters_text = []
+    for i, concept in enumerate(outline.get("concepts", []), 1):
+        concept_name = concept.get("concept", "Unknown")
+        subconcepts = [s.get("subconcept", "") for s in concept.get("subconcepts", [])]
+        subconcepts_str = ", ".join(subconcepts[:5])  # First 5 for brevity
+        if len(subconcepts) > 5:
+            subconcepts_str += f", ... ({len(subconcepts)} total)"
+        chapters_text.append(f"{i}. {concept_name}\n   Sections: {subconcepts_str}")
+
+    available_chapters = "\n".join(chapters_text)
+
+    input_data = ChapterPrioritizationInput(
+        topic=topic_data["topic"],
+        goal=topic_data["goal"],
+        audience=topic_data.get("audience", "technical readers"),
+        focus=focus or "general coverage",
+        num_chapters=num_chapters,
+        available_chapters=available_chapters
+    )
+
+    generator = synalinks.Generator(
+        data_model=PrioritizedChapters,
+        language_model=language_model,
+        temperature=0.7,
+        instructions=f"""Select exactly {num_chapters} chapters that are MOST important for the given goal, audience, and focus.
+
+FOCUS AREAS: {focus}
+
+Prioritization criteria:
+1. RELEVANCE TO FOCUS: Chapters directly related to the focus areas are highest priority
+2. FOUNDATIONAL VALUE: Include essential prerequisites for understanding the focus
+3. PRACTICAL VALUE: Prefer chapters with practical applications for the audience
+4. COHERENCE: Selected chapters should form a coherent learning path
+
+IMPORTANT:
+- Return exactly {num_chapters} chapter indices
+- Use 1-based indexing (first chapter is 1)
+- Order them by importance (most important first)
+- Ensure the selection covers the focus areas comprehensively"""
+    )
+
+    result = await generator(input_data)
+    result_dict = result.get_json()
+
+    selected_indices = result_dict.get("selected_indices", [])
+
+    # Validate indices
+    concepts_list = outline.get("concepts", [])
+    valid_indices = [i for i in selected_indices if 1 <= i <= len(concepts_list)]
+
+    if len(valid_indices) != num_chapters:
+        logger.warning(f"Got {len(valid_indices)} valid indices, expected {num_chapters}. Using what we have.")
+
+    # Build filtered outline
+    selected_concepts = [concepts_list[i - 1] for i in valid_indices]
+
+    # Log selection reasoning
+    reasoning = result_dict.get("reasoning_per_chapter", [])
+    logger.info(f"Selected {len(selected_concepts)} chapters:")
+    for i, idx in enumerate(valid_indices):
+        concept_name = concepts_list[idx - 1].get("concept", "Unknown")
+        reason = reasoning[i] if i < len(reasoning) else "No reason provided"
+        logger.info(f"  {i+1}. {concept_name} - {reason}")
+
+    return {"concepts": selected_concepts}

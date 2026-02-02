@@ -44,6 +44,15 @@ class Config:
     # Interactive approval
     interactive_outline_approval: bool = True  # Prompt user to approve outline before continuing
 
+    # Default outline (optional) - if provided, skip outline generation
+    default_outline: Optional[dict] = None
+
+    # Chapter limit (optional) - if provided, select most important chapters
+    num_chapters: Optional[int] = None
+
+    # Focus areas (optional) - guides chapter selection when num_chapters is set
+    focus: Optional[str] = None
+
     # Output directory (set during runtime)
     output_dir: Optional[str] = None
 
@@ -142,6 +151,11 @@ class Config:
     @classmethod
     def from_dict(cls, data: dict) -> "Config":
         """Create config from dictionary."""
+        # Parse default_outline if provided
+        default_outline = None
+        if "default_outline" in data:
+            default_outline = cls._parse_outline(data["default_outline"])
+
         return cls(
             topic=data.get("topic", ""),
             goal=data.get("goal", ""),
@@ -153,12 +167,45 @@ class Config:
             test_max_chapters=data.get("test_max_chapters", 2),
             resume_from_dir=data.get("resume_from_dir"),
             interactive_outline_approval=data.get("interactive_outline_approval", True),
+            default_outline=default_outline,
+            num_chapters=data.get("num_chapters"),
+            focus=data.get("focus"),
             model_name=data.get("model_name", "gemini/gemini-3-flash-preview"),
             author_key=data.get("author_key"),
             enable_illustrations=data.get("enable_illustrations", False),
             enable_generated_images=data.get("enable_generated_images", True),
             image_model=data.get("image_model", "gemini/imagen-3.0-generate-002"),
         )
+
+    @staticmethod
+    def _parse_outline(outline_data: list) -> dict:
+        """Parse outline from YAML format to DeepHierarchy format.
+
+        YAML format:
+        - concept: "Chapter Name"
+          subconcepts:
+            - subconcept: "Section Name"
+              subsubconcepts:
+                - "Subsection 1"
+                - "Subsection 2"
+
+        Returns dict in DeepHierarchy format:
+        {"concepts": [{"concept": "...", "subconcepts": [...]}]}
+        """
+        concepts = []
+        for chapter in outline_data:
+            concept_entry = {
+                "concept": chapter.get("concept", ""),
+                "subconcepts": []
+            }
+            for section in chapter.get("subconcepts", []):
+                subconcept_entry = {
+                    "subconcept": section.get("subconcept", ""),
+                    "subsubconcepts": section.get("subsubconcepts", [])
+                }
+                concept_entry["subconcepts"].append(subconcept_entry)
+            concepts.append(concept_entry)
+        return {"concepts": concepts}
 
 
 # Default configuration instance

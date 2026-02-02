@@ -184,6 +184,29 @@ class MissingConceptsAddition(synalinks.DataModel):
     )
 
 
+class ChapterPrioritizationInput(synalinks.DataModel):
+    """Input for selecting the most important chapters."""
+    topic: str = synalinks.Field(description="The main topic of the book")
+    goal: str = synalinks.Field(description="The goal of the book")
+    audience: str = synalinks.Field(description="The target audience")
+    focus: str = synalinks.Field(description="Specific focus areas to prioritize")
+    num_chapters: int = synalinks.Field(description="Number of chapters to select")
+    available_chapters: str = synalinks.Field(description="List of all available chapters with descriptions")
+
+
+class PrioritizedChapters(synalinks.DataModel):
+    """Result of chapter prioritization."""
+    thinking: list[str] = synalinks.Field(
+        description="Step by step reasoning about which chapters are most important for the goal, audience, and focus"
+    )
+    selected_indices: list[int] = synalinks.Field(
+        description="1-based indices of selected chapters in order of importance"
+    )
+    reasoning_per_chapter: list[str] = synalinks.Field(
+        description="Brief explanation for why each selected chapter is important"
+    )
+
+
 class EnrichmentAdditions(synalinks.DataModel):
     """New concepts identified as missing from the initial extraction."""
     thinking: list[str] = synalinks.Field(

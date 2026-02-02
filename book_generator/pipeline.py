@@ -8,8 +8,11 @@ outline creation to final PDF assembly.
 import os
 import json
 import logging
+import subprocess
+import tempfile
 from typing import Optional
 
+import yaml
 import synalinks
 
 from .config import Config
@@ -24,7 +27,14 @@ from .utils import (
     save_json_to_file,
     get_chapter_names,
 )
-from .outline import build_outline_pipeline, reorganize_outline, generate_outline_with_coverage
+from .outline import (
+    build_outline_pipeline,
+    reorganize_outline,
+    generate_outline_with_coverage,
+    outline_needs_subsubconcepts,
+    generate_subsubconcepts,
+    prioritize_chapters,
+)
 from .planning import run_hierarchical_planning
 from .content import write_all_sections_direct
 from .cover import generate_cover
@@ -33,6 +43,119 @@ from .authors import get_author_profile, generate_about_author
 from .illustrations import illustrate_all_chapters
 
 logger = logging.getLogger(__name__)
+
+
+def outline_to_editable_yaml(results: dict) -> str:
+    """Convert outline to a simple YAML format for editing.
+
+    Format:
+    - Chapter Name:
+        - Section 1
+        - Section 2
+    """
+    lines = ["# Edit this outline. Delete lines to remove, add new lines to add."]
+    lines.append("# Format: '- Chapter:' followed by indented '  - Section' lines")
+    lines.append("# Subsubconcepts are auto-generated, you only edit chapters and sections.")
+    lines.append("")
+
+    for concept_data in results.get("concepts", []):
+        concept_name = concept_data.get("concept", "Unknown")
+        lines.append(f"- {concept_name}:")
+        for subconcept_data in concept_data.get("subconcepts", []):
+            subconcept_name = subconcept_data.get("subconcept", "Unknown")
+            lines.append(f"    - {subconcept_name}")
+        lines.append("")
+
+    return "\n".join(lines)
+
+
+def parse_edited_yaml(content: str) -> dict:
+    """Parse edited YAML back to outline format.
+
+    Returns dict in DeepHierarchy format.
+    """
+    concepts = []
+    current_concept = None
+
+    for line in content.split("\n"):
+        line = line.rstrip()
+
+        # Skip comments and empty lines
+        if not line or line.startswith("#"):
+            continue
+
+        # Check for chapter (concept) line: "- Chapter Name:"
+        if line.startswith("- ") and line.endswith(":"):
+            if current_concept:
+                concepts.append(current_concept)
+            concept_name = line[2:-1].strip()
+            current_concept = {
+                "concept": concept_name,
+                "subconcepts": []
+            }
+        # Check for section (subconcept) line: "    - Section Name"
+        elif line.strip().startswith("- ") and current_concept:
+            subconcept_name = line.strip()[2:].strip()
+            current_concept["subconcepts"].append({
+                "subconcept": subconcept_name,
+                "subsubconcepts": []
+            })
+
+    # Don't forget the last concept
+    if current_concept:
+        concepts.append(current_concept)
+
+    return {"concepts": concepts}
+
+
+def edit_outline_interactive(results: dict, output_dir: str) -> dict:
+    """Open outline in editor for user to modify.
+
+    Returns the edited outline dict.
+    """
+    # Convert to editable format
+    editable_content = outline_to_editable_yaml(results)
+
+    # Create temp file
+    edit_file = os.path.join(output_dir, "01_outline_edit.yaml")
+    with open(edit_file, "w") as f:
+        f.write(editable_content)
+
+    # Get editor from environment
+    editor = os.environ.get("EDITOR", "nano")
+
+    print(f"\nOpening outline in {editor}...")
+    print("Edit the outline, save, and close the editor to continue.")
+    print(f"File: {edit_file}\n")
+
+    # Open editor
+    try:
+        subprocess.run([editor, edit_file], check=True)
+    except FileNotFoundError:
+        # Try common editors
+        for alt_editor in ["nano", "vim", "vi"]:
+            try:
+                subprocess.run([alt_editor, edit_file], check=True)
+                break
+            except FileNotFoundError:
+                continue
+        else:
+            print(f"ERROR: Could not find an editor. Please edit {edit_file} manually and press Enter.")
+            input("Press Enter when done editing...")
+
+    # Read edited content
+    with open(edit_file, "r") as f:
+        edited_content = f.read()
+
+    # Parse back to outline format
+    edited_results = parse_edited_yaml(edited_content)
+
+    # Validate
+    if not edited_results.get("concepts"):
+        print("WARNING: No valid chapters found in edited outline. Keeping original.")
+        return results
+
+    return edited_results
 
 
 async def generate_introduction(
@@ -161,7 +284,13 @@ async def generate_book(config: Config) -> str:
     logger.info("Starting outline generation...")
 
     results = None
-    if config.resume_from_dir and output_exists(output_dir, "01_outline.json"):
+
+    # Check for default outline in config first
+    if config.default_outline:
+        results = config.default_outline
+        logger.info("Using default outline from config")
+        save_json_to_file(output_dir, "01_outline.json", results)
+    elif config.resume_from_dir and output_exists(output_dir, "01_outline.json"):
         results = load_json_from_file(output_dir, "01_outline.json")
         if results:
             logger.info("Loaded existing outline from file")
@@ -177,8 +306,9 @@ async def generate_book(config: Config) -> str:
 
     # Display outline
     concepts_list = results.get("concepts", [])
+    outline_source = "default" if config.default_outline else "generated"
     print(f"\n{'='*60}")
-    print(f"Generated {len(concepts_list)} main concepts (3-level hierarchy):")
+    print(f"Outline ({outline_source}): {len(concepts_list)} main concepts")
     print(f"{'='*60}\n")
 
     for i, concept_data in enumerate(concepts_list, 1):
@@ -198,11 +328,30 @@ async def generate_book(config: Config) -> str:
             print(f"{'='*60}")
             print("OUTLINE APPROVAL")
             print(f"{'='*60}")
-            user_input = input("Approve this outline? [y]es / [r]egenerate / [q]uit: ").strip().lower()
+            user_input = input("[y]es / [e]dit / [r]egenerate / [q]uit: ").strip().lower()
 
             if user_input in ('y', 'yes', ''):
                 print("Outline approved. Continuing...")
                 break
+            elif user_input in ('e', 'edit'):
+                # Open in editor for manual editing
+                results = edit_outline_interactive(results, output_dir)
+                save_json_to_file(output_dir, "01_outline.json", results)
+                save_to_file(output_dir, "01_outline.txt", build_outline_text(results))
+
+                # Display edited outline
+                concepts_list = results.get("concepts", [])
+                print(f"\n{'='*60}")
+                print(f"Edited outline: {len(concepts_list)} chapters")
+                print(f"{'='*60}\n")
+                for i, concept_data in enumerate(concepts_list, 1):
+                    concept_name = concept_data.get("concept", "Unknown")
+                    subconcepts = concept_data.get("subconcepts", [])
+                    print(f"{i}. {concept_name}")
+                    for j, subconcept_data in enumerate(subconcepts, 1):
+                        subconcept_name = subconcept_data.get("subconcept", "Unknown")
+                        print(f"   {i}.{j} {subconcept_name}")
+                    print()
             elif user_input in ('r', 'regenerate'):
                 print("\nRegenerating outline (with coverage check)...")
                 results = await generate_outline_with_coverage(topic_data, language_model)
@@ -226,7 +375,58 @@ async def generate_book(config: Config) -> str:
                 print("Generation cancelled by user.")
                 return None
             else:
-                print("Invalid input. Please enter 'y', 'r', or 'q'.")
+                print("Invalid input. Please enter 'y', 'e', 'r', or 'q'.")
+
+    # ==========================================================================
+    # STAGE 1a2: CHAPTER PRIORITIZATION (if num_chapters is set)
+    # ==========================================================================
+    if config.num_chapters and len(results.get("concepts", [])) > config.num_chapters:
+        print(f"\n{'='*60}")
+        print(f"Selecting {config.num_chapters} most important chapters...")
+        if config.focus:
+            print(f"Focus: {config.focus}")
+        print(f"{'='*60}\n")
+
+        results = await prioritize_chapters(
+            topic_data,
+            results,
+            config.num_chapters,
+            config.focus,
+            language_model
+        )
+
+        # Save prioritized outline
+        save_json_to_file(output_dir, "01_outline_prioritized.json", results)
+        save_to_file(output_dir, "01_outline_prioritized.txt", build_outline_text(results))
+
+        # Display selected chapters
+        concepts_list = results.get("concepts", [])
+        print(f"Selected {len(concepts_list)} chapters:")
+        for i, concept_data in enumerate(concepts_list, 1):
+            concept_name = concept_data.get("concept", "Unknown")
+            print(f"  {i}. {concept_name}")
+        print()
+
+    # ==========================================================================
+    # STAGE 1a3: GENERATE SUBSUBCONCEPTS IF MISSING
+    # ==========================================================================
+    if outline_needs_subsubconcepts(results):
+        logger.info("Outline missing subsubconcepts, generating...")
+        print(f"\n{'='*60}")
+        print("Generating detailed subsections for each section...")
+        print(f"{'='*60}\n")
+
+        results = await generate_subsubconcepts(topic_data, results, language_model)
+        save_json_to_file(output_dir, "01_outline.json", results)
+        save_to_file(output_dir, "01_outline.txt", build_outline_text(results))
+
+        # Count subsubconcepts
+        total_subsections = sum(
+            len(sub.get("subsubconcepts", []))
+            for concept in results.get("concepts", [])
+            for sub in concept.get("subconcepts", [])
+        )
+        print(f"Generated {total_subsections} subsections across all sections")
 
     # ==========================================================================
     # STAGE 1b: OUTLINE REORGANIZATION
