@@ -5,7 +5,7 @@
 **Tagline**: "Synthesize any field. Through the lens of yours."
 
 **What We Do**:
-We synthesize scattered knowledge — papers, blogs, videos, podcasts, documentation — into a coherent, structured book written entirely through the lens of YOUR domain.
+We synthesize scattered knowledge — papers, blogs, videos, podcasts, documentation — into a coherent, structured book tailored to YOUR domain, YOUR goals, YOUR background, and YOUR interests.
 
 **The Synthesis Problem**:
 Knowledge exists. Understanding doesn't come pre-packaged.
@@ -23,32 +23,45 @@ We take fragmented knowledge and forge it into a unified, coherent book — one 
 
 ---
 
-## The Core Insight: Domain-Native Learning
+## The Core Insight: A Book Written For You
 
-This is not "a book with some applied chapters at the end."
+This is not "a generic book with some personalization."
 
-This is **every chapter, every example, every explanation** written through the lens of your domain.
+This is a book synthesized for **your specific situation**:
 
-**Generic book on Neuro-symbolic AI:**
+| Dimension | How It Shapes Your Book |
+|-----------|------------------------|
+| **Your Domain** | Every example, every case study drawn from YOUR professional world |
+| **Your Goal** | Content structured around what you want to BE ABLE TO DO |
+| **Your Background** | Depth calibrated to what you already know (skip basics, go deep where needed) |
+| **Your Focus** | Emphasis on the aspects that matter most to YOU |
+
+**A generic book on Neuro-symbolic AI:**
 ```
 Chapter 5: Knowledge Graph Fundamentals
 - Nodes represent entities
 - Edges represent relationships
 - Example: A social network graph with users and friendships
 - Example: A movie database with actors and films
+- Assumes you're starting from zero
+- Covers everything equally
 ```
 
-**Your book — "Neuro-symbolic AI for Enterprise Agent Builders":**
+**YOUR book — tailored to your situation:**
 ```
-Chapter 5: Knowledge Graphs for Enterprise Systems
-- Nodes represent business entities (customers, products, policies)
-- Edges represent business relationships (owns, governs, requires)
-- Example: Modeling SAP hierarchies as knowledge graphs
-- Example: Representing compliance rules as queryable graph structures
-- Code: Building an enterprise ontology with LangChain + Neo4j
+You: ML engineer wanting to build enterprise AI agents,
+     focusing on RAG and agentic reasoning
+
+Chapter 5: Knowledge Graphs for Enterprise Reasoning
+- Nodes as business entities (you know what nodes are — we skip basics)
+- Deep dive: Modeling enterprise workflows as queryable graphs
+- Example: SAP hierarchies as knowledge graphs (YOUR domain)
+- Example: Compliance rules as graph constraints (YOUR domain)
+- Code: LangChain + Neo4j patterns for agent memory (YOUR goal)
+- Emphasis on retrieval patterns (YOUR focus area)
 ```
 
-**Same concepts. Your language. Your examples. Your world.**
+**Same field. YOUR lens. YOUR depth. YOUR priorities.**
 
 ---
 
@@ -57,17 +70,19 @@ Chapter 5: Knowledge Graphs for Enterprise Systems
 Synthesis is NOT:
 - ❌ Summarization (making things shorter)
 - ❌ Aggregation (piling things together)
-- ❌ Translation (changing languages)
-- ❌ AI-generated content (hallucinated text)
+- ❌ One-size-fits-all (same book for everyone)
+- ❌ AI-generated filler (hallucinated text)
 
 Synthesis IS:
 - ✅ **Integration**: Connecting ideas from multiple sources into coherent whole
-- ✅ **Structuring**: Organizing fragmented knowledge into learnable progression
-- ✅ **Contextualization**: Grounding abstract concepts in YOUR concrete domain
-- ✅ **Mental Model Building**: Creating frameworks you can think with
+- ✅ **Structuring**: Organizing fragmented knowledge into YOUR learning progression
+- ✅ **Calibration**: Adjusting depth based on what YOU already know
+- ✅ **Contextualization**: Every concept grounded in YOUR domain, YOUR goals
+- ✅ **Prioritization**: Emphasizing what matters to YOU, not equal coverage of everything
+- ✅ **Mental Model Building**: Creating frameworks YOU can think and work with
 
-> "Synthesis is the art of making the implicit connections explicit,
-> and making abstract knowledge concrete in YOUR context."
+> "Synthesis is the art of taking everything out there
+> and forging it into the specific book YOU need."
 
 ---
 
@@ -107,11 +122,11 @@ Synthesis IS:
 │  │ Neuro-symbolic AI                                       │   │
 │  └─────────────────────────────────────────────────────────┘   │
 │                                                                 │
-│  Domain Lens: Through what professional lens?                   │
+│  Your Domain: What's your professional context?                 │
 │  ┌─────────────────────────────────────────────────────────┐   │
 │  │ Building enterprise AI agents                           │   │
 │  └─────────────────────────────────────────────────────────┘   │
-│  💡 Every chapter will use examples from YOUR domain            │
+│  💡 Every example and case study will be from YOUR world        │
 │                                                                 │
 │  Goal: What do you want to be able to DO?                       │
 │  ┌─────────────────────────────────────────────────────────┐   │
@@ -123,6 +138,7 @@ Synthesis IS:
 │  ┌─────────────────────────────────────────────────────────┐   │
 │  │ ML engineer, familiar with transformers and Python      │   │
 │  └─────────────────────────────────────────────────────────┘   │
+│  💡 We'll skip what you know, go deep where you need it         │
 │                                                                 │
 │                    [Generate Outline →]                         │
 └─────────────────────────────────────────────────────────────────┘
@@ -232,8 +248,8 @@ The outline is YOURS to shape:
 | **Masterwork** | 25+ chapters, ~350 pages, exhaustive synthesis with advanced topics | $199 |
 
 All tiers include:
-- ✅ Full domain adaptation (every chapter, every example)
-- ✅ Outline editing before generation
+- ✅ Fully personalized to your domain, goals, background, and focus
+- ✅ Outline review and editing before generation
 - ✅ PDF + Markdown download
 - ✅ One free regeneration
 
@@ -253,10 +269,10 @@ All tiers include:
 
 **Category**: Knowledge Synthesis Platform
 
-**One-liner**: "We synthesize scattered knowledge into coherent books tailored to your domain."
+**One-liner**: "We synthesize scattered knowledge into the specific book you need — tailored to your domain, goals, and background."
 
 **Elevator Pitch**:
-> "You know that feeling when you've read dozens of papers and blog posts but still can't explain a field coherently? We solve that. We synthesize fragmented knowledge — papers, blogs, videos, documentation — into a structured book written entirely through the lens of YOUR professional domain. Every example, every explanation, speaks your language."
+> "You know that feeling when you've read dozens of papers and blog posts but still can't explain a field coherently? And the books that exist assume you're someone else — wrong background, wrong goals, wrong domain? We solve that. We synthesize fragmented knowledge into a book written specifically for YOU — your domain, your goals, what you already know, what you care about. Not a generic book. YOUR book."
 
 ### Positioning Against Alternatives
 
@@ -286,29 +302,35 @@ All tiers include:
 ### Hero Messages
 
 **Primary:**
-> "Synthesize any field. Through the lens of yours."
+> "Synthesize any field. Tailored to you."
 
 **Supporting:**
 > "The book that doesn't exist — until you need it."
 
-> "From scattered papers to coherent understanding."
+> "Your domain. Your goals. Your background. Your book."
 
-> "Stop drowning in information. Start building mental models."
+> "From scattered papers to coherent understanding — calibrated to YOU."
 
-> "Every field, explained in YOUR professional language."
+> "Stop reading books written for someone else."
 
-> "We read everything. You get the synthesis."
+> "We synthesize everything out there into the specific book you need."
+
+> "Not a generic book. YOUR book."
 
 ### Social Proof Angles
 
-> "I needed to understand knowledge graphs for legal tech.
-> I'd read 30 papers. Still couldn't connect the dots.
-> This gave me the mental model I was missing — in my language."
+> "Every ML book assumed I was a researcher. I'm a startup founder.
+> This gave me knowledge graphs explained for MY context —
+> with examples from MY domain and the depth I actually needed."
 > — Legal Tech Founder
 
+> "I already knew the basics. Most books waste my time on introductions.
+> This one knew my background and went straight to what I needed."
+> — Senior ML Engineer
+
 > "As an investor, I need to go deep fast.
-> This synthesized 6 months of research into a weekend read.
-> Every example was from my world."
+> This synthesized 6 months of research into a weekend read —
+> calibrated to what I already knew, focused on what I cared about."
 > — Deep Tech VC
 
 ---
