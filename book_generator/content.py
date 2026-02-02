@@ -459,10 +459,11 @@ async def write_section_with_subsections(
     logger.info(f"Writing section: {section_name} ({len(subsection_names)} subsections)")
 
     section_plan_text = format_section_plan(section_plan) if section_plan else "No specific plan"
-    quality_feedback = ""  # Will be populated if rewrite needed
-    max_attempts = 2
+    quality_feedback = ""
+    attempt = 0
+    max_attempts = 5  # Safety limit
 
-    for attempt in range(max_attempts):
+    while attempt < max_attempts:
         # Generate section introduction (only on first attempt)
         if attempt == 0:
             section_intro = await generate_section_intro(
@@ -482,7 +483,7 @@ async def write_section_with_subsections(
             if attempt == 0:
                 logger.info(f"  Generating subsection {i+1}/{len(subsection_names)}: {subsection_name}")
             else:
-                logger.info(f"  Regenerating subsection {i+1}/{len(subsection_names)}: {subsection_name}")
+                logger.info(f"  Regenerating subsection {i+1}/{len(subsection_names)}: {subsection_name} (attempt {attempt + 1})")
 
             opening_approach = intro_styles[style_idx % len(intro_styles)]
             style_idx += 1
@@ -520,27 +521,30 @@ async def write_section_with_subsections(
         # Assemble section
         section_content = _assemble_section(section_intro, subsection_contents)
 
-        # Quality check (skip on last attempt)
-        if attempt < max_attempts - 1:
-            passed, feedback = await check_section_quality(
-                section_content=section_content,
-                section_name=section_name,
-                section_plan=section_plan_text,
-                audience=topic_data.get("audience", "technical readers"),
-                language_model=language_model,
-            )
+        # Quality check
+        passed, feedback = await check_section_quality(
+            section_content=section_content,
+            section_name=section_name,
+            section_plan=section_plan_text,
+            audience=topic_data.get("audience", "technical readers"),
+            language_model=language_model,
+        )
 
-            if passed:
-                logger.info(f"  Quality check: PASSED for {section_name}")
+        if passed:
+            logger.info(f"  Quality check: PASSED for {section_name}")
+            break
+        else:
+            attempt += 1
+            if attempt >= max_attempts:
+                logger.warning(f"  Quality check: MAX ATTEMPTS reached for {section_name}, using last version")
                 break
-            else:
-                logger.info(f"  Quality check: NEEDS IMPROVEMENT for {section_name}")
-                logger.info(f"    Feedback: {feedback[:200]}...")
-                quality_feedback = feedback
-                # Save QC feedback
-                if output_dir:
-                    qc_filename = f"03_qc_{section_num:03d}_{safe_section}.txt"
-                    save_to_file(output_dir, qc_filename, f"Feedback: {feedback}")
+            logger.info(f"  Quality check: NEEDS IMPROVEMENT for {section_name} (will retry)")
+            logger.info(f"    Feedback: {feedback[:200]}...")
+            quality_feedback = feedback
+            # Save QC feedback
+            if output_dir:
+                qc_filename = f"03_qc_{section_num:03d}_{safe_section}.txt"
+                save_to_file(output_dir, qc_filename, f"Attempt {attempt}\nFeedback: {feedback}")
 
     # Save the final section
     if output_dir:

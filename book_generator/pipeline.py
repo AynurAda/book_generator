@@ -197,6 +197,51 @@ async def generate_book(config: Config) -> str:
         print()
 
     # ==========================================================================
+    # STAGE 1a: OUTLINE APPROVAL (interactive)
+    # ==========================================================================
+    if config.interactive_outline_approval and not config.resume_from_dir:
+        while True:
+            print(f"{'='*60}")
+            print("OUTLINE APPROVAL")
+            print(f"{'='*60}")
+            user_input = input("Approve this outline? [y]es / [r]egenerate / [q]uit: ").strip().lower()
+
+            if user_input in ('y', 'yes', ''):
+                print("Outline approved. Continuing...")
+                break
+            elif user_input in ('r', 'regenerate'):
+                print("\nRegenerating outline...")
+                outline_program = await build_outline_pipeline(language_model)
+                topic_input = Topic(
+                    topic=topic_data["topic"],
+                    goal=topic_data["goal"],
+                    book_name=topic_data["book_name"]
+                )
+                results = await outline_program(topic_input)
+                save_json_to_file(output_dir, "01_outline.json", results.get_json())
+                results = results.get_json()
+                save_to_file(output_dir, "01_outline.txt", build_outline_text(results))
+
+                # Display new outline
+                concepts_list = results.get("concepts", [])
+                print(f"\n{'='*60}")
+                print(f"Regenerated {len(concepts_list)} main concepts:")
+                print(f"{'='*60}\n")
+                for i, concept_data in enumerate(concepts_list, 1):
+                    concept_name = concept_data.get("concept", "Unknown")
+                    subconcepts = concept_data.get("subconcepts", [])
+                    print(f"{i}. {concept_name}")
+                    for j, subconcept_data in enumerate(subconcepts, 1):
+                        subconcept_name = subconcept_data.get("subconcept", "Unknown")
+                        print(f"   {i}.{j} {subconcept_name}")
+                    print()
+            elif user_input in ('q', 'quit'):
+                print("Generation cancelled by user.")
+                return None
+            else:
+                print("Invalid input. Please enter 'y', 'r', or 'q'.")
+
+    # ==========================================================================
     # STAGE 1b: OUTLINE REORGANIZATION
     # ==========================================================================
     was_reorganized = False

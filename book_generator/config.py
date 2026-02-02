@@ -41,6 +41,9 @@ class Config:
     # Resume settings
     resume_from_dir: Optional[str] = None
 
+    # Interactive approval
+    interactive_outline_approval: bool = True  # Prompt user to approve outline before continuing
+
     # Output directory (set during runtime)
     output_dir: Optional[str] = None
 
@@ -149,6 +152,7 @@ class Config:
             test_mode=data.get("test_mode", False),
             test_max_chapters=data.get("test_max_chapters", 2),
             resume_from_dir=data.get("resume_from_dir"),
+            interactive_outline_approval=data.get("interactive_outline_approval", True),
             model_name=data.get("model_name", "gemini/gemini-3-flash-preview"),
             author_key=data.get("author_key"),
             enable_illustrations=data.get("enable_illustrations", False),
