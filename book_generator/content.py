@@ -18,6 +18,7 @@ from .models import (
     SectionIntroInput, SectionIntro,
     ChapterIntroInput, ChapterIntro,
     PartConclusionInput, PartConclusion,
+    SectionQualityInput, QualityAssessment,
 )
 from .utils import (
     sanitize_filename,
@@ -36,6 +37,64 @@ from .planning import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# QUALITY CONTROL
+# =============================================================================
+
+async def check_section_quality(
+    section_content: str,
+    section_name: str,
+    section_plan: str,
+    audience: str,
+    language_model,
+) -> tuple:
+    """
+    Check quality of a section and return (passed: bool, feedback: str).
+    """
+    quality_input = SectionQualityInput(
+        section_name=section_name,
+        section_content=section_content,
+        section_plan=section_plan,
+        audience=audience
+    )
+
+    generator = synalinks.Generator(
+        data_model=QualityAssessment,
+        language_model=language_model,
+        temperature=1.0,
+        instructions="""Assess the quality of this section content. Check for:
+
+1. REPEATED EXAMPLES: Are any examples repeated or too similar across subsections?
+2. REPEATED CONCEPTS: Are explanations redundantly repeated?
+3. STYLE ISSUES: Is there forced humor, patronizing tone, or overused phrases like "Imagine..."?
+4. COVERAGE GAPS: Are important topics from the plan not adequately covered?
+
+Be specific about issues. Set verdict to 'pass' if acceptable, 'needs_rewrite' if significant issues."""
+    )
+
+    result = await generator(quality_input)
+    if result is None:
+        return (True, "")
+
+    data = result.get_json()
+    verdict = data.get("verdict", "pass")
+    passed = verdict == "pass"
+
+    # Build feedback from issues found
+    feedback_parts = []
+    if data.get("repeated_examples"):
+        feedback_parts.append(f"Repeated examples: {', '.join(data['repeated_examples'])}")
+    if data.get("repeated_concepts"):
+        feedback_parts.append(f"Repeated concepts: {', '.join(data['repeated_concepts'])}")
+    if data.get("style_issues"):
+        feedback_parts.append(f"Style issues: {', '.join(data['style_issues'])}")
+    if data.get("coverage_gaps"):
+        feedback_parts.append(f"Coverage gaps: {', '.join(data['coverage_gaps'])}")
+
+    feedback = "; ".join(feedback_parts)
+    return (passed, feedback)
 
 
 # =============================================================================
@@ -348,6 +407,23 @@ Be specific and concrete:
     return result.get_json().get("conclusion", "")
 
 
+def _assemble_section(section_intro: str, subsection_contents: List[tuple]) -> str:
+    """Assemble section from intro and subsection contents."""
+    section_parts = []
+
+    if section_intro:
+        section_parts.append(section_intro)
+        section_parts.append("")
+
+    for subsection_name, content in subsection_contents:
+        section_parts.append(f"### {subsection_name}")
+        section_parts.append("")
+        section_parts.append(content)
+        section_parts.append("")
+
+    return "\n".join(section_parts)
+
+
 async def write_section_with_subsections(
     topic_data: dict,
     full_outline: str,
@@ -367,13 +443,8 @@ async def write_section_with_subsections(
     writing_style: Optional[object] = None
 ) -> tuple:
     """
-    Write a complete section by generating each subsection separately with full context,
-    then concatenating them with a section intro.
-
-    This provides more detail and rigor than writing the whole section at once.
-
-    Returns:
-        Tuple of (section_content, new_style_idx)
+    Write a complete section by generating each subsection separately.
+    If quality check fails, regenerates subsections with feedback.
     """
     safe_section = sanitize_filename(section_name)
     section_filename = f"03_section_{section_num:03d}_{safe_section}.txt"
@@ -383,74 +454,95 @@ async def write_section_with_subsections(
         existing = load_from_file(output_dir, section_filename)
         if existing:
             logger.info(f"Loaded existing section: {section_name}")
-            return existing
+            return (existing, style_idx)
 
     logger.info(f"Writing section: {section_name} ({len(subsection_names)} subsections)")
 
-    # Generate section introduction
-    section_intro = await generate_section_intro(
-        topic=topic_data["topic"],
-        book_name=topic_data["book_name"],
-        chapter_name=chapter_name,
-        section_name=section_name,
-        section_plan=format_section_plan(section_plan) if section_plan else None,
-        subsection_names=subsection_names,
-        intro_style=intro_style,
-        language_model=language_model
-    )
+    section_plan_text = format_section_plan(section_plan) if section_plan else "No specific plan"
+    quality_feedback = ""  # Will be populated if rewrite needed
+    max_attempts = 2
 
-    # Generate each subsection with full context
-    subsection_contents = []
-    for i, subsection_name in enumerate(subsection_names):
-        logger.info(f"  Generating subsection {i+1}/{len(subsection_names)}: {subsection_name}")
+    for attempt in range(max_attempts):
+        # Generate section introduction (only on first attempt)
+        if attempt == 0:
+            section_intro = await generate_section_intro(
+                topic=topic_data["topic"],
+                book_name=topic_data["book_name"],
+                chapter_name=chapter_name,
+                section_name=section_name,
+                section_plan=section_plan_text,
+                subsection_names=subsection_names,
+                intro_style=intro_style,
+                language_model=language_model
+            )
 
-        # Get rotating opening approach for this subsection
-        opening_approach = intro_styles[style_idx % len(intro_styles)]
-        style_idx += 1
+        # Generate each subsection
+        subsection_contents = []
+        for i, subsection_name in enumerate(subsection_names):
+            if attempt == 0:
+                logger.info(f"  Generating subsection {i+1}/{len(subsection_names)}: {subsection_name}")
+            else:
+                logger.info(f"  Regenerating subsection {i+1}/{len(subsection_names)}: {subsection_name}")
 
-        subsection_input = SubsectionInput(
-            topic=topic_data["topic"],
-            goal=topic_data["goal"],
-            book_name=topic_data["book_name"],
-            audience=topic_data.get("audience", "technical readers"),
-            full_outline=full_outline,
-            book_plan=format_book_plan(book_plan),
-            chapters_overview=format_chapters_overview(chapters_overview),
-            chapter_name=chapter_name,
-            chapter_plan=format_chapter_plan(chapter_plan),
-            section_name=section_name,
-            section_plan=format_section_plan(section_plan) if section_plan else "No specific plan",
-            subsection_name=subsection_name,
-            opening_approach=opening_approach
-        )
+            opening_approach = intro_styles[style_idx % len(intro_styles)]
+            style_idx += 1
 
-        content = await generate_subsection(
-            subsection_input=subsection_input,
-            language_model=language_model,
-            writing_style=writing_style
-        )
+            # Add quality feedback to the plan if this is a rewrite
+            augmented_plan = section_plan_text
+            if quality_feedback:
+                augmented_plan = f"{section_plan_text}\n\n=== QUALITY FEEDBACK (fix these issues) ===\n{quality_feedback}"
 
-        if content:
-            subsection_contents.append((subsection_name, content))
+            subsection_input = SubsectionInput(
+                topic=topic_data["topic"],
+                goal=topic_data["goal"],
+                book_name=topic_data["book_name"],
+                audience=topic_data.get("audience", "technical readers"),
+                full_outline=full_outline,
+                book_plan=format_book_plan(book_plan),
+                chapters_overview=format_chapters_overview(chapters_overview),
+                chapter_name=chapter_name,
+                chapter_plan=format_chapter_plan(chapter_plan),
+                section_name=section_name,
+                section_plan=augmented_plan,
+                subsection_name=subsection_name,
+                opening_approach=opening_approach
+            )
 
-    # Assemble section: intro + subsections
-    section_parts = []
+            content = await generate_subsection(
+                subsection_input=subsection_input,
+                language_model=language_model,
+                writing_style=writing_style
+            )
 
-    # Add section intro
-    if section_intro:
-        section_parts.append(section_intro)
-        section_parts.append("")  # Blank line
+            if content:
+                subsection_contents.append((subsection_name, content))
 
-    # Add each subsection with its header (now sections)
-    for subsection_name, content in subsection_contents:
-        section_parts.append(f"### {subsection_name}")
-        section_parts.append("")
-        section_parts.append(content)
-        section_parts.append("")  # Blank line between subsections
+        # Assemble section
+        section_content = _assemble_section(section_intro, subsection_contents)
 
-    section_content = "\n".join(section_parts)
+        # Quality check (skip on last attempt)
+        if attempt < max_attempts - 1:
+            passed, feedback = await check_section_quality(
+                section_content=section_content,
+                section_name=section_name,
+                section_plan=section_plan_text,
+                audience=topic_data.get("audience", "technical readers"),
+                language_model=language_model,
+            )
 
-    # Save the section
+            if passed:
+                logger.info(f"  Quality check: PASSED for {section_name}")
+                break
+            else:
+                logger.info(f"  Quality check: NEEDS IMPROVEMENT for {section_name}")
+                logger.info(f"    Feedback: {feedback[:200]}...")
+                quality_feedback = feedback
+                # Save QC feedback
+                if output_dir:
+                    qc_filename = f"03_qc_{section_num:03d}_{safe_section}.txt"
+                    save_to_file(output_dir, qc_filename, f"Feedback: {feedback}")
+
+    # Save the final section
     if output_dir:
         save_to_file(output_dir, section_filename, section_content)
 
@@ -588,7 +680,11 @@ async def write_chapter_with_sections(
     for section_header, section_content in section_contents:
         chapter_parts.append(f"## {section_header}")
         chapter_parts.append("")
-        chapter_parts.append(section_content)
+        # Strip any duplicate header that LLM might have added
+        content = section_content.strip()
+        if content.startswith(f"## {section_header}"):
+            content = content[len(f"## {section_header}"):].strip()
+        chapter_parts.append(content)
         chapter_parts.append("")
 
     # Part conclusion (Why It Matters)

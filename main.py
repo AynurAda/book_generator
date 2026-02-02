@@ -129,8 +129,8 @@ async def main():
     print(f"Audience: {config.audience}")
     print(f"Test Mode: {config.test_mode}")
     if config.author_key:
-        from book_generator.authors import get_writing_style
-        style = get_writing_style(config.author_key)
+        from book_generator.authors import get_author_profile
+        style = get_author_profile(config.author_key)
         if style:
             print(f"Writing Style: {config.author_key} - {style.description}")
     if config.enable_illustrations:

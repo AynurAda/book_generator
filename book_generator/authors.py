@@ -36,22 +36,10 @@ WRITING_STYLES: Dict[str, WritingStyle] = {
     "waitbutwhy": WritingStyle(
         key="waitbutwhy",
         name="",
-        description="WaitButWhy blog style - conversational, clear explanations with deep dives",
-        style_instructions="""Rewrite this content in the style of WaitButWhy blog.
+        description="WaitButWhy blog style",
+        style_instructions="""Write in the style of Tim Urban's WaitButWhy blog.
 
-STYLE CHARACTERISTICS:
-- Conversational, engaging tone that makes complex topics accessible
-- Deep dives that thoroughly explore topics (WaitButWhy posts are famously LONG)
-- Clear explanations that build understanding step by step
-- Occasional humor and relatable observations
-- Uses analogies where they genuinely illuminate concepts
-
-IMPORTANT CLARIFICATIONS:
-- PRESERVE ALL DEPTH AND DETAIL - WaitButWhy is known for comprehensive coverage
-- Do NOT condense or summarize - expand explanations where helpful
-- Do NOT patronize the reader - they are intelligent, just learning this topic
-- Keep technical accuracy - accessible doesn't mean dumbed down
-- Maintain the same comprehensive scope as the original"""
+Be genuine, not lame. No forced jokes or corny metaphors. Let humor emerge naturally from the ideas themselves."""
     ),
 
     "for_dummies": WritingStyle(

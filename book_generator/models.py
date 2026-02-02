@@ -561,3 +561,53 @@ class PartConclusion(synalinks.DataModel):
     conclusion: str = synalinks.Field(
         description="A unified conclusion explaining why this part matters - practical implications, real-world applications, and significance (3-4 paragraphs)"
     )
+
+
+# =============================================================================
+# Quality Control Models
+# =============================================================================
+
+class SectionQualityInput(synalinks.DataModel):
+    """Input for quality assessment of a generated section."""
+    section_name: str = synalinks.Field(description="The name of the section")
+    section_content: str = synalinks.Field(description="The full generated section content including all subsections")
+    section_plan: str = synalinks.Field(description="The original plan for this section")
+    audience: str = synalinks.Field(description="The target audience")
+
+
+class QualityAssessment(synalinks.DataModel):
+    """Quality assessment output - determines if content passes or needs rewrite."""
+    thinking: list[str] = synalinks.Field(
+        description="Step by step analysis of the content quality"
+    )
+    repeated_examples: list[str] = synalinks.Field(
+        description="List any examples that are repeated or too similar across subsections"
+    )
+    repeated_concepts: list[str] = synalinks.Field(
+        description="List any concepts or explanations that are redundantly repeated"
+    )
+    style_issues: list[str] = synalinks.Field(
+        description="List any style issues: forced humor, patronizing tone, overused phrases like 'Imagine...'"
+    )
+    coverage_gaps: list[str] = synalinks.Field(
+        description="List any important topics from the plan that are not adequately covered"
+    )
+    verdict: str = synalinks.Field(
+        description="Either 'pass' if quality is acceptable, or 'needs_rewrite' if issues found"
+    )
+
+
+class SectionRewriteInput(synalinks.DataModel):
+    """Input for rewriting a section that failed quality control."""
+    section_name: str = synalinks.Field(description="The name of the section")
+    original_content: str = synalinks.Field(description="The original section content")
+    section_plan: str = synalinks.Field(description="The original plan for this section")
+    audience: str = synalinks.Field(description="The target audience")
+    quality_issues: str = synalinks.Field(description="The quality issues identified that need to be fixed")
+
+
+class RewrittenSection(synalinks.DataModel):
+    """Output for a rewritten section."""
+    rewritten_content: str = synalinks.Field(
+        description="The rewritten section content with all quality issues fixed"
+    )
