@@ -1,22 +1,73 @@
-# MVP Website Plan: Personal Knowledge Synthesizer
+# MVP Website Plan: Knowledge Synthesizer
 
 ## Product Vision
 
-**Tagline**: "Learn any field. Apply it to yours."
+**Tagline**: "Synthesize any field. Through the lens of yours."
 
-**Core Value Proposition**:
-For curious, self-directed minds who want to deeply understand a field but find information scattered across papers, blogs, videos, and podcasts — we synthesize it into a coherent, personalized book tailored to your background, goals, **and your specific domain of application**.
+**What We Do**:
+We synthesize scattered knowledge — papers, blogs, videos, podcasts, documentation — into a coherent, structured book written entirely through the lens of YOUR domain.
 
-**The Key Insight**:
-Generic books teach you *about* a topic. We teach you how to *apply* it to YOUR world.
+**The Synthesis Problem**:
+Knowledge exists. Understanding doesn't come pre-packaged.
 
-> "I don't just want to learn neuro-symbolic AI. I want to learn how to use it for building enterprise AI agents."
+You want to learn neuro-symbolic AI. The information is out there — hundreds of papers, dozens of blog posts, conference talks, Twitter threads, textbooks. But:
+- It's fragmented across sources
+- Each source assumes different backgrounds
+- Nobody connects it to YOUR world
+- You spend 100+ hours and still lack a coherent mental model
 
-> "I don't just want to understand quantum computing. I want to know what it means for cryptography in my fintech startup."
+**Our Solution**:
+We don't summarize. We don't aggregate. We **synthesize**.
 
-> "I don't just want to read about knowledge graphs. I want to apply them to drug discovery in my biotech research."
+We take fragmented knowledge and forge it into a unified, coherent book — one that speaks YOUR professional language, uses YOUR domain's examples, and builds mental models YOU can apply.
 
-**This is the killer feature**: Every book ends with applied chapters specific to YOUR domain.
+---
+
+## The Core Insight: Domain-Native Learning
+
+This is not "a book with some applied chapters at the end."
+
+This is **every chapter, every example, every explanation** written through the lens of your domain.
+
+**Generic book on Neuro-symbolic AI:**
+```
+Chapter 5: Knowledge Graph Fundamentals
+- Nodes represent entities
+- Edges represent relationships
+- Example: A social network graph with users and friendships
+- Example: A movie database with actors and films
+```
+
+**Your book — "Neuro-symbolic AI for Enterprise Agent Builders":**
+```
+Chapter 5: Knowledge Graphs for Enterprise Systems
+- Nodes represent business entities (customers, products, policies)
+- Edges represent business relationships (owns, governs, requires)
+- Example: Modeling SAP hierarchies as knowledge graphs
+- Example: Representing compliance rules as queryable graph structures
+- Code: Building an enterprise ontology with LangChain + Neo4j
+```
+
+**Same concepts. Your language. Your examples. Your world.**
+
+---
+
+## What is Synthesis?
+
+Synthesis is NOT:
+- ❌ Summarization (making things shorter)
+- ❌ Aggregation (piling things together)
+- ❌ Translation (changing languages)
+- ❌ AI-generated content (hallucinated text)
+
+Synthesis IS:
+- ✅ **Integration**: Connecting ideas from multiple sources into coherent whole
+- ✅ **Structuring**: Organizing fragmented knowledge into learnable progression
+- ✅ **Contextualization**: Grounding abstract concepts in YOUR concrete domain
+- ✅ **Mental Model Building**: Creating frameworks you can think with
+
+> "Synthesis is the art of making the implicit connections explicit,
+> and making abstract knowledge concrete in YOUR context."
 
 ---
 
@@ -24,419 +75,351 @@ Generic books teach you *about* a topic. We teach you how to *apply* it to YOUR 
 
 **Who they are:**
 - Indie researchers & intellectually curious professionals
-- Technical founders exploring new domains
-- Investors doing deep dives
-- Advanced hobbyists ("serious amateurs")
-- ML engineers, developers learning new fields
+- Technical founders exploring adjacent domains
+- Investors doing deep dives before major decisions
+- ML engineers learning new paradigms
+- Domain experts adding technical capabilities
 
-**What they value:**
-- Depth over breadth
-- Structure and mental models
-- Understanding, not just summaries
-- Permanent artifacts over subscriptions
-- Source transparency
+**The Synthesis Mindset:**
+- They don't want to be spoon-fed — they want to deeply understand
+- They value structure and mental models over facts
+- They know information exists — they need it organized and contextualized
+- They're willing to pay for time saved and understanding gained
 
-**Pain points:**
-- Information is fragmented (papers, blogs, videos, podcasts)
-- Generic books don't apply to their specific domain/use case
-- Spend 100s of hours consuming content, still lack coherent mental model
-- Existing AI summaries are shallow
+**Their Pain:**
+- "I've read 50 papers and still can't explain this field coherently"
+- "Every resource assumes I'm someone else"
+- "I understand the theory but can't connect it to my work"
+- "I need a book that doesn't exist"
 
 ---
 
 ## MVP Feature Set
 
-### Core Flow (V1)
+### Core Flow
 
 ```
-1. User Input
-   ├── Topic: "Neuro-symbolic AI"
-   ├── Goal: "Understand how to combine LLMs with knowledge graphs"
-   ├── Focus: "Agentic reasoning, RAG, practical implementation"
-   ├── Background: "ML engineer, familiar with transformers"
-   └── 🎯 Application Domain: "Building AI agents for enterprise"  ← THE KEY INPUT
-
-2. Outline Generation
-   ├── AI generates comprehensive outline
-   ├── User can edit/approve
-   ├── Prioritization by focus areas
-   ├── Chapter selection (if limited)
-   └── 🎯 Applied chapters generated for their domain
-
-3. Book Generation
-   ├── Hierarchical planning
-   ├── Quality-controlled content
-   ├── Section-by-section with depth
-   ├── Examples translated to their domain context
-   └── 🎯 Final "Application" chapters: "Neuro-symbolic AI for Enterprise Agents"
-
-4. Delivery
-   ├── PDF download
-   ├── Web reader (optional)
-   └── Raw markdown (for power users)
+┌─────────────────────────────────────────────────────────────────┐
+│  1. DEFINE YOUR SYNTHESIS                                       │
+│                                                                 │
+│  Topic: What field do you want to master?                       │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ Neuro-symbolic AI                                       │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+│  Domain Lens: Through what professional lens?                   │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ Building enterprise AI agents                           │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│  💡 Every chapter will use examples from YOUR domain            │
+│                                                                 │
+│  Goal: What do you want to be able to DO?                       │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ Design hybrid LLM + knowledge graph architectures       │   │
+│  │ for enterprise reasoning systems                        │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+│  Background: What do you already know?                          │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ ML engineer, familiar with transformers and Python      │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+│                    [Generate Outline →]                         │
+└─────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  2. REVIEW & EDIT YOUR OUTLINE                                  │
+│                                                                 │
+│  "Neuro-symbolic AI for Enterprise Agent Builders"              │
+│  18 chapters • ~180 pages • Tailored to YOUR domain             │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ PART I: FOUNDATIONS                                     │   │
+│  │ ☑ 1. The Limits of Pure Approaches                      │   │
+│  │      └─ Why enterprise AI needs both neural & symbolic  │   │
+│  │ ☑ 2. Knowledge Representation for Business              │   │
+│  │      └─ Ontologies, taxonomies, enterprise semantics    │   │
+│  │                                                         │   │
+│  │ PART II: CORE TECHNIQUES                                │   │
+│  │ ☑ 3. Knowledge Graphs in Enterprise Context             │   │
+│  │      └─ Modeling SAP, Salesforce, business rules        │   │
+│  │ ☑ 4. LLMs as Reasoning Engines                          │   │
+│  │      └─ Prompt patterns for structured enterprise tasks │   │
+│  │ □ 5. Probabilistic Logic (skip for now)                 │   │
+│  │ ☑ 6. RAG for Enterprise Knowledge                       │   │
+│  │      └─ Connecting LLMs to corporate knowledge bases    │   │
+│  │ ...                                                     │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+│  ┌──────────────────┐  ┌──────────────────┐                    │
+│  │ ✏️  Edit Outline │  │ ➕ Add Chapter   │                    │
+│  └──────────────────┘  └──────────────────┘                    │
+│                                                                 │
+│  You control the structure. Add, remove, reorder, rename.       │
+│                                                                 │
+│           [Approve & Continue →]    [Regenerate Outline]        │
+└─────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  3. SYNTHESIS IN PROGRESS                                       │
+│                                                                 │
+│  ⏳ Synthesizing your book...                                   │
+│                                                                 │
+│  ████████████████░░░░░░░░ 65%                                  │
+│                                                                 │
+│  ✓ Outline finalized                                           │
+│  ✓ Book structure planned                                      │
+│  ✓ Chapters 1-6 synthesized                                    │
+│  → Synthesizing Chapter 7: Agentic Architectures...            │
+│  ○ Chapters 8-15                                               │
+│  ○ Quality review & refinement                                 │
+│  ○ Final assembly                                              │
+│                                                                 │
+│  We'll email you when your synthesis is complete.               │
+└─────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  4. YOUR SYNTHESIZED KNOWLEDGE                                  │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ 📚 Neuro-symbolic AI for Enterprise Agent Builders      │   │
+│  │                                                         │   │
+│  │ 182 pages • 15 chapters • Synthesized Feb 2, 2026       │   │
+│  │                                                         │   │
+│  │ Every example drawn from enterprise AI contexts.         │   │
+│  │ Code samples use LangChain, Neo4j, enterprise APIs.     │   │
+│  │                                                         │   │
+│  │ [📖 Read Online] [⬇️ Download PDF] [📝 Get Markdown]    │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+│  Want to synthesize for a different domain?                     │
+│  Same topic through a Healthcare lens → [Create Variant]        │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-### The "Applied Domain" Difference
+### Key Feature: Outline Control
 
-**Without domain application** (generic book):
-```
-Chapter 15: Knowledge Graphs in Practice
-- General examples
-- Abstract use cases
-- "This could be applied to..."
-```
+The outline is YOURS to shape:
 
-**With domain application** (personalized book):
-```
-Chapter 15: Knowledge Graphs for Enterprise AI Agents
-- How to model enterprise workflows as knowledge graphs
-- Integrating with existing enterprise systems (SAP, Salesforce)
-- Case study: Building an agent that navigates corporate policies
-- Code examples using LangChain + Neo4j for enterprise
-```
+| Action | What You Can Do |
+|--------|----------------|
+| **Exclude** | Uncheck chapters you don't need |
+| **Add** | Request additional chapters on specific topics |
+| **Reorder** | Drag chapters to change learning progression |
+| **Rename** | Adjust chapter titles to match your terminology |
+| **Expand** | Request deeper coverage of specific sections |
+| **Focus** | Mark priority chapters for extra depth |
 
-**This is not just personalization. It's translation.**
-We translate abstract knowledge into their professional language.
-
-### MVP Pages
-
-1. **Landing Page** - Value prop, demo, pricing
-2. **Book Builder** - Multi-step form for inputs
-3. **Outline Review** - Interactive outline editing
-4. **Generation Status** - Progress tracking
-5. **Library** - User's generated books
-6. **Book Viewer** - Read online (optional for V1)
+**Why this matters:**
+- You know what you need better than any algorithm
+- Your learning path should match YOUR gaps
+- Some chapters may be review, others need depth
+- The book should fit YOUR mental model
 
 ---
 
-## Pricing Model (V1)
+## Pricing Model
 
-### Pay-per-Book (Primary)
+### Synthesis Tiers
 
-| Tier | Pages | Price | Features |
-|------|-------|-------|----------|
-| **Field Guide** | 50-80 | $49 | Core synthesis, 8-10 chapters |
-| **Deep Dive** | 100-200 | $99 | Comprehensive, 15-20 chapters, **1 applied domain chapter** |
-| **Masterwork** | 200-400 | $199 | Full depth, **3 applied domain chapters**, source bibliography |
+| Tier | What You Get | Price |
+|------|-------------|-------|
+| **Primer** | 8-10 chapters, ~80 pages, core concepts synthesized for your domain | $49 |
+| **Deep Synthesis** | 15-20 chapters, ~180 pages, comprehensive coverage with your domain throughout | $99 |
+| **Masterwork** | 25+ chapters, ~350 pages, exhaustive synthesis with advanced topics | $199 |
+
+All tiers include:
+- ✅ Full domain adaptation (every chapter, every example)
+- ✅ Outline editing before generation
+- ✅ PDF + Markdown download
+- ✅ One free regeneration
 
 ### Add-ons
 
 | Add-on | Price | Description |
 |--------|-------|-------------|
-| **🎯 Applied Domain Chapter** | $29 | Additional "Apply to X" chapter (e.g., "...for Healthcare", "...for Robotics") |
-| **🎯 Multi-Domain Bundle** | $69 | 3 additional applied chapters |
-| Update Pass | $19 | Re-run with latest sources |
-| Source Bibliography | $9 | Curated reading list with annotations |
-| Multiple Formats | $9 | EPUB + MOBI + Markdown |
-
-### Domain Application Examples
-
-The same core book can be applied to completely different domains:
-
-**Core Topic: Neuro-symbolic AI**
-
-| User's Domain | Applied Chapter Title |
-|---------------|----------------------|
-| Enterprise Software | "Building Symbolic-Neural Agents for Enterprise Automation" |
-| Healthcare | "Neuro-symbolic Reasoning for Clinical Decision Support" |
-| Legal Tech | "Combining LLMs with Legal Ontologies for Contract Analysis" |
-| Robotics | "Symbolic Planning with Neural Perception for Robot Tasks" |
-| Finance | "Knowledge Graphs + LLMs for Financial Risk Assessment" |
-| Education | "Adaptive Learning Systems with Neuro-symbolic Tutors" |
-
-**This is where the real value lives.**
-
-### Optional Subscription (V2)
-
-- $19/mo - "Living Library"
-- Continuous updates as field evolves
-- Unlimited regenerations
-- Add chapters on demand
+| Additional Domain Variant | $39 | Same content, different domain lens (e.g., now for Healthcare) |
+| Source Bibliography | $19 | Curated reading list with annotations for going deeper |
+| Priority Generation | $29 | Jump the queue, get your book faster |
 
 ---
 
-## Tech Stack Recommendation
+## Product Positioning
+
+### The Synthesis Positioning
+
+**Category**: Knowledge Synthesis Platform
+
+**One-liner**: "We synthesize scattered knowledge into coherent books tailored to your domain."
+
+**Elevator Pitch**:
+> "You know that feeling when you've read dozens of papers and blog posts but still can't explain a field coherently? We solve that. We synthesize fragmented knowledge — papers, blogs, videos, documentation — into a structured book written entirely through the lens of YOUR professional domain. Every example, every explanation, speaks your language."
+
+### Positioning Against Alternatives
+
+| Alternative | Their Approach | Our Approach |
+|-------------|---------------|--------------|
+| **Books** | Generic, one-size-fits-all | Synthesized for YOUR domain |
+| **ChatGPT** | Answers questions, no structure | Builds coherent mental models |
+| **Courses** | Fixed curriculum, passive | Tailored to your gaps, you control outline |
+| **Research** | Time-consuming, fragmented | We do the synthesis, you get the understanding |
+| **Summaries** | Shallow, lose nuance | Deep, preserves and connects concepts |
+
+### What We Say vs. Don't Say
+
+**Say:**
+- "Synthesize" — implies integration, structure, coherence
+- "Through your lens" — domain adaptation
+- "Mental models" — understanding, not just information
+- "Tailored" — personalization with purpose
+- "Coherent" — the key outcome
+
+**Don't Say:**
+- "AI-generated" — implies low quality, no human value
+- "Summary" — implies shallow
+- "Automated" — implies impersonal
+- "Content" — implies commodity
+
+### Hero Messages
+
+**Primary:**
+> "Synthesize any field. Through the lens of yours."
+
+**Supporting:**
+> "The book that doesn't exist — until you need it."
+
+> "From scattered papers to coherent understanding."
+
+> "Stop drowning in information. Start building mental models."
+
+> "Every field, explained in YOUR professional language."
+
+> "We read everything. You get the synthesis."
+
+### Social Proof Angles
+
+> "I needed to understand knowledge graphs for legal tech.
+> I'd read 30 papers. Still couldn't connect the dots.
+> This gave me the mental model I was missing — in my language."
+> — Legal Tech Founder
+
+> "As an investor, I need to go deep fast.
+> This synthesized 6 months of research into a weekend read.
+> Every example was from my world."
+> — Deep Tech VC
+
+---
+
+## Tech Stack
 
 ### Frontend
-- **Next.js 14** - React with App Router
-- **Tailwind CSS** - Rapid styling
-- **Shadcn/ui** - Component library
-- **Framer Motion** - Animations
+- **Next.js 14** with App Router
+- **Tailwind CSS** + **Shadcn/ui**
+- **Framer Motion** for polish
 
 ### Backend
-- **Python/FastAPI** - API server (existing book_generator)
-- **Celery + Redis** - Job queue for long-running generation
-- **PostgreSQL** - User data, book metadata
-- **S3/R2** - Book file storage
+- **Python/FastAPI** wrapping book_generator
+- **Celery + Redis** for async generation
+- **PostgreSQL** for users, books, outlines
+- **Cloudflare R2** for file storage
 
 ### Auth & Payments
-- **Clerk** or **NextAuth** - Authentication
-- **Stripe** - Payments (one-time + subscriptions)
+- **Clerk** for authentication
+- **Stripe** for payments
 
 ### Infrastructure
-- **Vercel** - Frontend hosting
-- **Railway** or **Fly.io** - Backend API
-- **Cloudflare R2** - File storage (cheaper than S3)
-
----
-
-## MVP User Flow
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         LANDING PAGE                            │
-│                                                                 │
-│              "Learn any field. Apply it to yours."              │
-│                                                                 │
-│    ┌─────────────────────────────────────────────────────┐     │
-│    │  I want to learn [neuro-symbolic AI    ▼]           │     │
-│    │  and apply it to [enterprise AI agents ▼]           │     │
-│    │                                                     │     │
-│    │              [Create My Book →]                     │     │
-│    └─────────────────────────────────────────────────────┘     │
-│                                                                 │
-│  "The book you'd write if you had 6 months and read everything" │
-│                                                                 │
-│  [See Demo: Neuro-symbolic AI for Agent Builders]              │
-└─────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                        BOOK BUILDER                             │
-│                                                                 │
-│  ═══════════════════════════════════════════════════════════   │
-│  Step 1: What do you want to learn?                            │
-│  ═══════════════════════════════════════════════════════════   │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │ Topic: [Neuro-symbolic AI                              ]│   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                                                                 │
-│  ═══════════════════════════════════════════════════════════   │
-│  Step 2: 🎯 Where will you APPLY this? (This is the magic)    │
-│  ═══════════════════════════════════════════════════════════   │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │ Your domain: [Building enterprise AI agents           ]│   │
-│  │                                                         │   │
-│  │ Examples: "healthcare diagnostics", "legal tech",       │   │
-│  │ "robotics", "financial analysis", "education tech"     │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│  💡 We'll include dedicated chapters applying every concept   │
-│     to YOUR specific domain                                    │
-│                                                                 │
-│  ═══════════════════════════════════════════════════════════   │
-│  Step 3: What's your specific goal?                            │
-│  ═══════════════════════════════════════════════════════════   │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │ I want to understand how to combine LLMs with          │   │
-│  │ knowledge graphs for building reasoning agents...      │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                                                                 │
-│  Step 4: What areas should we focus on? (optional)             │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │ ☑ LLMs + symbolic reasoning                            │   │
-│  │ ☑ Knowledge graphs                                     │   │
-│  │ ☑ Agentic architectures                                │   │
-│  │ ☐ Probabilistic reasoning                              │   │
-│  │ ☐ Program synthesis                                    │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                                                                 │
-│  Step 5: Your background (so we calibrate depth)               │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │ [ML engineer ▼] familiar with [transformers, Python   ]│   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                                                                 │
-│                    [Generate Outline →]                         │
-└─────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                      OUTLINE PREVIEW                            │
-│                                                                 │
-│  Your book: "Neuro-symbolic AI for Agent Builders"             │
-│  Estimated: 150-200 pages | 18 chapters                        │
-│                                                                 │
-│  □ 1. Historical Evolution of AI Paradigms                     │
-│  ☑ 2. Limitations: Why Pure Approaches Fail                    │
-│  ☑ 3. Knowledge Graphs: The Symbolic Foundation                │
-│  ☑ 4. LLMs Meet Symbolic Reasoning                             │
-│  ☑ 5. RAG: Retrieval as Symbol Access                          │
-│  ☑ 6. Agentic Architectures with Symbolic Backbones            │
-│  ...                                                            │
-│                                                                 │
-│  [Edit Outline]  [Select Chapters]  [Proceed to Payment →]     │
-└─────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                         CHECKOUT                                │
-│                                                                 │
-│  Your Personal Book                                             │
-│  "Neuro-symbolic AI for Agent Builders"                        │
-│  18 chapters • ~180 pages                                       │
-│                                                                 │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │ Deep Dive Package                              $99     │   │
-│  │ ☑ Full book PDF                                        │   │
-│  │ ☑ Markdown source                                      │   │
-│  │ ☐ Add: Applied to Enterprise (+$29)                    │   │
-│  │ ☐ Add: Source Bibliography (+$9)                       │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                                                                 │
-│                      Total: $99                                 │
-│                    [Pay with Stripe]                            │
-└─────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    GENERATION STATUS                            │
-│                                                                 │
-│  ⏳ Generating your book...                                     │
-│                                                                 │
-│  ████████████░░░░░░░░ 45%                                      │
-│                                                                 │
-│  ✓ Outline finalized                                           │
-│  ✓ Book plan created                                           │
-│  ✓ Chapter 1-8 complete                                        │
-│  → Writing Chapter 9: RAG Architectures...                     │
-│  ○ Chapters 10-18                                              │
-│  ○ Final assembly                                              │
-│                                                                 │
-│  Estimated time remaining: ~15 minutes                         │
-│  We'll email you when it's ready!                              │
-└─────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                        YOUR LIBRARY                             │
-│                                                                 │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │ 📚 Neuro-symbolic AI for Agent Builders                │   │
-│  │ Generated: Feb 2, 2026 • 182 pages                      │   │
-│  │ [Download PDF] [Read Online] [Get Updates]              │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                                                                 │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │ 📚 Quantum Computing for Software Engineers            │   │
-│  │ Generated: Jan 15, 2026 • 95 pages                      │   │
-│  │ [Download PDF] [Read Online] [Get Updates]              │   │
-│  └─────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## Differentiation & Messaging
-
-### What We're NOT
-❌ "AI-written book"
-❌ "Summary tool"
-❌ "Knowledge aggregator"
-❌ "Another ChatGPT wrapper"
-❌ "Generic textbook generator"
-
-### What We ARE
-✅ "Personal research synthesis"
-✅ "A book written for your curiosity AND your career"
-✅ "From scattered ideas to applied expertise"
-✅ "Learn any field. Apply it to yours."
-✅ "Translation layer between abstract knowledge and your domain"
-
-### Hero Copy Options
-
-> **"Learn any field. Apply it to yours."** ← Primary
-
-> "The book that teaches you X *for your world*."
-
-> "If this book didn't exist, we wrote it for you — and for your use case."
-
-> "Stop learning theory. Start applying knowledge."
-
-> "Every chapter ends with: how does this apply to YOUR domain?"
-
-> "Generic books teach you about. We teach you how to apply."
-
-### Domain-Focused Messaging Examples
-
-**For the landing page:**
-> "I learned neuro-symbolic AI. But I needed to know how it applies to **legal tech**.
-> This book gave me that."
-> — Sarah, Legal AI Founder
-
-**For the builder:**
-> "Tell us your domain. We'll translate every concept into YOUR professional language."
-
-**For checkout:**
-> "Your book includes 2 applied chapters specifically for: **Enterprise AI Agents**"
+- **Vercel** for frontend
+- **Railway** or **Fly.io** for backend
+- **Resend** for email notifications
 
 ---
 
 ## MVP Milestones
 
-### Week 1-2: Foundation
-- [ ] Set up Next.js project with Tailwind
+### Phase 1: Foundation (Week 1-2)
+- [ ] Next.js project setup
 - [ ] Landing page with waitlist
-- [ ] Basic auth (Clerk)
-- [ ] Book builder form UI
+- [ ] Core messaging and positioning
+- [ ] Demo book showcase
 
-### Week 3-4: Backend Integration
-- [ ] FastAPI wrapper around book_generator
-- [ ] Job queue for async generation
-- [ ] Progress tracking WebSocket/polling
-- [ ] File storage (R2)
+### Phase 2: Book Builder (Week 3-4)
+- [ ] Multi-step input form
+- [ ] FastAPI wrapper for book_generator
+- [ ] Outline generation endpoint
+- [ ] Outline preview UI
 
-### Week 5-6: Core Flow
-- [ ] Outline preview & editing
-- [ ] Stripe checkout integration
-- [ ] Generation status page
-- [ ] Email notifications
+### Phase 3: Outline Editing (Week 5-6)
+- [ ] Interactive outline editor
+- [ ] Chapter toggle/reorder
+- [ ] Add/remove chapters
+- [ ] Save edited outline
 
-### Week 7-8: Polish & Launch
+### Phase 4: Generation Flow (Week 7-8)
+- [ ] Stripe checkout
+- [ ] Async generation with Celery
+- [ ] Progress tracking (WebSocket/polling)
+- [ ] Email on completion
+
+### Phase 5: Delivery (Week 9-10)
 - [ ] User library page
-- [ ] PDF viewer/download
-- [ ] Error handling & edge cases
-- [ ] Beta user testing
-- [ ] Launch to waitlist
+- [ ] PDF/Markdown download
+- [ ] Basic web reader
+- [ ] Beta testing
 
 ---
 
 ## Demo Strategy
 
-Create ONE exceptional demo book:
-- **Topic**: Neuro-symbolic AI
-- **Focus**: LLMs + Knowledge Graphs + Agents
-- **Make it public** as the showcase
-- Let users browse chapters
-- "Want one like this? Build yours →"
+Create ONE exceptional demo synthesis:
+
+**Topic**: Neuro-symbolic AI
+**Domain Lens**: Enterprise AI Agent Builders
+**Format**: Public, browsable, shows domain adaptation
+
+Let visitors:
+- Browse full table of contents
+- Read 2-3 sample chapters
+- See how examples are domain-adapted
+- "Want yours? Tell us your domain →"
+
+---
+
+## Success Metrics
+
+| Metric | Target |
+|--------|--------|
+| Waitlist signups | 500 before launch |
+| Conversion (waitlist → paid) | 10% |
+| First-month revenue | $5,000 |
+| NPS | 50+ |
+| Completion rate | 80% of books downloaded |
 
 ---
 
 ## Open Questions
 
-1. **Generation time**: How long is acceptable? (Currently ~30-60 min for full book)
-   - Mitigation: Email when ready, show progress, allow background generation
+1. **Generation time**: Currently 30-60 min. Acceptable with email notification?
 
-2. **Quality consistency**: How to ensure every book is good?
-   - Mitigation: Quality control loop, human review for first N books
+2. **Outline editing UX**: How sophisticated? Simple toggles vs. full editor?
 
-3. **Source grounding**: Should we cite specific papers/sources?
-   - V1: No (too complex)
-   - V2: Yes, as premium feature
+3. **Domain validation**: How do we ensure domain adaptation is good?
 
-4. **Regeneration policy**: What if user doesn't like the result?
-   - One free regeneration? Partial refund?
+4. **Regeneration policy**: One free? Unlimited edits before generation?
 
-5. **Book length control**: User expectation vs. actual output
-   - Clear estimates upfront, set expectations
+5. **Multi-domain**: Same core, different lenses — how to price?
 
 ---
 
 ## Next Steps
 
-1. Finalize tech stack decisions
-2. Create wireframes/mockups
-3. Set up project repository
-4. Build landing page + waitlist
-5. Integrate book_generator as API
-6. Beta test with 10-20 users
-7. Iterate based on feedback
-8. Launch
+1. ✅ Define product positioning (this document)
+2. [ ] Create landing page copy
+3. [ ] Build waitlist page
+4. [ ] Design outline editor mockups
+5. [ ] Set up FastAPI endpoints
+6. [ ] Generate demo book
+7. [ ] Beta test with 10 users
+8. [ ] Launch
