@@ -24,7 +24,7 @@ from .utils import (
     save_json_to_file,
     get_chapter_names,
 )
-from .outline import build_outline_pipeline, reorganize_outline
+from .outline import build_outline_pipeline, reorganize_outline, generate_outline_with_coverage
 from .planning import run_hierarchical_planning
 from .content import write_all_sections_direct
 from .cover import generate_cover
@@ -167,17 +167,11 @@ async def generate_book(config: Config) -> str:
             logger.info("Loaded existing outline from file")
 
     if results is None:
-        outline_program = await build_outline_pipeline(language_model)
-        topic_input = Topic(
-            topic=topic_data["topic"],
-            goal=topic_data["goal"],
-            book_name=topic_data["book_name"]
-        )
-        results = await outline_program(topic_input)
+        # Use coverage-checked generation
+        results = await generate_outline_with_coverage(topic_data, language_model)
 
         # Save outline
-        save_json_to_file(output_dir, "01_outline.json", results.get_json())
-        results = results.get_json()
+        save_json_to_file(output_dir, "01_outline.json", results)
 
     save_to_file(output_dir, "01_outline.txt", build_outline_text(results))
 
@@ -210,16 +204,9 @@ async def generate_book(config: Config) -> str:
                 print("Outline approved. Continuing...")
                 break
             elif user_input in ('r', 'regenerate'):
-                print("\nRegenerating outline...")
-                outline_program = await build_outline_pipeline(language_model)
-                topic_input = Topic(
-                    topic=topic_data["topic"],
-                    goal=topic_data["goal"],
-                    book_name=topic_data["book_name"]
-                )
-                results = await outline_program(topic_input)
-                save_json_to_file(output_dir, "01_outline.json", results.get_json())
-                results = results.get_json()
+                print("\nRegenerating outline (with coverage check)...")
+                results = await generate_outline_with_coverage(topic_data, language_model)
+                save_json_to_file(output_dir, "01_outline.json", results)
                 save_to_file(output_dir, "01_outline.txt", build_outline_text(results))
 
                 # Display new outline

@@ -20,31 +20,225 @@ from .models import (
     DeepHierarchy,
     OutlineReorganizationInput,
     ReorganizedOutline,
+    CoverageCheckInput,
+    CoverageAssessment,
+    MissingConceptsAddition,
 )
 from .utils import build_outline_text
 
 logger = logging.getLogger(__name__)
 
 
-async def build_outline_pipeline(language_model) -> synalinks.Program:
+async def check_coverage(
+    topic: str,
+    goal: str,
+    concepts: list,
+    language_model
+) -> tuple:
     """
-    Build the complete outline generation pipeline.
-
-    This creates a multi-branch pipeline that:
-    1. Extracts concepts from multiple branches (temperature=1.0)
-    2. Merges and deduplicates concepts
-    3. Enriches main concepts - adds any important missing ones
-    4. Expands with subconcepts
-    5. Reviews and enriches subconcepts
-    6. Expands to sub-subconcepts
-    7. Verifies relevance
+    Check if current concepts adequately cover the goal.
 
     Returns:
-        A synalinks Program for outline generation
+        Tuple of (coverage_adequate: bool, missing_topics: list)
+    """
+    concepts_text = "\n".join(f"- {c}" for c in concepts)
+
+    input_data = CoverageCheckInput(
+        topic=topic,
+        goal=goal,
+        current_concepts=concepts_text
+    )
+
+    generator = synalinks.Generator(
+        data_model=CoverageAssessment,
+        language_model=language_model,
+        temperature=1.0,
+        instructions="""Carefully analyze if the current concepts adequately cover what the goal specifies.
+
+The goal describes what the book SHOULD cover. Compare each requirement in the goal against the concepts.
+
+Be strict: if a topic mentioned in the goal is not clearly covered by any concept, it's MISSING.
+
+Examples of missing coverage:
+- Goal mentions "AUTOSAR" but no concept covers AUTOSAR → missing
+- Goal mentions "real-time constraints" but no concept covers real-time → missing
+- Goal mentions "hardware accelerators" but no concept covers hardware → missing"""
+    )
+
+    result = await generator(input_data)
+    if result is None:
+        return (True, [])  # Assume adequate if check fails
+
+    data = result.get_json()
+    return (data.get("coverage_adequate", True), data.get("missing_topics", []))
+
+
+async def generate_missing_concepts(
+    topic: str,
+    goal: str,
+    current_concepts: list,
+    missing_topics: list,
+    language_model
+) -> list:
+    """
+    Generate concepts to cover the missing topics.
+
+    Returns:
+        List of new concept names
+    """
+    concepts_text = "\n".join(f"- {c}" for c in current_concepts)
+    missing_text = "\n".join(f"- {t}" for t in missing_topics)
+
+    input_data = CoverageCheckInput(
+        topic=topic,
+        goal=f"{goal}\n\n=== MISSING TOPICS TO COVER ===\n{missing_text}",
+        current_concepts=concepts_text
+    )
+
+    generator = synalinks.Generator(
+        data_model=MissingConceptsAddition,
+        language_model=language_model,
+        temperature=1.0,
+        instructions="""Generate new main concepts to cover the missing topics.
+
+Each new concept should:
+- Directly address one or more of the missing topics
+- Be at the same level as the existing main concepts (not too broad, not too narrow)
+- Use clear, descriptive names
+
+Do NOT repeat concepts that already exist."""
+    )
+
+    result = await generator(input_data)
+    if result is None:
+        return []
+
+    return result.get_json().get("new_concepts", [])
+
+
+async def generate_main_concepts(topic_input: Topic, language_model) -> list:
+    """
+    Generate and enrich main concepts using multi-branch approach.
+
+    Returns:
+        List of main concept names
+    """
+    # Multi-branch concept extraction (run in parallel via asyncio)
+    gen = synalinks.Generator(
+        data_model=ConceptExtractor,
+        language_model=language_model,
+        temperature=1.0
+    )
+
+    branch1 = await gen(topic_input)
+    branch2 = await gen(topic_input)
+    branch3 = await gen(topic_input)
+    branch4 = await gen(topic_input)
+
+    merged = branch1 & branch2 & branch3 & branch4
+
+    # Merge and dedupe
+    merge_gen = synalinks.Generator(
+        data_model=MergedConcepts,
+        description="Deduplicate and consolidate concepts from all branches",
+        language_model=language_model,
+        temperature=1.0
+    )
+    merged_concepts = await merge_gen(topic_input & merged)
+
+    # Enrichment phase
+    enrichment_instructions = """Identify important main concepts that are MISSING.
+Think about: FOUNDATIONAL, HISTORICAL, PRACTICAL, ADVANCED, CROSS-CUTTING, and METHODOLOGY concepts.
+ONLY output concepts that are genuinely MISSING."""
+
+    enrich_gen = synalinks.Generator(
+        data_model=EnrichmentAdditions,
+        language_model=language_model,
+        temperature=1.0,
+        instructions=enrichment_instructions
+    )
+
+    enrich1 = await enrich_gen(topic_input & merged_concepts)
+    enrich2 = await enrich_gen(topic_input & merged_concepts)
+    enrich3 = await enrich_gen(topic_input & merged_concepts)
+
+    merged_enrichments = enrich1 & enrich2 & enrich3
+
+    # Final merge
+    final_gen = synalinks.Generator(
+        data_model=MergedConcepts,
+        language_model=language_model,
+        temperature=1.0,
+        instructions="Combine original concepts with enrichments. Deduplicate and order logically."
+    )
+    enriched = await final_gen(topic_input & merged_concepts & merged_enrichments)
+
+    return enriched.get_json().get("main_concepts", [])
+
+
+async def expand_to_hierarchy(topic_input: Topic, concepts: list, language_model) -> dict:
+    """
+    Expand main concepts to full 3-level hierarchy.
+
+    Returns:
+        The complete hierarchy dict
+    """
+    # Create combined input with topic and concepts
+    concepts_data = MergedConcepts(
+        thinking=["Expanding concepts to hierarchy"],
+        main_concepts=concepts
+    )
+
+    combined_input = topic_input & concepts_data
+
+    # Step 1: Generate subconcepts for each main concept
+    hierarchy_gen = synalinks.Generator(
+        data_model=HierarchicalConcepts,
+        instructions="For each main concept provided, generate ALL relevant subconcepts that belong to that domain. Be comprehensive.",
+        language_model=language_model,
+        temperature=1.0
+    )
+    hierarchy = await hierarchy_gen(combined_input)
+
+    # Step 2: Review and add missing
+    review_gen = synalinks.Generator(
+        data_model=HierarchicalConcepts,
+        instructions="Review the provided concepts and subconcepts. Add any important main concepts that are missing, and add any missing subconcepts to existing concepts.",
+        language_model=language_model,
+        temperature=1.0
+    )
+    reviewed = await review_gen(topic_input & hierarchy)
+
+    # Step 3: Expand to sub-subconcepts
+    deep_gen = synalinks.Generator(
+        data_model=DeepHierarchy,
+        instructions="For each subconcept provided, generate ALL relevant sub-subconcepts. Be comprehensive.",
+        language_model=language_model,
+        temperature=1.0
+    )
+    deep = await deep_gen(topic_input & reviewed)
+
+    # Step 4: Verify relevance
+    verify_gen = synalinks.Generator(
+        data_model=DeepHierarchy,
+        instructions="Verify each concept is relevant to the book topic and goal. Remove off-topic items.",
+        language_model=language_model,
+        temperature=1.0
+    )
+    result = await verify_gen(topic_input & deep)
+
+    return result.get_json()
+
+
+async def build_outline_pipeline(language_model) -> synalinks.Program:
+    """
+    Build outline generation as a callable program.
+
+    Note: This is kept for backwards compatibility but the actual generation
+    now uses generate_outline_with_coverage() for better coverage checking.
     """
     inputs = synalinks.Input(data_model=Topic)
 
-    # Use temperature > 0 to get diverse outputs from each branch
     branch1 = await synalinks.Generator(
         data_model=ConceptExtractor,
         language_model=language_model,
@@ -69,36 +263,16 @@ async def build_outline_pipeline(language_model) -> synalinks.Program:
         temperature=1.0
     )(inputs)
 
-    # Merge all branches using & operator
     merged = branch1 & branch2 & branch3 & branch4
 
-    # Final generator to deduplicate and consolidate the merged lists
     merged_concepts = await synalinks.Generator(
         data_model=MergedConcepts,
-        description="Take all the concepts from the merged branches and create a comprehensive, deduplicated list of main concepts",
+        description="Deduplicate and consolidate concepts",
         language_model=language_model,
         temperature=1.0
     )(inputs & merged)
 
-    # Enrichment phase: 3 branches identify missing concepts
-    enrichment_instructions = """Review the list of main concepts for this book topic.
-
-Your task is to identify important main concepts that are MISSING.
-
-Think about:
-1. FOUNDATIONAL concepts - Are the theoretical/mathematical foundations covered?
-2. HISTORICAL concepts - Is the evolution/history of the field represented?
-3. PRACTICAL concepts - Are real-world applications and use cases included?
-4. ADVANCED concepts - Are cutting-edge or emerging topics covered?
-5. CROSS-CUTTING concepts - Are important themes that span multiple areas included?
-6. METHODOLOGY concepts - Are key methods, techniques, and approaches covered?
-
-For the given topic and goal:
-- What would an expert consider essential that might be missing?
-- What would a comprehensive textbook include that isn't here?
-- What concepts are prerequisites for understanding others?
-
-ONLY output concepts that are genuinely MISSING. Do NOT repeat concepts already in the list."""
+    enrichment_instructions = """Identify important main concepts that are MISSING."""
 
     enrich1 = await synalinks.Generator(
         data_model=EnrichmentAdditions,
@@ -121,55 +295,39 @@ ONLY output concepts that are genuinely MISSING. Do NOT repeat concepts already 
         instructions=enrichment_instructions
     )(inputs & merged_concepts)
 
-    # Merge enrichment branches
     merged_enrichments = enrich1 & enrich2 & enrich3
 
-    # Final merge: combine original concepts with enrichment additions
     enriched_concepts = await synalinks.Generator(
         data_model=MergedConcepts,
         language_model=language_model,
         temperature=1.0,
-        instructions="""You have two inputs:
-1. The original merged concepts from initial extraction
-2. Missing concepts identified by the enrichment phase
-
-Create a FINAL comprehensive list that:
-- Includes ALL original concepts (do not remove any)
-- Adds the genuinely missing concepts from enrichment
-- Deduplicates any overlaps
-- Orders concepts logically (foundational before advanced)
-
-The result should be a complete, well-organized list of main concepts for the book."""
+        instructions="Combine and deduplicate all concepts"
     )(inputs & merged_concepts & merged_enrichments)
 
-    # Expand each main concept with its subconcepts
     hierarchy = await synalinks.Generator(
         data_model=HierarchicalConcepts,
-        instructions="For each main concept provided, generate ALL relevant subconcepts that belong to that domain. Be comprehensive - include every important technique, method, tool, or topic that falls under the main concept. Do not limit the number.",
+        instructions="Generate subconcepts for each main concept",
         language_model=language_model,
         temperature=1.0
     )(inputs & enriched_concepts)
 
-    # Review and add any missing concepts
     reviewed = await synalinks.Generator(
         data_model=HierarchicalConcepts,
-        instructions="Review the provided concepts and subconcepts. Add any important main concepts that are missing, and add any missing subconcepts to existing concepts. Return the complete enriched hierarchy.",
+        instructions="Review and add missing concepts/subconcepts",
         language_model=language_model,
         temperature=1.0
     )(inputs & hierarchy)
 
-    # Expand subconcepts with sub-subconcepts
     deep = await synalinks.Generator(
         data_model=DeepHierarchy,
-        instructions="For each subconcept provided, generate ALL relevant sub-subconcepts that belong to that subdomain. Be comprehensive - include every concrete technique, method, algorithm, or specific topic. Do not limit the number.",
+        instructions="Generate sub-subconcepts for each subconcept",
         language_model=language_model,
         temperature=1.0
     )(inputs & reviewed)
 
-    # Verify relevance to the book topic and goal
     outputs = await synalinks.Generator(
         data_model=DeepHierarchy,
-        instructions="Review the entire hierarchy and verify each concept, subconcept, and sub-subconcept is relevant to the book topic and goal. Remove any items that are off-topic, too generic, or not directly useful for the book. Keep only what truly belongs.",
+        instructions="Verify relevance and remove off-topic items",
         language_model=language_model,
         temperature=1.0
     )(inputs & deep)
@@ -180,6 +338,74 @@ The result should be a complete, well-organized list of main concepts for the bo
         name="verified_concept_extractor",
         description="Extract and verify three-level hierarchy of concepts for book writing",
     )
+
+
+async def generate_outline_with_coverage(topic_data: dict, language_model, max_coverage_attempts: int = 3) -> dict:
+    """
+    Generate outline with coverage checking loop.
+
+    This ensures the generated concepts adequately cover all topics specified in the goal.
+
+    Args:
+        topic_data: Dict with topic, goal, book_name
+        language_model: The LLM to use
+        max_coverage_attempts: Max attempts to fix coverage (default 3)
+
+    Returns:
+        The complete hierarchy dict
+    """
+    topic_input = Topic(
+        topic=topic_data["topic"],
+        goal=topic_data["goal"],
+        book_name=topic_data["book_name"]
+    )
+
+    # Step 1: Generate initial main concepts
+    logger.info("Generating main concepts...")
+    concepts = await generate_main_concepts(topic_input, language_model)
+    logger.info(f"Generated {len(concepts)} main concepts")
+
+    # Step 2: Coverage check loop
+    for attempt in range(max_coverage_attempts):
+        logger.info(f"Checking coverage (attempt {attempt + 1}/{max_coverage_attempts})...")
+
+        adequate, missing = await check_coverage(
+            topic=topic_data["topic"],
+            goal=topic_data["goal"],
+            concepts=concepts,
+            language_model=language_model
+        )
+
+        if adequate:
+            logger.info("Coverage check: PASSED")
+            break
+        else:
+            logger.info(f"Coverage check: MISSING TOPICS - {missing}")
+
+            if attempt < max_coverage_attempts - 1:
+                # Generate concepts for missing topics
+                new_concepts = await generate_missing_concepts(
+                    topic=topic_data["topic"],
+                    goal=topic_data["goal"],
+                    current_concepts=concepts,
+                    missing_topics=missing,
+                    language_model=language_model
+                )
+
+                if new_concepts:
+                    logger.info(f"Adding {len(new_concepts)} new concepts: {new_concepts}")
+                    concepts.extend(new_concepts)
+                else:
+                    logger.warning("No new concepts generated, stopping coverage loop")
+                    break
+            else:
+                logger.warning("Max coverage attempts reached, proceeding with current concepts")
+
+    # Step 3: Expand to full hierarchy
+    logger.info("Expanding concepts to full hierarchy...")
+    hierarchy = await expand_to_hierarchy(topic_input, concepts, language_model)
+
+    return hierarchy
 
 
 async def reorganize_outline(

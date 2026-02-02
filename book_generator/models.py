@@ -151,6 +151,39 @@ class MergedConcepts(synalinks.DataModel):
     )
 
 
+class CoverageCheckInput(synalinks.DataModel):
+    """Input for checking if concepts cover the book goal."""
+    topic: str = synalinks.Field(description="The main topic of the book")
+    goal: str = synalinks.Field(description="The goal of the book - what it should cover")
+    current_concepts: str = synalinks.Field(description="List of current main concepts")
+
+
+class CoverageAssessment(synalinks.DataModel):
+    """Assessment of whether concepts adequately cover the goal."""
+    thinking: list[str] = synalinks.Field(
+        description="Step by step analysis comparing goal requirements against current concepts"
+    )
+    covered_topics: list[str] = synalinks.Field(
+        description="Topics from the goal that ARE covered by current concepts"
+    )
+    missing_topics: list[str] = synalinks.Field(
+        description="Topics from the goal that are NOT covered - be specific"
+    )
+    coverage_adequate: bool = synalinks.Field(
+        description="True if coverage is adequate, False if important topics are missing"
+    )
+
+
+class MissingConceptsAddition(synalinks.DataModel):
+    """Concepts to add based on coverage gaps."""
+    thinking: list[str] = synalinks.Field(
+        description="Reasoning about what concepts are needed to cover the missing topics"
+    )
+    new_concepts: list[str] = synalinks.Field(
+        description="New main concepts to add (just the concept names)"
+    )
+
+
 class EnrichmentAdditions(synalinks.DataModel):
     """New concepts identified as missing from the initial extraction."""
     thinking: list[str] = synalinks.Field(
