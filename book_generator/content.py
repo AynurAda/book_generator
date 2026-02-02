@@ -8,7 +8,6 @@ This module handles the generation of actual book content:
 - Final assembly by concatenation
 """
 
-import asyncio
 import logging
 from typing import List, Optional, Dict
 

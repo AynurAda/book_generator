@@ -12,7 +12,6 @@ import logging
 import subprocess
 import tempfile
 import urllib.request
-import urllib.parse
 from typing import Optional
 
 import markdown

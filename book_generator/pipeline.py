@@ -27,7 +27,6 @@ from .utils import (
 from .outline import build_outline_pipeline, reorganize_outline
 from .planning import run_hierarchical_planning
 from .content import write_all_sections_direct
-# from .polish import polish_chapters  # Skipped - direct write produces quality prose
 from .cover import generate_cover
 from .pdf import generate_pdf
 from .authors import get_author_profile, generate_about_author

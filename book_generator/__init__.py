@@ -7,7 +7,7 @@ educational books from a topic description.
 
 from .config import Config
 from .models import Topic
-from .authors import WRITING_STYLES, get_writing_style, list_available_authors
+from .authors import WRITING_STYLES, get_author_profile, list_available_authors
 
 __version__ = "1.0.0"
-__all__ = ["Config", "Topic", "WRITING_STYLES", "get_writing_style", "list_available_authors"]
+__all__ = ["Config", "Topic", "WRITING_STYLES", "get_author_profile", "list_available_authors"]

@@ -166,25 +166,6 @@ def build_outline_text_short(results: dict) -> str:
     return "\n".join(lines)
 
 
-def collect_all_sections(results: dict) -> list:
-    """Collect all sections (subsubconcepts) from the outline."""
-    sections = []
-    concepts_list = results.get("concepts", [])
-
-    for concept_data in concepts_list:
-        concept_name = concept_data.get("concept", "Unknown")
-        subconcepts = concept_data.get("subconcepts", [])
-
-        for subconcept_data in subconcepts:
-            subconcept_name = subconcept_data.get("subconcept", "Unknown")
-            subsubconcepts = subconcept_data.get("subsubconcepts", [])
-
-            for subsubconcept in subsubconcepts:
-                sections.append(f"{concept_name} > {subconcept_name} > {subsubconcept}")
-
-    return sections
-
-
 def extract_hierarchy(outline_results: dict) -> dict:
     """
     Extract the full hierarchy: chapters -> sections -> subsections.
@@ -222,11 +203,3 @@ def get_chapter_names(outline_results: dict) -> list:
         chapter_names.append(f"{i}. {chapter_name}")
 
     return chapter_names
-
-
-def format_subsections_for_rewrite(subsections_list: list) -> str:
-    """Format subsection content for the rewriting prompt."""
-    formatted = []
-    for subsection_name, subsection_content in subsections_list:
-        formatted.append(f"=== {subsection_name} ===\n{subsection_content}")
-    return "\n\n".join(formatted)

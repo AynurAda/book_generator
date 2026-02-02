@@ -123,11 +123,6 @@ def get_author_profile(style_key: str) -> Optional[WritingStyle]:
     return AUTHOR_PROFILES.get(style_key)
 
 
-def get_writing_style(style_key: str) -> Optional[WritingStyle]:
-    """Get a writing style by key."""
-    return AUTHOR_PROFILES.get(style_key)
-
-
 def list_available_authors() -> list:
     """List all available writing styles."""
     return [
@@ -251,36 +246,3 @@ Keep it simple and factual. Do not invent elaborate backstories."""
         save_to_file(output_dir, filename, about_content)
 
     return about_content
-
-
-async def style_all_chapters(
-    polished_chapters: list,
-    style: WritingStyle,
-    language_model,
-    output_dir: str
-) -> list:
-    """Apply writing style to all chapters."""
-    styled_chapters = []
-
-    for i, (chapter_name, chapter_data) in enumerate(polished_chapters, 1):
-        content = chapter_data.get("chapter_content", "")
-
-        if not content:
-            styled_chapters.append((chapter_name, chapter_data))
-            continue
-
-        try:
-            styled_content = await apply_author_style(
-                content,
-                style,
-                chapter_name,
-                language_model,
-                output_dir,
-                i
-            )
-            styled_chapters.append((chapter_name, {"chapter_content": styled_content}))
-        except Exception as e:
-            logger.warning(f"Style application failed for chapter {i}: {e}")
-            styled_chapters.append((chapter_name, chapter_data))
-
-    return styled_chapters
