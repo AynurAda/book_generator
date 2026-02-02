@@ -212,9 +212,11 @@ async def generate_book(config: Config) -> str:
             logger.info("Loaded existing reorganized outline")
 
     if not was_reorganized:
-        results, was_reorganized, reorg_reasoning = await reorganize_outline(
+        results, was_reorganized, reorg_reasoning, reorg_analysis = await reorganize_outline(
             topic_data, results, language_model
         )
+        # Always save the reorganization analysis (includes thinking)
+        save_json_to_file(output_dir, "01_reorganization_analysis.json", reorg_analysis)
         if was_reorganized:
             save_json_to_file(output_dir, "01_outline_reorganized.json", results)
             save_to_file(output_dir, "01_outline_reorganized.txt", build_outline_text(results))

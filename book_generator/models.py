@@ -143,8 +143,21 @@ class ConceptExtractor(synalinks.DataModel):
 
 class MergedConcepts(synalinks.DataModel):
     """Deduplicated concept list after merging branches."""
+    thinking: list[str] = synalinks.Field(
+        description="Your step by step reasoning about what concepts are needed and what might be missing"
+    )
     main_concepts: list[str] = synalinks.Field(
         description="Comprehensive deduplicated list of main concepts from all branches"
+    )
+
+
+class EnrichmentAdditions(synalinks.DataModel):
+    """New concepts identified as missing from the initial extraction."""
+    thinking: list[str] = synalinks.Field(
+        description="Your step by step analysis of what important concepts are MISSING from the current list"
+    )
+    missing_concepts: list[str] = synalinks.Field(
+        description="List of important concepts that are MISSING and should be added. Only include NEW concepts not already in the list."
     )
 
 
@@ -172,6 +185,9 @@ class HierarchicalConcepts(synalinks.DataModel):
 class SubconceptWithDetails(synalinks.DataModel):
     """A subconcept with its sub-subconcepts."""
     subconcept: str = synalinks.Field(description="The subconcept name")
+    thinking: list[str] = synalinks.Field(
+        description="Your step by step thinking about what sub-subconcepts are essential for this subconcept"
+    )
     subsubconcepts: list[str] = synalinks.Field(
         description="Specific sub-subconcepts, techniques, or details belonging to this subconcept"
     )
@@ -180,6 +196,9 @@ class SubconceptWithDetails(synalinks.DataModel):
 class ConceptDeep(synalinks.DataModel):
     """A main concept with subconcepts expanded to sub-subconcepts."""
     concept: str = synalinks.Field(description="The main concept name")
+    thinking: list[str] = synalinks.Field(
+        description="Your step by step thinking about the completeness of this concept's coverage"
+    )
     subconcepts: list[SubconceptWithDetails] = synalinks.Field(
         description="Subconcepts each with their own sub-subconcepts"
     )
@@ -187,6 +206,9 @@ class ConceptDeep(synalinks.DataModel):
 
 class DeepHierarchy(synalinks.DataModel):
     """Three-level hierarchy: concepts -> subconcepts -> sub-subconcepts."""
+    thinking: list[str] = synalinks.Field(
+        description="Your step by step thinking about gaps, completeness, and logical organization of the hierarchy"
+    )
     concepts: list[ConceptDeep] = synalinks.Field(
         description="Complete three-level hierarchy of concepts"
     )
@@ -194,6 +216,9 @@ class DeepHierarchy(synalinks.DataModel):
 
 class ReorganizedOutline(synalinks.DataModel):
     """Output containing the reorganized outline following conceptual/temporal evolution."""
+    thinking: list[str] = synalinks.Field(
+        description="Your step by step analysis of dependencies, prerequisites, and optimal learning order"
+    )
     should_reorganize: bool = synalinks.Field(
         description="Whether reorganization makes sense for this topic"
     )
@@ -207,6 +232,9 @@ class ReorganizedOutline(synalinks.DataModel):
 
 class BookPlan(synalinks.DataModel):
     """High-level plan for the entire book."""
+    thinking: list[str] = synalinks.Field(
+        description="Your step by step thinking about the book's structure, audience needs, and narrative flow"
+    )
     book_summary: str = synalinks.Field(
         description="2-3 paragraph overview of the book"
     )
@@ -220,6 +248,9 @@ class BookPlan(synalinks.DataModel):
 
 class ChapterPlan(synalinks.DataModel):
     """Plan for a single chapter."""
+    thinking: list[str] = synalinks.Field(
+        description="Your step by step thinking about this chapter's purpose, key concepts, and connections"
+    )
     chapter_name: str = synalinks.Field(description="The name of the chapter")
     chapter_summary: str = synalinks.Field(
         description="2-3 paragraph summary of what this chapter covers"
@@ -253,6 +284,9 @@ class ChapterBrief(synalinks.DataModel):
 
 class ChaptersOverview(synalinks.DataModel):
     """High-level overview of all chapters for coherent planning."""
+    thinking: list[str] = synalinks.Field(
+        description="Your step by step thinking about how chapters should flow and connect for maximum coherence"
+    )
     narrative_flow: str = synalinks.Field(
         description="2-3 paragraphs describing how the book flows from start to end"
     )
@@ -263,6 +297,9 @@ class ChaptersOverview(synalinks.DataModel):
 
 class SectionPlan(synalinks.DataModel):
     """Plan for a single section within a chapter."""
+    thinking: list[str] = synalinks.Field(
+        description="Your step by step thinking about this section's goals, key concepts, and how subsections should flow"
+    )
     section_name: str = synalinks.Field(description="The name of the section")
     section_summary: str = synalinks.Field(
         description="Summary of what this section covers"
@@ -445,12 +482,25 @@ class SubsectionInput(synalinks.DataModel):
     section_name: str = synalinks.Field(description="The name of the current section")
     section_plan: str = synalinks.Field(description="The plan for this section")
     subsection_name: str = synalinks.Field(description="The name of this subsection to write")
+    opening_approach: str = synalinks.Field(description="The approach to use for opening the explanation")
 
 
 class SubsectionContent(synalinks.DataModel):
-    """Output for a generated subsection."""
-    content: str = synalinks.Field(
-        description="The complete subsection content - comprehensive, step-by-step explanation"
+    """Output for a generated subsection with structured components."""
+    core_explanation: str = synalinks.Field(
+        description="Definition and core explanation - what this concept IS, explained from first principles (2-4 paragraphs)"
+    )
+    mechanics: str = synalinks.Field(
+        description="How it works - the underlying principles, algorithms, or processes in detail (2-4 paragraphs)"
+    )
+    examples: str = synalinks.Field(
+        description="Concrete, specific examples that illustrate different aspects of the concept (2-3 examples)"
+    )
+    nuances: str = synalinks.Field(
+        description="Edge cases, limitations, common misconceptions, and important caveats (1-2 paragraphs)"
+    )
+    connections: str = synalinks.Field(
+        description="How this relates to other concepts in the section/chapter and when to use it (1-2 paragraphs)"
     )
 
 
@@ -490,4 +540,24 @@ class ChapterIntro(synalinks.DataModel):
     """Output for chapter introduction."""
     introduction: str = synalinks.Field(
         description="The chapter introduction that puts it in context of the whole book"
+    )
+
+
+class PartConclusionInput(synalinks.DataModel):
+    """Input for generating a part conclusion (Why It Matters)."""
+    topic: str = synalinks.Field(description="The main topic of the book")
+    book_name: str = synalinks.Field(description="The name of the book")
+    book_plan: str = synalinks.Field(description="The high-level book plan")
+    part_name: str = synalinks.Field(description="The name of this part")
+    part_number: int = synalinks.Field(description="The part number")
+    total_parts: int = synalinks.Field(description="Total number of parts")
+    chapter_names: str = synalinks.Field(description="List of chapters covered in this part")
+    chapter_summaries: str = synalinks.Field(description="Brief summaries of what each chapter covered")
+    audience: str = synalinks.Field(description="The target audience")
+
+
+class PartConclusion(synalinks.DataModel):
+    """Output for part conclusion - the unified 'Why It Matters' section."""
+    conclusion: str = synalinks.Field(
+        description="A unified conclusion explaining why this part matters - practical implications, real-world applications, and significance (3-4 paragraphs)"
     )

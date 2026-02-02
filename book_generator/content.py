@@ -18,6 +18,7 @@ from .models import (
     SubsectionInput, SubsectionContent,
     SectionIntroInput, SectionIntro,
     ChapterIntroInput, ChapterIntro,
+    PartConclusionInput, PartConclusion,
 )
 from .utils import (
     sanitize_filename,
@@ -86,49 +87,61 @@ LANGUAGE STYLE: Write with CLARITY and RIGOR:
 - Clear logical flow between concepts
 - Professional textbook quality
 
-=== CRITICAL: DEPTH REQUIREMENTS ===
+=== OPENING APPROACH ===
 
-This subsection MUST receive DEEP, THOROUGH treatment:
+For the core_explanation field, use the opening approach specified in the input's "opening_approach" field.
+Do NOT use "Imagine..." as an opening - this is overused. Follow the specified approach instead.
 
-1. MINIMUM LENGTH: 500-1000 words (or more if needed to fully explain)
-   - A brief mention or summary is NOT acceptable
-   - This topic deserves comprehensive, textbook-quality coverage
+=== STRUCTURED OUTPUT ===
 
-2. REQUIRED COVERAGE:
-   - DEFINITION: What is this concept? Define it precisely and completely
-   - MECHANICS: How does it work? Explain the underlying principles in detail
-   - SIGNIFICANCE: Why does this matter? What problems does it solve?
-   - EXAMPLES: Multiple concrete, specific examples that illustrate different aspects
-   - NUANCES: Edge cases, common misconceptions, limitations, caveats
-   - CONNECTIONS: How does this relate to other concepts in the section/chapter?
+Fill each field with substantive content:
 
-=== CRITICAL: EXPLANATION APPROACH ===
-
-Every explanation MUST be:
-
-1. STEP-BY-STEP: Break down complex ideas into sequential, logical steps
-   - Start from first principles
-   - Build understanding incrementally
-   - Make the reasoning process explicit
-
-2. SELF-CONTAINED: This subsection should stand on its own
-   - Define ALL terms when first used - do not assume prior knowledge
-   - Include necessary background within the explanation
-
-3. NO ASSUMED PRIOR KNOWLEDGE:
-   - Explain jargon and technical terms immediately upon use
-   - Do not skip "obvious" steps
+1. core_explanation: Define and explain from first principles (2-4 paragraphs)
+   - What IS this concept? Define it precisely
+   - Build understanding incrementally from basics
    - Include the "why" behind every "what"
 
-4. IN-DEPTH, NOT SURFACE-LEVEL:
-   - Go beyond definitions to true understanding
-   - Explain the intuition behind formal concepts
-   - Show how things work internally
+2. mechanics: How it works in detail (2-4 paragraphs)
+   - The underlying principles, algorithms, or processes
+   - Step-by-step breakdown of how it operates
+   - Technical details appropriate for the audience
+
+3. examples: Concrete illustrations (2-3 examples)
+   - Real, specific examples from the domain
+   - Each example should highlight different aspects
+   - Include enough detail to be instructive
+
+4. nuances: Important caveats (1-2 paragraphs)
+   - Edge cases and limitations
+   - Common misconceptions to avoid
+   - When this doesn't apply or works differently
+
+5. connections: Relationships to other concepts (1-2 paragraphs)
+   - How this relates to other topics in the section/chapter
+   - When and why to use this vs alternatives
+   - How it fits into the bigger picture
+
+=== EXPLANATION APPROACH ===
+
+Every field MUST be:
+- SELF-CONTAINED: Define ALL terms when first used
+- NO ASSUMED PRIOR KNOWLEDGE: Don't skip "obvious" steps
+- IN-DEPTH: Go beyond definitions to true understanding
+
+=== IMPORTANT: WHAT NOT TO INCLUDE ===
+
+Do NOT include generic "why it matters" content about:
+- Explainability/interpretability benefits
+- Generalization improvements
+- Real-world applications
+- Practical implications
+
+These are covered in a separate part-level conclusion. Focus on explaining WHAT this concept is and HOW it works.
 
 FORMATTING:
 - Do NOT use markdown headers (no #, ##, ###, ####)
-- You CAN use numbered sections like "**1. Topic Name**" to organize content
-- Use **bold** for section titles and emphasis"""
+- You CAN use **bold** for emphasis
+- Write in flowing prose, not bullet points (except in examples)"""
 
     generator = synalinks.Generator(
         data_model=SubsectionContent,
@@ -138,7 +151,27 @@ FORMATTING:
     )
 
     result = await generator(subsection_input)
-    return result.get_json().get("content", "")
+    data = result.get_json()
+
+    # Combine structured fields into cohesive content
+    parts = []
+
+    if data.get("core_explanation"):
+        parts.append(data["core_explanation"])
+
+    if data.get("mechanics"):
+        parts.append(data["mechanics"])
+
+    if data.get("examples"):
+        parts.append(data["examples"])
+
+    if data.get("nuances"):
+        parts.append(data["nuances"])
+
+    if data.get("connections"):
+        parts.append(data["connections"])
+
+    return "\n\n".join(parts)
 
 
 async def generate_section_intro(
@@ -253,6 +286,69 @@ No headers. No formal academic tone."""
     return result.get_json().get("introduction", "")
 
 
+async def generate_part_conclusion(
+    topic: str,
+    book_name: str,
+    book_plan: dict,
+    part_name: str,
+    part_number: int,
+    total_parts: int,
+    chapter_names: List[str],
+    chapter_summaries: List[str],
+    audience: str,
+    language_model
+) -> str:
+    """
+    Generate a conclusion for a part - the unified "Why It Matters" section.
+
+    This replaces repetitive "why it matters" subsections in each section.
+    Instead, we have one comprehensive conclusion per part that covers
+    practical implications and significance.
+
+    Returns:
+        The part conclusion
+    """
+    generator = synalinks.Generator(
+        data_model=PartConclusion,
+        language_model=language_model,
+        temperature=1.0,
+        instructions="""Write a "Why It Matters" conclusion for this part in WaitButWhy style.
+
+This is the UNIFIED place to discuss practical significance - individual sections do NOT need their own "why it matters."
+
+Your conclusion should:
+1. SYNTHESIZE the key takeaways from all chapters in this part
+2. Explain PRACTICAL IMPLICATIONS - how this knowledge is applied in the real world
+3. Connect to the TARGET AUDIENCE's needs and goals
+4. Show why understanding these concepts is valuable (not just interesting)
+
+Be specific and concrete:
+- Don't just say "this is important for explainability" - explain HOW it enables explainability
+- Don't just say "this matters for generalization" - show WHAT problems it solves
+- Use specific examples of real-world applications
+
+3-4 paragraphs. No headers. Conversational but substantive."""
+    )
+
+    chapters_list = "\n".join(f"- {name}" for name in chapter_names)
+    summaries_text = "\n\n".join(chapter_summaries)
+
+    input_data = PartConclusionInput(
+        topic=topic,
+        book_name=book_name,
+        book_plan=format_book_plan(book_plan),
+        part_name=part_name,
+        part_number=part_number,
+        total_parts=total_parts,
+        chapter_names=chapters_list,
+        chapter_summaries=summaries_text,
+        audience=audience
+    )
+
+    result = await generator(input_data)
+    return result.get_json().get("conclusion", "")
+
+
 async def write_section_with_subsections(
     topic_data: dict,
     full_outline: str,
@@ -264,11 +360,13 @@ async def write_section_with_subsections(
     section_plan: dict,
     subsection_names: List[str],
     intro_style: str,
+    intro_styles: List[str],
+    style_idx: int,
     language_model,
     output_dir: str,
     section_num: int,
     writing_style: Optional[object] = None
-) -> str:
+) -> tuple:
     """
     Write a complete section by generating each subsection separately with full context,
     then concatenating them with a section intro.
@@ -276,7 +374,7 @@ async def write_section_with_subsections(
     This provides more detail and rigor than writing the whole section at once.
 
     Returns:
-        The complete section content
+        Tuple of (section_content, new_style_idx)
     """
     safe_section = sanitize_filename(section_name)
     section_filename = f"03_section_{section_num:03d}_{safe_section}.txt"
@@ -307,6 +405,10 @@ async def write_section_with_subsections(
     for i, subsection_name in enumerate(subsection_names):
         logger.info(f"  Generating subsection {i+1}/{len(subsection_names)}: {subsection_name}")
 
+        # Get rotating opening approach for this subsection
+        opening_approach = intro_styles[style_idx % len(intro_styles)]
+        style_idx += 1
+
         subsection_input = SubsectionInput(
             topic=topic_data["topic"],
             goal=topic_data["goal"],
@@ -319,7 +421,8 @@ async def write_section_with_subsections(
             chapter_plan=format_chapter_plan(chapter_plan),
             section_name=section_name,
             section_plan=format_section_plan(section_plan) if section_plan else "No specific plan",
-            subsection_name=subsection_name
+            subsection_name=subsection_name,
+            opening_approach=opening_approach
         )
 
         content = await generate_subsection(
@@ -352,7 +455,7 @@ async def write_section_with_subsections(
     if output_dir:
         save_to_file(output_dir, section_filename, section_content)
 
-    return section_content
+    return (section_content, style_idx)
 
 
 async def write_chapter_with_sections(
@@ -421,11 +524,11 @@ async def write_chapter_with_sections(
 
         section_plan = chapter_plans_in_part[i] if i < len(chapter_plans_in_part) else None
 
-        # Get intro style (rotating)
+        # Get intro style for section intro (rotating)
         intro_style = intro_styles[style_idx % len(intro_styles)]
         style_idx += 1
 
-        section_content = await write_section_with_subsections(
+        section_content, style_idx = await write_section_with_subsections(
             topic_data=topic_data,
             full_outline=full_outline,
             book_plan=book_plan,
@@ -436,6 +539,8 @@ async def write_chapter_with_sections(
             section_plan=section_plan,
             subsection_names=subsection_names,
             intro_style=intro_style,
+            intro_styles=intro_styles,
+            style_idx=style_idx,
             language_model=language_model,
             output_dir=output_dir,
             section_num=section_counter + i + 1,
@@ -444,7 +549,31 @@ async def write_chapter_with_sections(
 
         section_contents.append((section_name, section_content))
 
-    # Assemble chapter: header + intro + sections
+    # Generate part conclusion (Why It Matters)
+    # Create chapter summaries from section plans
+    chapter_summaries = []
+    for i, (section_name, _) in enumerate(section_contents):
+        plan = chapter_plans_in_part[i] if i < len(chapter_plans_in_part) else None
+        if plan:
+            summary = plan.get("section_summary", f"Covers {section_name}")
+        else:
+            summary = f"Covers {section_name}"
+        chapter_summaries.append(f"{section_name}: {summary}")
+
+    part_conclusion = await generate_part_conclusion(
+        topic=topic_data["topic"],
+        book_name=topic_data["book_name"],
+        book_plan=book_plan,
+        part_name=chapter_name,
+        part_number=chapter_number,
+        total_parts=total_chapters,
+        chapter_names=chapter_names_in_part,
+        chapter_summaries=chapter_summaries,
+        audience=topic_data.get("audience", "technical readers"),
+        language_model=language_model
+    )
+
+    # Assemble chapter: header + intro + sections + conclusion
     chapter_parts = []
 
     # Part header (was chapter)
@@ -461,6 +590,13 @@ async def write_chapter_with_sections(
         chapter_parts.append(f"## {section_header}")
         chapter_parts.append("")
         chapter_parts.append(section_content)
+        chapter_parts.append("")
+
+    # Part conclusion (Why It Matters)
+    if part_conclusion:
+        chapter_parts.append("## Why It Matters")
+        chapter_parts.append("")
+        chapter_parts.append(part_conclusion)
         chapter_parts.append("")
 
     full_chapter = "\n".join(chapter_parts)

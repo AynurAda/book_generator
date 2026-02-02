@@ -12,6 +12,7 @@ from .models import (
     Topic,
     ConceptExtractor,
     MergedConcepts,
+    EnrichmentAdditions,
     ConceptWithSubconcepts,
     HierarchicalConcepts,
     SubconceptWithDetails,
@@ -68,32 +69,8 @@ async def build_outline_pipeline(language_model) -> synalinks.Program:
         temperature=1.0
     )(inputs)
 
-    branch5 = await synalinks.Generator(
-        data_model=ConceptExtractor,
-        language_model=language_model,
-        temperature=1.0
-    )(inputs)
-
-    branch6 = await synalinks.Generator(
-        data_model=ConceptExtractor,
-        language_model=language_model,
-        temperature=1.0
-    )(inputs)
-
-    branch7 = await synalinks.Generator(
-        data_model=ConceptExtractor,
-        language_model=language_model,
-        temperature=1.0
-    )(inputs)
-
-    branch8 = await synalinks.Generator(
-        data_model=ConceptExtractor,
-        language_model=language_model,
-        temperature=1.0
-    )(inputs)
-
     # Merge all branches using & operator
-    merged = branch1 & branch2 & branch3 & branch4 & branch5 & branch6 & branch7 & branch8
+    merged = branch1 & branch2 & branch3 & branch4
 
     # Final generator to deduplicate and consolidate the merged lists
     merged_concepts = await synalinks.Generator(
@@ -103,14 +80,10 @@ async def build_outline_pipeline(language_model) -> synalinks.Program:
         temperature=1.0
     )(inputs & merged)
 
-    # Review and enrich main concepts - add any important missing ones
-    enriched_concepts = await synalinks.Generator(
-        data_model=MergedConcepts,
-        language_model=language_model,
-        temperature=1.0,
-        instructions="""Review the list of main concepts for this book topic.
+    # Enrichment phase: 3 branches identify missing concepts
+    enrichment_instructions = """Review the list of main concepts for this book topic.
 
-Your task is to identify and ADD any important main concepts that are MISSING.
+Your task is to identify important main concepts that are MISSING.
 
 Think about:
 1. FOUNDATIONAL concepts - Are the theoretical/mathematical foundations covered?
@@ -125,9 +98,49 @@ For the given topic and goal:
 - What would a comprehensive textbook include that isn't here?
 - What concepts are prerequisites for understanding others?
 
-Return the COMPLETE list including both the original concepts AND any new ones you add.
-Do NOT remove any existing concepts - only ADD missing important ones."""
+ONLY output concepts that are genuinely MISSING. Do NOT repeat concepts already in the list."""
+
+    enrich1 = await synalinks.Generator(
+        data_model=EnrichmentAdditions,
+        language_model=language_model,
+        temperature=1.0,
+        instructions=enrichment_instructions
     )(inputs & merged_concepts)
+
+    enrich2 = await synalinks.Generator(
+        data_model=EnrichmentAdditions,
+        language_model=language_model,
+        temperature=1.0,
+        instructions=enrichment_instructions
+    )(inputs & merged_concepts)
+
+    enrich3 = await synalinks.Generator(
+        data_model=EnrichmentAdditions,
+        language_model=language_model,
+        temperature=1.0,
+        instructions=enrichment_instructions
+    )(inputs & merged_concepts)
+
+    # Merge enrichment branches
+    merged_enrichments = enrich1 & enrich2 & enrich3
+
+    # Final merge: combine original concepts with enrichment additions
+    enriched_concepts = await synalinks.Generator(
+        data_model=MergedConcepts,
+        language_model=language_model,
+        temperature=1.0,
+        instructions="""You have two inputs:
+1. The original merged concepts from initial extraction
+2. Missing concepts identified by the enrichment phase
+
+Create a FINAL comprehensive list that:
+- Includes ALL original concepts (do not remove any)
+- Adds the genuinely missing concepts from enrichment
+- Deduplicates any overlaps
+- Orders concepts logically (foundational before advanced)
+
+The result should be a complete, well-organized list of main concepts for the book."""
+    )(inputs & merged_concepts & merged_enrichments)
 
     # Expand each main concept with its subconcepts
     hierarchy = await synalinks.Generator(
@@ -183,7 +196,7 @@ async def reorganize_outline(
         language_model: The language model to use
 
     Returns:
-        Tuple of (reorganized_results, was_reorganized, reasoning)
+        Tuple of (reorganized_results, was_reorganized, reasoning, analysis_dict)
     """
     logger.info("Analyzing outline for conceptual/temporal reorganization...")
 
@@ -234,11 +247,11 @@ IMPORTANT:
                 f"Invalid chapter_order length ({len(chapter_order)} vs {len(concepts_list)}). "
                 "Keeping original order."
             )
-            return outline_results, False, "Invalid reorganization - keeping original order"
+            return outline_results, False, "Invalid reorganization - keeping original order", result_dict
 
         if set(chapter_order) != set(range(1, len(concepts_list) + 1)):
             logger.warning("Invalid chapter indices. Keeping original order.")
-            return outline_results, False, "Invalid reorganization - keeping original order"
+            return outline_results, False, "Invalid reorganization - keeping original order", result_dict
 
         # Reorder the concepts
         reordered_concepts = [concepts_list[i - 1] for i in chapter_order]
@@ -247,8 +260,8 @@ IMPORTANT:
         reasoning = result_dict.get("reasoning", "Reorganized based on conceptual evolution")
         logger.info(f"Outline reorganized: {reasoning}")
 
-        return reorganized_results, True, reasoning
+        return reorganized_results, True, reasoning, result_dict
     else:
         reasoning = result_dict.get("reasoning", "Current order is optimal")
         logger.info(f"Keeping original order: {reasoning}")
-        return outline_results, False, reasoning
+        return outline_results, False, reasoning, result_dict

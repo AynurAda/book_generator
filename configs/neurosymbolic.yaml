@@ -23,6 +23,6 @@ model_name: "gemini/gemini-3-flash-preview"
 author_key: "waitbutwhy"
 
 # Illustration settings
-enable_illustrations: true
-enable_generated_images: true
+enable_illustrations: false
+enable_generated_images: false
 image_model: "gemini/gemini-3-pro-image-preview"

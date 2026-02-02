@@ -52,7 +52,7 @@ Focus on practical knowledge for embedded systems engineers. Include architectur
     "audience": "Embedded systems engineers, automotive software developers, and real-time systems practitioners who want to understand modern embedded architectures from low-level drivers to AUTOSAR and high-performance computing platforms",
 
     # Generation settings
-    "test_mode": True,
+    "test_mode": False,
     "test_max_chapters": 2,
     "resume_from_dir": None,
 
