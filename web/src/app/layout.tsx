@@ -13,18 +13,18 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Learner | Learn any field. Build what you imagine.",
-  description: "Want to learn something new to build something cool? We create personalized books that teach you exactly what you need — with examples from YOUR project.",
-  keywords: ["personalized learning", "custom textbooks", "learn to build", "project-based learning", "AI education"],
+  title: "Polaris | Your north star to the cutting edge",
+  description: "Navigate to mastery with knowledge synthesized for exactly one person — you. We collapse the decade-long knowledge pipeline so you can learn breakthroughs in time to build something that matters.",
+  keywords: ["knowledge synthesis", "personalized books", "cutting edge learning", "AI education", "research to understanding"],
   openGraph: {
-    title: "Learner | Learn any field. Build what you imagine.",
-    description: "Personalized books that teach you exactly what you need for your project.",
+    title: "Polaris | Your north star to the cutting edge",
+    description: "Navigate to mastery with knowledge synthesized for exactly one person — you.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Learner | Learn any field. Build what you imagine.",
-    description: "Personalized books that teach you exactly what you need for your project.",
+    title: "Polaris | Your north star to the cutting edge",
+    description: "Navigate to mastery with knowledge synthesized for exactly one person — you.",
   },
 };
 

@@ -21,6 +21,7 @@ import {
   FileText,
   AlertCircle,
   RefreshCw,
+  Star,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -280,8 +281,8 @@ export default function BuilderPage() {
       <nav className="fixed top-0 w-full bg-white/80 backdrop-blur-md z-50 border-b border-slate-100">
         <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center gap-2">
-            <BookOpen className="h-6 w-6 text-slate-900" />
-            <span className="font-semibold text-lg">Learner</span>
+            <Star className="h-6 w-6 text-amber-500 fill-amber-500/30" />
+            <span className="font-semibold text-lg">Polaris</span>
           </Link>
           <Badge variant="secondary">Book Builder</Badge>
         </div>

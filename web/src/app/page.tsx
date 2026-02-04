@@ -13,28 +13,18 @@ import {
   ChevronRight,
   Mail,
   Sparkles,
-  Play,
   Brain,
   Code,
   FileText,
   Video,
   Newspaper,
   Search,
-  Clock,
   Target,
-  Globe,
-  Heart,
-  GraduationCap,
-  TrendingUp,
-  Microscope,
-  Calculator,
-  Dna,
-  Languages,
-  Laugh,
   Quote,
   Zap,
   Users,
   ChevronDown,
+  Star,
 } from "lucide-react";
 
 
@@ -197,29 +187,6 @@ const userStories = [
   },
 ];
 
-const features = [
-  {
-    icon: Target,
-    title: "Your Domain, Your Examples",
-    description: "Every analogy, code snippet, and case study pulled from YOUR field. No more translating irrelevant examples.",
-  },
-  {
-    icon: Globe,
-    title: "Your Language",
-    description: "Learn in your native language. Complex concepts explained the way YOU think, not lost in translation.",
-  },
-  {
-    icon: GraduationCap,
-    title: "Your Level",
-    description: "Start exactly where you are. Skip what you know, deep-dive where you need. No one-size-fits-all.",
-  },
-  {
-    icon: Laugh,
-    title: "Your Style",
-    description: "Dry academic? Casual and fun? Add humor, pick a persona. Learning should match how YOU like to read.",
-  },
-];
-
 export default function LandingPage() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
@@ -246,33 +213,33 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-900 to-blue-950 text-white overflow-x-hidden">
-      {/* Animated background - warmer and more inviting */}
-      <div className="fixed inset-0 bg-gradient-to-br from-slate-900 via-cyan-950/30 to-amber-950/20 pointer-events-none" />
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-indigo-950/80 to-slate-950 text-white overflow-x-hidden">
+      {/* Animated background - celestial navy + gold */}
+      <div className="fixed inset-0 bg-gradient-to-br from-slate-950 via-indigo-950/50 to-slate-950 pointer-events-none" />
       <div className="fixed inset-0 opacity-30 pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-500/40 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-teal-500/30 rounded-full blur-3xl animate-pulse delay-1000" />
-        <div className="absolute top-1/2 right-1/3 w-64 h-64 bg-amber-500/20 rounded-full blur-3xl animate-pulse delay-500" />
-        <div className="absolute bottom-1/3 left-1/3 w-72 h-72 bg-amber-500/20 rounded-full blur-3xl animate-pulse delay-700" />
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-500/30 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-amber-500/25 rounded-full blur-3xl animate-pulse delay-1000" />
+        <div className="absolute top-1/2 right-1/3 w-64 h-64 bg-amber-400/20 rounded-full blur-3xl animate-pulse delay-500" />
+        <div className="absolute bottom-1/3 left-1/3 w-72 h-72 bg-indigo-400/20 rounded-full blur-3xl animate-pulse delay-700" />
       </div>
 
       {/* Navigation */}
-      <nav className="fixed top-0 w-full bg-slate-900/80 backdrop-blur-xl z-50 border-b border-white/10">
+      <nav className="fixed top-0 w-full bg-slate-950/80 backdrop-blur-xl z-50 border-b border-amber-500/10">
         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
             <div className="relative">
-              <BookOpen className="h-7 w-7 text-cyan-400" />
-              <div className="absolute -top-1 -right-1 w-3 h-3 bg-teal-500 rounded-full animate-ping" />
+              <Star className="h-7 w-7 text-amber-400 fill-amber-400/30" />
+              <div className="absolute -top-1 -right-1 w-2 h-2 bg-amber-400 rounded-full animate-pulse" />
             </div>
-            <span className="font-bold text-xl bg-gradient-to-r from-white to-cyan-200 bg-clip-text text-transparent">
-              Learner
+            <span className="font-bold text-xl bg-gradient-to-r from-white to-amber-200 bg-clip-text text-transparent">
+              Polaris
             </span>
           </div>
 
-          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-full border border-cyan-500/20">
+          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-full border border-amber-500/20">
             <Sparkles className="w-4 h-4 text-amber-400" />
             <span className="text-sm text-slate-300">Powered by</span>
-            <span className="text-sm font-semibold bg-gradient-to-r from-amber-400 via-teal-400 to-cyan-400 bg-clip-text text-transparent">
+            <span className="text-sm font-semibold bg-gradient-to-r from-amber-400 to-yellow-300 bg-clip-text text-transparent">
               Gemini
             </span>
           </div>
@@ -288,7 +255,7 @@ export default function LandingPage() {
             </Button>
             <Button
               size="sm"
-              className="bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 text-white shadow-lg shadow-cyan-500/25"
+              className="bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 text-white shadow-lg shadow-amber-500/25"
               asChild
             >
               <a href="#waitlist">Get Early Access</a>
@@ -308,28 +275,28 @@ export default function LandingPage() {
               transition={{ duration: 0.6 }}
             >
               <Badge className="mb-6 bg-amber-500/20 text-amber-300 border-amber-500/30">
-                <Clock className="w-3 h-3 mr-1" />
-                Collapsing the knowledge pipeline
+                <Star className="w-3 h-3 mr-1" />
+                Your north star to the cutting edge
               </Badge>
 
               <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold mb-6 leading-[1.1]">
                 <span className="text-white">The book you need</span>
                 <br />
-                <span className="bg-gradient-to-r from-cyan-400 via-teal-400 to-amber-400 bg-clip-text text-transparent">
+                <span className="bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-300 bg-clip-text text-transparent">
                   doesn&apos;t exist.
                 </span>
               </h1>
 
               <p className="text-xl text-slate-300 mb-8 leading-relaxed">
                 The cutting edge is locked in research silos.
-                <span className="text-teal-400 font-medium"> We collapse the pipeline</span> so you can
-                learn breakthroughs <span className="text-amber-400 font-medium">in time to build something that matters</span>.
+                <span className="text-amber-400 font-medium"> We collapse the pipeline</span> so you can
+                learn breakthroughs <span className="text-yellow-300 font-medium">in time to build something that matters</span>.
               </p>
 
               <div className="flex flex-wrap gap-4">
                 <Button
                   size="lg"
-                  className="bg-gradient-to-r from-cyan-600 via-teal-600 to-amber-600 hover:from-cyan-500 hover:via-teal-500 hover:to-amber-500 text-white shadow-lg shadow-teal-500/30"
+                  className="bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 text-white shadow-lg shadow-amber-500/30"
                   asChild
                 >
                   <a href="/builder">
@@ -338,7 +305,7 @@ export default function LandingPage() {
                 </Button>
                 <Button
                   size="lg"
-                  className="bg-white/10 border border-white/20 text-white hover:bg-white/20"
+                  className="bg-white/10 border border-amber-500/20 text-white hover:bg-white/20"
                   asChild
                 >
                   <a href="#stories">
@@ -397,10 +364,10 @@ export default function LandingPage() {
                   className="relative z-10"
                 >
                   {/* Glowing rings */}
-                  <div className="absolute inset-0 w-32 h-32 rounded-full bg-gradient-to-br from-cyan-500/20 to-teal-500/20 blur-xl" />
-                  <div className="relative w-32 h-32 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900 border border-teal-500/30 flex items-center justify-center shadow-2xl shadow-teal-500/20">
+                  <div className="absolute inset-0 w-32 h-32 rounded-full bg-gradient-to-br from-amber-500/20 to-yellow-500/20 blur-xl" />
+                  <div className="relative w-32 h-32 rounded-2xl bg-gradient-to-br from-slate-800 to-indigo-950 border border-amber-500/30 flex items-center justify-center shadow-2xl shadow-amber-500/20">
                     <div className="text-center">
-                      <BookOpen className="w-10 h-10 text-teal-400 mx-auto mb-2" />
+                      <BookOpen className="w-10 h-10 text-amber-400 mx-auto mb-2" />
                       <span className="text-xs font-medium text-slate-300">Your Book</span>
                     </div>
                   </div>
@@ -424,7 +391,7 @@ export default function LandingPage() {
 
       {/* The Solution - One Liner */}
       <section className="py-12 px-6 relative">
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-teal-950/30 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-indigo-950/30 to-transparent" />
         <div className="max-w-4xl mx-auto relative text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -433,103 +400,18 @@ export default function LandingPage() {
           >
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">
               <span className="text-white">We synthesize</span>{" "}
-              <span className="bg-gradient-to-r from-cyan-400 via-teal-400 to-amber-400 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-300 bg-clip-text text-transparent">
                 the exact book
               </span>
               <br />
               <span className="text-white">you need.</span>
             </h2>
             <p className="text-xl md:text-2xl text-slate-300 max-w-3xl mx-auto">
-              Not personalized. Not adapted. <span className="text-teal-400 font-medium">Synthesized from scratch</span> —
+              Not personalized. Not adapted. <span className="text-amber-400 font-medium">Synthesized from scratch</span> —
               built molecule by molecule for exactly one person.
               <br />
-              <span className="text-amber-400">Take anyone to the cutting edge. No barriers.</span>
+              <span className="text-yellow-300">Take anyone to the cutting edge. No barriers.</span>
             </p>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Collapsing the Knowledge Pipeline */}
-      <section className="py-12 px-6">
-        <div className="max-w-6xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-12"
-          >
-            <Badge className="mb-4 bg-red-500/20 text-red-300 border-red-500/30">
-              <Clock className="w-3 h-3 mr-1" />
-              The Broken Pipeline
-            </Badge>
-            <h2 className="text-4xl md:text-5xl font-bold mb-4">
-              Knowledge takes a{" "}
-              <span className="bg-gradient-to-r from-red-400 to-orange-400 bg-clip-text text-transparent">
-                decade
-              </span>{" "}
-              to reach you.
-            </h2>
-          </motion.div>
-
-          {/* Pipeline visualization */}
-          <div className="grid md:grid-cols-7 gap-2 mb-12">
-            {[
-              { step: "1", label: "Breakthrough", sublabel: "Research lab" },
-              { step: "2", label: "Validation", sublabel: "Years of review" },
-              { step: "3", label: "Practitioners", sublabel: "Industry adopts" },
-              { step: "4", label: "Diffusion", sublabel: "Other domains" },
-              { step: "5", label: "Textbooks", sublabel: "Finally written" },
-              { step: "6", label: "Courses", sublabel: "Curriculum built" },
-              { step: "7", label: "You", sublabel: "Too late to matter", highlight: true },
-            ].map((item, index) => (
-              <motion.div
-                key={item.step}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                viewport={{ once: true }}
-                className={`text-center p-4 rounded-xl ${
-                  item.highlight
-                    ? "bg-red-500/20 border border-red-500/30"
-                    : "bg-slate-800/50 border border-slate-700/30"
-                }`}
-              >
-                <div className={`text-2xl font-bold mb-1 ${item.highlight ? "text-red-400" : "text-slate-400"}`}>
-                  {item.step}
-                </div>
-                <div className={`text-sm font-medium ${item.highlight ? "text-red-300" : "text-white"}`}>
-                  {item.label}
-                </div>
-                <div className="text-xs text-slate-400">{item.sublabel}</div>
-              </motion.div>
-            ))}
-          </div>
-
-          {/* The solution */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            className="bg-gradient-to-br from-teal-900/30 to-cyan-900/30 rounded-2xl border border-teal-500/30 p-8 text-center"
-          >
-            <h3 className="text-2xl md:text-3xl font-bold mb-4">
-              <span className="text-teal-400">Learn it in time to build something that matters.</span>
-            </h3>
-            <p className="text-lg text-slate-300 max-w-2xl mx-auto mb-6">
-              Breakthrough Monday → Your personalized book Tuesday → Ship something meaningful by Friday.
-              When brilliant minds everywhere can reach the frontier, <span className="text-amber-400 font-medium">we all move faster</span>.
-            </p>
-            <div className="flex flex-wrap justify-center gap-4 text-sm">
-              <span className="px-4 py-2 bg-teal-500/20 rounded-full text-teal-300 border border-teal-500/30">
-                Build while ideas are fresh
-              </span>
-              <span className="px-4 py-2 bg-amber-500/20 rounded-full text-amber-300 border border-amber-500/30">
-                Accelerate human progress
-              </span>
-              <span className="px-4 py-2 bg-cyan-500/20 rounded-full text-cyan-300 border border-cyan-500/30">
-                Everyone reaches the frontier
-              </span>
-            </div>
           </motion.div>
         </div>
       </section>
@@ -543,13 +425,13 @@ export default function LandingPage() {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <Badge className="mb-4 bg-teal-500/20 text-teal-300 border-teal-500/30">
+            <Badge className="mb-4 bg-amber-500/20 text-amber-300 border-amber-500/30">
               <Users className="w-3 h-3 mr-1" />
               Breaking All Barriers
             </Badge>
             <h2 className="text-4xl md:text-5xl font-bold mb-4">
               Knowledge for{" "}
-              <span className="bg-gradient-to-r from-cyan-400 via-teal-400 to-amber-400 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-300 bg-clip-text text-transparent">
                 everyone
               </span>
             </h2>
@@ -628,7 +510,7 @@ export default function LandingPage() {
                   {/* Quote */}
                   <div className={`${userStories[activeStory].bgColor} rounded-xl p-4 mb-6 border ${userStories[activeStory].borderColor}`}>
                     <div className="flex items-start gap-3">
-                      <Quote className="w-6 h-6 text-teal-400 flex-shrink-0 mt-1" />
+                      <Quote className="w-6 h-6 text-amber-400 flex-shrink-0 mt-1" />
                       <p className="text-lg italic text-white">
                         &ldquo;{userStories[activeStory].quote}&rdquo;
                       </p>
@@ -659,55 +541,10 @@ export default function LandingPage() {
                 onClick={() => setActiveStory(index)}
                 className={`w-2 h-2 rounded-full transition-all ${
                   activeStory === index
-                    ? "w-8 bg-teal-500"
+                    ? "w-8 bg-amber-500"
                     : "bg-white/20 hover:bg-white/40"
                 }`}
               />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Features - Your X, Your Y */}
-      <section className="py-20 px-6">
-        <div className="max-w-6xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <h2 className="text-4xl md:text-5xl font-bold mb-4">
-              Tailored to{" "}
-              <span className="bg-gradient-to-r from-amber-400 via-teal-400 to-cyan-400 bg-clip-text text-transparent">
-                your exact situation
-              </span>
-            </h2>
-          </motion.div>
-
-          <div className="grid md:grid-cols-2 gap-6">
-            {features.map((feature, index) => (
-              <motion.div
-                key={feature.title}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                viewport={{ once: true }}
-              >
-                <Card className="h-full bg-slate-800/50 border-cyan-500/10 hover:border-teal-500/30 transition-all group">
-                  <CardContent className="p-6">
-                    <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500/20 to-teal-500/20 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                        <feature.icon className="w-6 h-6 text-teal-400" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-xl mb-2 text-white">{feature.title}</h3>
-                        <p className="text-slate-300">{feature.description}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
             ))}
           </div>
         </div>
@@ -724,7 +561,7 @@ export default function LandingPage() {
           >
             <h2 className="text-4xl md:text-5xl font-bold mb-4">
               Synthesis, not{" "}
-              <span className="bg-gradient-to-r from-cyan-400 via-teal-400 to-amber-400 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-300 bg-clip-text text-transparent">
                 summarization.
               </span>
             </h2>
@@ -784,39 +621,39 @@ export default function LandingPage() {
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
             >
-              <div className="bg-gradient-to-br from-teal-900/30 to-cyan-900/30 rounded-2xl border border-teal-500/30 p-6 h-full">
+              <div className="bg-gradient-to-br from-amber-900/20 to-indigo-900/30 rounded-2xl border border-amber-500/30 p-6 h-full">
                 <div className="flex items-center gap-2 mb-4">
-                  <div className="w-8 h-8 rounded-lg bg-teal-500/20 flex items-center justify-center">
-                    <span className="text-teal-400 text-lg">✓</span>
+                  <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center">
+                    <span className="text-amber-400 text-lg">✓</span>
                   </div>
-                  <h3 className="text-lg font-semibold text-teal-400">YOUR Book</h3>
-                  <Badge className="ml-2 bg-amber-500/20 text-amber-300 border-amber-500/30 text-xs">
+                  <h3 className="text-lg font-semibold text-amber-400">YOUR Book</h3>
+                  <Badge className="ml-2 bg-indigo-500/20 text-indigo-300 border-indigo-500/30 text-xs">
                     Enterprise AI Engineer
                   </Badge>
                 </div>
                 <div className="space-y-3 font-mono text-sm">
-                  <div className="bg-slate-900/50 rounded-lg p-4 border border-teal-500/20">
-                    <div className="text-teal-400 text-xs mb-2">Chapter 5: Knowledge Graphs for Enterprise Reasoning</div>
+                  <div className="bg-slate-900/50 rounded-lg p-4 border border-amber-500/20">
+                    <div className="text-amber-400 text-xs mb-2">Chapter 5: Knowledge Graphs for Enterprise Reasoning</div>
                     <ul className="space-y-2 text-slate-200">
                       <li className="flex items-start gap-2">
-                        <span className="text-teal-400">•</span>
+                        <span className="text-amber-400">•</span>
                         <span>Modeling SAP hierarchies as queryable graphs</span>
                       </li>
                       <li className="flex items-start gap-2">
-                        <span className="text-teal-400">•</span>
+                        <span className="text-amber-400">•</span>
                         <span>Compliance rules as graph constraints</span>
                       </li>
                       <li className="flex items-start gap-2">
-                        <span className="text-teal-400">•</span>
-                        <span className="text-amber-300">Code: LangChain + Neo4j for agent memory</span>
+                        <span className="text-amber-400">•</span>
+                        <span className="text-yellow-300">Code: LangChain + Neo4j for agent memory</span>
                       </li>
                       <li className="flex items-start gap-2">
-                        <span className="text-teal-400">•</span>
+                        <span className="text-amber-400">•</span>
                         <span>Deep dive: RAG retrieval patterns</span>
                       </li>
                     </ul>
                   </div>
-                  <div className="text-teal-300 text-xs italic px-2">
+                  <div className="text-amber-300 text-xs italic px-2">
                     YOUR domain. YOUR goals. Skips what you know. Deep where you need it.
                   </div>
                 </div>
@@ -836,24 +673,24 @@ export default function LandingPage() {
                 icon: Brain,
                 title: "Integration",
                 description: "Connects scattered ideas from papers, docs, and blogs into a coherent whole.",
-                color: "cyan",
+                color: "indigo",
               },
               {
                 icon: Target,
                 title: "Calibration",
                 description: "Adjusts depth based on what you already know. No wasted pages.",
-                color: "teal",
+                color: "amber",
               },
               {
                 icon: Zap,
                 title: "Prioritization",
                 description: "Emphasizes what matters to YOUR goal, not equal coverage of everything.",
-                color: "amber",
+                color: "yellow",
               },
             ].map((item) => (
               <div
                 key={item.title}
-                className="bg-slate-800/50 rounded-xl border border-slate-700/50 p-5 hover:border-teal-500/30 transition-all"
+                className="bg-slate-800/50 rounded-xl border border-slate-700/50 p-5 hover:border-amber-500/30 transition-all"
               >
                 <div className={`w-10 h-10 rounded-lg bg-${item.color}-500/20 flex items-center justify-center mb-3`}>
                   <item.icon className={`w-5 h-5 text-${item.color}-400`} />
@@ -867,40 +704,13 @@ export default function LandingPage() {
           <div className="text-center mt-10">
             <Button
               size="lg"
-              className="bg-gradient-to-r from-cyan-600 via-teal-600 to-amber-600 hover:from-cyan-500 hover:via-teal-500 hover:to-amber-500 shadow-lg shadow-teal-500/25"
+              className="bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 shadow-lg shadow-amber-500/25"
               asChild
             >
               <a href="/builder">
                 Build Your Book <ArrowRight className="ml-2 h-5 w-5" />
               </a>
             </Button>
-          </div>
-        </div>
-      </section>
-
-      {/* Social Proof Numbers */}
-      <section className="py-10 px-6 relative">
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-teal-950/20 to-transparent" />
-        <div className="max-w-4xl mx-auto relative">
-          <div className="grid grid-cols-3 gap-8 text-center">
-            {[
-              { value: "Mon → Tue", label: "Not Years", sublabel: "Breakthrough to book" },
-              { value: "40+", label: "Languages", sublabel: "Learn in yours" },
-              { value: "Your", label: "Domain", sublabel: "Every example fits" },
-            ].map((stat) => (
-              <motion.div
-                key={stat.label}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-              >
-                <div className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-cyan-400 via-teal-400 to-amber-400 bg-clip-text text-transparent mb-2">
-                  {stat.value}
-                </div>
-                <div className="text-white font-medium">{stat.label}</div>
-                <div className="text-slate-400 text-sm">{stat.sublabel}</div>
-              </motion.div>
-            ))}
           </div>
         </div>
       </section>
@@ -1010,13 +820,13 @@ export default function LandingPage() {
                 <Card
                   className={`relative h-full ${
                     tier.popular
-                      ? "bg-gradient-to-br from-cyan-900/50 to-teal-900/50 border-teal-500/50 shadow-xl shadow-teal-500/20"
-                      : "bg-slate-800/50 border-cyan-500/10"
+                      ? "bg-gradient-to-br from-amber-900/30 to-indigo-900/40 border-amber-500/50 shadow-xl shadow-amber-500/20"
+                      : "bg-slate-800/50 border-slate-700/30"
                   }`}
                 >
                   {tier.popular && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                      <Badge className="bg-gradient-to-r from-cyan-500 via-teal-500 to-amber-500 text-white border-0">
+                      <Badge className="bg-gradient-to-r from-amber-500 to-yellow-500 text-white border-0">
                         Most Popular
                       </Badge>
                     </div>
@@ -1038,7 +848,7 @@ export default function LandingPage() {
                     <ul className="space-y-3 mb-6">
                       {tier.features.map((feature, i) => (
                         <li key={i} className="flex items-center gap-2 text-sm text-slate-300">
-                          <Check className="h-4 w-4 text-emerald-400 flex-shrink-0" />
+                          <Check className="h-4 w-4 text-amber-400 flex-shrink-0" />
                           {feature}
                         </li>
                       ))}
@@ -1046,7 +856,7 @@ export default function LandingPage() {
                     <Button
                       className={`w-full ${
                         tier.popular
-                          ? "bg-gradient-to-r from-cyan-600 via-teal-600 to-amber-600 hover:from-cyan-500 hover:via-teal-500 hover:to-amber-500"
+                          ? "bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500"
                           : "bg-white/10 hover:bg-white/20 border border-white/20"
                       }`}
                       asChild
@@ -1078,34 +888,34 @@ export default function LandingPage() {
 
       {/* CTA / Waitlist */}
       <section id="waitlist" className="py-20 px-6 relative">
-        <div className="absolute inset-0 bg-gradient-to-t from-teal-950/50 via-cyan-950/30 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-indigo-950/50 via-amber-950/20 to-transparent" />
         <div className="max-w-2xl mx-auto text-center relative">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-cyan-500 via-teal-500 to-amber-500 flex items-center justify-center shadow-lg shadow-teal-500/30">
-              <BookOpen className="w-10 h-10 text-white" />
+            <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-amber-500 via-yellow-500 to-amber-400 flex items-center justify-center shadow-lg shadow-amber-500/30">
+              <Star className="w-10 h-10 text-white fill-white/30" />
             </div>
 
             <h2 className="text-4xl md:text-5xl font-bold mb-4">
-              The cutting edge awaits.
+              Find your north star.
             </h2>
             <p className="text-xl text-slate-300 mb-8">
-              Join the waitlist to collapse the knowledge pipeline. Get to the frontier — no barriers, no compromises.
+              Navigate to the cutting edge with knowledge synthesized for exactly one person — you.
             </p>
 
             {submitted ? (
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-8"
+                className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-8"
               >
-                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                  <Check className="h-8 w-8 text-emerald-400" />
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-amber-500/20 flex items-center justify-center">
+                  <Check className="h-8 w-8 text-amber-400" />
                 </div>
-                <p className="text-xl text-emerald-300 font-medium">
+                <p className="text-xl text-amber-300 font-medium">
                   You&apos;re in! We&apos;ll email you when it&apos;s ready.
                 </p>
               </motion.div>
@@ -1119,14 +929,14 @@ export default function LandingPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="pl-12 h-14 bg-white/5 border-cyan-500/20 text-white placeholder:text-slate-400 rounded-xl focus:border-teal-500 focus:ring-teal-500/20"
+                    className="pl-12 h-14 bg-white/5 border-amber-500/20 text-white placeholder:text-slate-400 rounded-xl focus:border-amber-500 focus:ring-amber-500/20"
                   />
                 </div>
                 <Button
                   type="submit"
                   size="lg"
                   disabled={loading}
-                  className="h-14 px-8 bg-gradient-to-r from-cyan-600 via-teal-600 to-amber-600 hover:from-cyan-500 hover:via-teal-500 hover:to-amber-500 rounded-xl shadow-lg shadow-teal-500/25"
+                  className="h-14 px-8 bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 rounded-xl shadow-lg shadow-amber-500/25"
                 >
                   {loading ? "Joining..." : <>Get Early Access <ChevronRight className="ml-1 h-5 w-5" /></>}
                 </Button>
@@ -1139,23 +949,23 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="py-12 px-6 border-t border-cyan-500/10">
+      <footer className="py-12 px-6 border-t border-amber-500/10">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-3">
-            <BookOpen className="h-6 w-6 text-teal-400" />
-            <span className="font-bold text-lg text-white">Learner</span>
+            <Star className="h-6 w-6 text-amber-400 fill-amber-400/30" />
+            <span className="font-bold text-lg text-white">Polaris</span>
           </div>
 
           <div className="flex items-center gap-2 text-sm text-slate-400">
             <span>Built with</span>
             <Sparkles className="w-4 h-4 text-amber-400" />
-            <span className="bg-gradient-to-r from-amber-400 via-teal-400 to-cyan-400 bg-clip-text text-transparent font-medium">
+            <span className="bg-gradient-to-r from-amber-400 to-yellow-300 bg-clip-text text-transparent font-medium">
               Gemini AI
             </span>
           </div>
 
           <p className="text-sm text-slate-400">
-            &copy; {new Date().getFullYear()} Learner. Take anyone to the cutting edge. No barriers.
+            &copy; {new Date().getFullYear()} Polaris. Your north star to the cutting edge.
           </p>
         </div>
       </footer>
