@@ -6,6 +6,12 @@ This module handles the generation of actual book content:
 - Section introductions
 - Chapter introductions
 - Final assembly by concatenation
+
+CITATION AWARENESS:
+When citations are enabled, content generation is CONSTRAINED to only
+include factual claims that have been verified against sources. The
+citation context provides a list of "allowed claims" that can be made
+and must be cited properly.
 """
 
 import logging
@@ -104,7 +110,8 @@ Be specific about issues. Set verdict to 'pass' if acceptable, 'needs_rewrite' i
 async def generate_subsection(
     subsection_input: SubsectionInput,
     language_model,
-    writing_style: Optional[object] = None
+    writing_style: Optional[object] = None,
+    citation_instructions: Optional[str] = None,
 ) -> str:
     """
     Generate a single subsection with full planning context.
@@ -117,6 +124,14 @@ async def generate_subsection(
     - chapter_name, chapter_plan (current chapter context)
     - section_name, section_plan (current section context)
     - subsection_name (the specific topic to write)
+
+    Args:
+        subsection_input: Input with all context
+        language_model: Synalinks language model
+        writing_style: Optional writing style object
+        citation_instructions: Optional citation constraints from verification pipeline.
+            When provided, the generator is CONSTRAINED to only make factual claims
+            that appear in the allowed claims list and must cite them properly.
 
     Returns:
         The subsection content
@@ -133,7 +148,19 @@ Apply this style while maintaining all depth requirements. Style does NOT mean s
 
 """
 
-    instructions = f"""{style_section}Write comprehensive content for this specific subsection/topic.
+    # Build citation section if provided - THIS IS CRITICAL FOR PREVENTING HALLUCINATION
+    citation_section = ""
+    if citation_instructions:
+        citation_section = f"""
+=== CITATION REQUIREMENTS (MANDATORY) ===
+
+{citation_instructions}
+
+=== END CITATION REQUIREMENTS ===
+
+"""
+
+    instructions = f"""{style_section}{citation_section}Write comprehensive content for this specific subsection/topic.
 
 You have access to the full book context: book plan, chapters overview, chapter plan, and section plan.
 Use this context to understand what depth and coverage is expected.
@@ -440,7 +467,8 @@ async def write_section_with_subsections(
     language_model,
     output_dir: str,
     section_num: int,
-    writing_style: Optional[object] = None
+    writing_style: Optional[object] = None,
+    citation_instructions: Optional[str] = None,
 ) -> tuple:
     """
     Write a complete section by generating each subsection separately.
@@ -512,7 +540,8 @@ async def write_section_with_subsections(
             content = await generate_subsection(
                 subsection_input=subsection_input,
                 language_model=language_model,
-                writing_style=writing_style
+                writing_style=writing_style,
+                citation_instructions=citation_instructions,
             )
 
             if content:
@@ -568,7 +597,8 @@ async def write_chapter_with_sections(
     output_dir: str,
     intro_styles: List[str],
     style_idx: int,
-    writing_style: Optional[object] = None
+    writing_style: Optional[object] = None,
+    get_citation_instructions: Optional[callable] = None,
 ) -> tuple:
     """
     Write a complete chapter by:
@@ -623,6 +653,11 @@ async def write_chapter_with_sections(
         intro_style = intro_styles[style_idx % len(intro_styles)]
         style_idx += 1
 
+        # Get citation instructions for this section if citation pipeline is enabled
+        citation_instructions = None
+        if get_citation_instructions:
+            citation_instructions = get_citation_instructions(chapter_name, section_name)
+
         section_content, style_idx = await write_section_with_subsections(
             topic_data=topic_data,
             full_outline=full_outline,
@@ -639,7 +674,8 @@ async def write_chapter_with_sections(
             language_model=language_model,
             output_dir=output_dir,
             section_num=section_counter + i + 1,
-            writing_style=writing_style
+            writing_style=writing_style,
+            citation_instructions=citation_instructions,
         )
 
         section_contents.append((section_name, section_content))
@@ -719,7 +755,8 @@ async def write_all_sections_direct(
     output_dir: str,
     intro_styles: List[str],
     max_chapters: Optional[int] = None,
-    writing_style: Optional[object] = None
+    writing_style: Optional[object] = None,
+    get_citation_instructions: Optional[callable] = None,
 ) -> List[tuple]:
     """
     Write all chapters by generating each subsection separately with full context.
@@ -733,6 +770,9 @@ async def write_all_sections_direct(
 
     Args:
         writing_style: Optional WritingStyle object to apply during writing
+        get_citation_instructions: Optional callback function that takes (chapter_name, section_name)
+            and returns citation instructions string. When provided, content generation
+            is CONSTRAINED to only include verified, citable factual claims.
 
     Returns:
         List of (chapter_name, chapter_content_dict) tuples
@@ -778,7 +818,8 @@ async def write_all_sections_direct(
             output_dir=output_dir,
             intro_styles=intro_styles,
             style_idx=style_idx,
-            writing_style=writing_style
+            writing_style=writing_style,
+            get_citation_instructions=get_citation_instructions,
         )
 
         written_chapters.append((chapter_name, chapter_data))

@@ -77,6 +77,11 @@ class Config:
     # botanical, bauhaus, pixel_art, art_deco
     cover_style: str = "abstract"
 
+    # Citation settings
+    enable_citations: bool = False  # Enable citation verification pipeline
+    citation_confidence_threshold: float = 0.75  # Minimum confidence to accept a citation
+    skip_low_importance_claims: bool = True  # Skip verification for low-importance claims
+
     # Introduction styles for variety (will be shuffled at runtime)
     intro_styles: List[str] = field(default_factory=lambda: [
         # Question-based openings
@@ -188,6 +193,9 @@ class Config:
             enable_generated_images=data.get("enable_generated_images", True),
             image_model=data.get("image_model", "gemini/gemini-3-pro-image-preview"),
             cover_style=data.get("cover_style", "humorous"),
+            enable_citations=data.get("enable_citations", False),
+            citation_confidence_threshold=data.get("citation_confidence_threshold", 0.75),
+            skip_low_importance_claims=data.get("skip_low_importance_claims", True),
         )
 
     @staticmethod
