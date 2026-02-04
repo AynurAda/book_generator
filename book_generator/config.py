@@ -44,6 +44,10 @@ class Config:
     # Interactive approval
     interactive_outline_approval: bool = True  # Prompt user to approve outline before continuing
 
+    # Plan quality control
+    plan_critique_enabled: bool = True  # Enable self-critique loop for plan generation
+    plan_critique_max_attempts: int = 2  # Max revision attempts per plan
+
     # Default outline (optional) - if provided, skip outline generation
     default_outline: Optional[dict] = None
 
@@ -65,7 +69,13 @@ class Config:
     # Illustration settings
     enable_illustrations: bool = False  # Whether to add illustrations to chapters
     enable_generated_images: bool = True  # Whether to generate AI images (vs just Mermaid)
-    image_model: str = "gemini/imagen-3.0-generate-002"  # Model for image generation
+    image_model: str = "gemini/gemini-3-pro-image-preview"  # Model for image generation
+
+    # Cover settings
+    # Available styles: humorous, abstract, cyberpunk, minimalist, watercolor,
+    # vintage, blueprint, surreal, isometric, papercraft, neon_noir,
+    # botanical, bauhaus, pixel_art, art_deco
+    cover_style: str = "abstract"
 
     # Introduction styles for variety (will be shuffled at runtime)
     intro_styles: List[str] = field(default_factory=lambda: [
@@ -167,6 +177,8 @@ class Config:
             test_max_chapters=data.get("test_max_chapters", 2),
             resume_from_dir=data.get("resume_from_dir"),
             interactive_outline_approval=data.get("interactive_outline_approval", True),
+            plan_critique_enabled=data.get("plan_critique_enabled", True),
+            plan_critique_max_attempts=data.get("plan_critique_max_attempts", 2),
             default_outline=default_outline,
             num_chapters=data.get("num_chapters"),
             focus=data.get("focus"),
@@ -174,7 +186,8 @@ class Config:
             author_key=data.get("author_key"),
             enable_illustrations=data.get("enable_illustrations", False),
             enable_generated_images=data.get("enable_generated_images", True),
-            image_model=data.get("image_model", "gemini/imagen-3.0-generate-002"),
+            image_model=data.get("image_model", "gemini/gemini-3-pro-image-preview"),
+            cover_style=data.get("cover_style", "humorous"),
         )
 
     @staticmethod

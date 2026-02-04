@@ -12,7 +12,7 @@ import logging
 import subprocess
 import tempfile
 import urllib.request
-from typing import Optional
+from typing import Optional, Dict
 
 import markdown
 from weasyprint import HTML, CSS
@@ -20,8 +20,89 @@ from weasyprint import HTML, CSS
 logger = logging.getLogger(__name__)
 
 
-def process_latex_math(content: str) -> str:
+def slugify(text: str) -> str:
+    """Convert text to a URL-safe anchor ID."""
+    # Remove HTML tags
+    text = re.sub(r'<[^>]+>', '', text)
+    # Remove special characters, keep alphanumeric and spaces
+    text = re.sub(r'[^\w\s-]', '', text)
+    # Replace spaces with hyphens
+    text = re.sub(r'\s+', '-', text.strip())
+    return text.lower()
+
+
+def add_toc_links(content: str) -> str:
     """
+    Process content to add clickable TOC links.
+
+    1. Adds anchor IDs to all markdown headings
+    2. Converts TOC entries to hyperlinks pointing to those anchors
+
+    Args:
+        content: The full book content (markdown with HTML TOC)
+
+    Returns:
+        Content with clickable TOC links
+    """
+    # Find the TOC section boundary
+    toc_start = content.find('<div class="toc">')
+    toc_end = content.find('</div>\n</div>', toc_start)
+
+    if toc_start == -1:
+        # No TOC found, return as-is
+        return content
+
+    if toc_end == -1:
+        # Try alternate ending
+        toc_end = content.find('# Introduction', toc_start)
+        if toc_end == -1:
+            toc_end = content.find('\n# ', toc_start)
+
+    # Split content
+    toc_section = content[toc_start:toc_end + 13] if '</div>' in content[toc_start:toc_end + 20] else content[toc_start:toc_end]
+    main_content = content[toc_end + 13:] if '</div>' in content[toc_start:toc_end + 20] else content[toc_end:]
+    before_toc = content[:toc_start]
+
+    # Build anchor mapping from headings
+    heading_pattern = r'^(#{1,6})\s+(.+)$'
+
+    def add_anchor_to_heading(match):
+        level = len(match.group(1))
+        title = match.group(2).strip()
+        anchor_id = slugify(title)
+        # Keep as markdown heading but add an HTML anchor before it
+        return f'<a id="{anchor_id}"></a>\n{match.group(0)}'
+
+    # Add anchors to headings in main content
+    processed_main = re.sub(heading_pattern, add_anchor_to_heading, main_content, flags=re.MULTILINE)
+
+    # Process TOC to add links to chapter titles
+    def add_link_to_chapter(match):
+        title = match.group(1)
+        anchor_id = slugify(title)
+        return f'<strong><a href="#{anchor_id}" class="toc-link">{title}</a></strong>'
+
+    processed_toc = re.sub(r'<strong>([^<]+)</strong>', add_link_to_chapter, toc_section)
+
+    # Add links to section entries (after <br>)
+    def add_section_link(match):
+        section_text = match.group(1)
+        # Clean up the text for anchor
+        clean_text = section_text.replace('&nbsp;', '').strip()
+        if clean_text:
+            anchor_id = slugify(clean_text)
+            return f'<br><a href="#{anchor_id}" class="toc-section-link">{section_text}</a>'
+        return match.group(0)
+
+    processed_toc = re.sub(r'<br>([^<]+?)(?=<br>|</p>)', add_section_link, processed_toc)
+
+    logger.info("Added clickable TOC links")
+
+    return before_toc + processed_toc + processed_main
+
+
+def process_latex_math(content: str) -> str:
+    r"""
     Convert LaTeX math notation to MathML for PDF rendering.
 
     Handles:
@@ -214,6 +295,7 @@ BOOK_CSS = '''
     margin: 2.5cm 2cm;
     @top-center {
         content: string(chapter-title);
+        font-family: Helvetica, Arial, sans-serif;
         font-size: 9pt;
         color: #888;
         font-style: italic;
@@ -399,6 +481,22 @@ li > ul, li > ol {
 .toc-columns strong {
     font-size: 10.5pt;
 }
+.toc-link {
+    color: #1a1a1a;
+    text-decoration: none;
+}
+.toc-link:hover {
+    color: #3498db;
+    text-decoration: underline;
+}
+.toc-section-link {
+    color: #333;
+    text-decoration: none;
+}
+.toc-section-link:hover {
+    color: #3498db;
+    text-decoration: underline;
+}
 .mermaid-diagram {
     text-align: center;
     margin: 2em 0;
@@ -500,8 +598,11 @@ def generate_pdf(
 
     css = CSS(string=BOOK_CSS)
 
+    # Add clickable TOC links
+    processed_content = add_toc_links(book_content)
+
     # Process LaTeX math - convert to MathML
-    processed_content = process_latex_math(book_content)
+    processed_content = process_latex_math(processed_content)
 
     # Process Mermaid diagrams - render to images
     if base_url:

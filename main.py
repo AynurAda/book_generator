@@ -4,7 +4,7 @@ Book Generator - AI-powered book generation using Synalinks.
 
 Usage:
     python main.py --config configs/ai_agent_memory.yaml
-    python main.py --config configs/neurosymbolic.yaml --test
+    python main.py --config configs/neurosymbolic.yaml --chapters 5
     python main.py --config configs/embedded_systems.yaml --resume output/20240115_143022
 
 Available configs:
@@ -47,8 +47,8 @@ def parse_args():
         epilog="""
 Examples:
   python main.py --config configs/ai_agent_memory.yaml
-  python main.py --config configs/neurosymbolic.yaml --test
-  python main.py --config configs/embedded_systems.yaml --test --chapters 3
+  python main.py --config configs/neurosymbolic.yaml --chapters 5
+  python main.py --config configs/embedded_systems.yaml -n 3
   python main.py --list                              List available configs
         """
     )
@@ -65,11 +65,6 @@ Examples:
         help="List available config files"
     )
     parser.add_argument(
-        "--test", "-t",
-        action="store_true",
-        help="Run in test mode with limited chapters"
-    )
-    parser.add_argument(
         "--resume", "-r",
         type=str,
         metavar="DIR",
@@ -78,8 +73,8 @@ Examples:
     parser.add_argument(
         "--chapters", "-n",
         type=int,
-        default=2,
-        help="Number of chapters in test mode (default: 2)"
+        default=None,
+        help="Limit to N chapters (default: all chapters)"
     )
 
     return parser.parse_args()
@@ -111,10 +106,13 @@ async def main():
     config_dict = load_config(args.config)
     config = Config.from_dict(config_dict)
 
-    # Override with command line arguments
-    if args.test:
-        config.test_mode = True
-        config.test_max_chapters = args.chapters
+    # Backward compatibility: if test_mode is set in config, use test_max_chapters
+    if config.test_mode and config.num_chapters is None:
+        config.num_chapters = config.test_max_chapters
+
+    # Override with command line arguments (CLI takes precedence)
+    if args.chapters:
+        config.num_chapters = args.chapters
 
     if args.resume:
         config.resume_from_dir = args.resume
@@ -127,7 +125,7 @@ async def main():
     print(f"Topic: {config.topic}")
     print(f"Book Name: {config.book_name}")
     print(f"Audience: {config.audience}")
-    print(f"Test Mode: {config.test_mode}")
+    print(f"Chapters: {config.num_chapters or 'all'}")
     if config.author_key:
         from book_generator.authors import get_author_profile
         style = get_author_profile(config.author_key)

@@ -19,6 +19,14 @@ class Topic(synalinks.DataModel):
     book_name: str = synalinks.Field(description="The name of the book to be generated")
 
 
+class BookVisionInput(synalinks.DataModel):
+    """Input for generating the book vision before concept generation."""
+    topic: str = synalinks.Field(description="The main topic of the book")
+    goal: str = synalinks.Field(description="The goal of the book - what it should achieve")
+    book_name: str = synalinks.Field(description="The name of the book")
+    audience: str = synalinks.Field(description="The target audience for the book")
+
+
 class OutlineReorganizationInput(synalinks.DataModel):
     """Input for reorganizing the book outline."""
     topic: str = synalinks.Field(description="The main topic of the book")
@@ -149,6 +157,47 @@ class MergedConcepts(synalinks.DataModel):
     main_concepts: list[str] = synalinks.Field(
         description="Comprehensive deduplicated list of main concepts from all branches"
     )
+
+
+# =============================================================================
+# Book Vision Models (generated BEFORE concepts for better alignment)
+# =============================================================================
+
+class BookVision(synalinks.DataModel):
+    """High-level vision for the book that guides concept generation.
+
+    This is generated BEFORE concepts to ensure all generated content
+    aligns with the book's core purpose and reader journey.
+    """
+    thinking: list[str] = synalinks.Field(
+        description="Step by step thinking about the book's purpose, audience needs, and what makes this book unique"
+    )
+    core_thesis: str = synalinks.Field(
+        description="The central argument or insight of the book in 2-3 sentences. What is the ONE key thing readers should understand?"
+    )
+    reader_journey: str = synalinks.Field(
+        description="Describe the transformation: What state is the reader in BEFORE reading? What state should they be in AFTER? What capabilities will they gain?"
+    )
+    key_themes: list[str] = synalinks.Field(
+        description="3-5 essential themes that MUST be covered to achieve the book's goal. These guide concept generation."
+    )
+    scope_boundaries: str = synalinks.Field(
+        description="What is explicitly OUT OF SCOPE? What related topics should NOT be covered to maintain focus?"
+    )
+    unique_angle: str = synalinks.Field(
+        description="What makes this book's approach different from a generic treatment of this topic? What perspective or methodology does it bring?"
+    )
+    prerequisite_knowledge: str = synalinks.Field(
+        description="What should readers already know before starting? What is assumed vs. what will be taught?"
+    )
+
+
+class VisionGuidedConceptInput(synalinks.DataModel):
+    """Input for concept generation that includes the book vision for guidance."""
+    topic: str = synalinks.Field(description="The topic for which to write a book")
+    goal: str = synalinks.Field(description="The goal of the book")
+    book_name: str = synalinks.Field(description="The name of the book")
+    book_vision: str = synalinks.Field(description="The book vision that should guide concept selection")
 
 
 class CoverageCheckInput(synalinks.DataModel):
@@ -517,6 +566,33 @@ class ImagePromptOutput(synalinks.DataModel):
 
 
 # =============================================================================
+# Cover Generation Models
+# =============================================================================
+
+class CoverPromptInput(synalinks.DataModel):
+    """Input for generating a book cover prompt."""
+    book_name: str = synalinks.Field(description="The title of the book")
+    topic: str = synalinks.Field(description="The main topic of the book")
+    goal: str = synalinks.Field(description="The goal of the book - what it aims to teach")
+    audience: str = synalinks.Field(description="The target audience for the book")
+    key_concepts: str = synalinks.Field(description="The main concepts covered in the book (chapter names)")
+    cover_style: str = synalinks.Field(description="The desired cover style: humorous, abstract, or cyberpunk")
+
+
+class CoverPromptOutput(synalinks.DataModel):
+    """Output containing the generated cover image prompt."""
+    thinking: list[str] = synalinks.Field(
+        description="Your step by step thinking about what visual would best represent this book's content and appeal to its audience"
+    )
+    visual_concept: str = synalinks.Field(
+        description="A brief description of the core visual concept for the cover"
+    )
+    image_prompt: str = synalinks.Field(
+        description="The complete, detailed prompt for AI image generation. Must end with 'NO TEXT, NO WORDS, NO LETTERS, NO LABELS anywhere in the image.'"
+    )
+
+
+# =============================================================================
 # Section Quality Selection Models
 # =============================================================================
 
@@ -620,7 +696,92 @@ class PartConclusion(synalinks.DataModel):
 
 
 # =============================================================================
-# Quality Control Models
+# Plan Quality Control Models
+# =============================================================================
+
+class BookPlanCritiqueInput(synalinks.DataModel):
+    """Input for critiquing a generated book plan."""
+    topic: str = synalinks.Field(description="The main topic of the book")
+    goal: str = synalinks.Field(description="The goal of the book")
+    outline_summary: str = synalinks.Field(description="Summary of the book outline for context")
+    book_plan: str = synalinks.Field(description="The generated book plan to critique")
+
+
+class BookPlanCritique(synalinks.DataModel):
+    """Critique assessment of a book plan."""
+    thinking: list[str] = synalinks.Field(
+        description="Step by step analysis of the book plan quality"
+    )
+    specificity_issues: list[str] = synalinks.Field(
+        description="Issues where the plan is vague or generic instead of specific to this book's content"
+    )
+    alignment_issues: list[str] = synalinks.Field(
+        description="Issues where the plan doesn't align with the stated goal or outline"
+    )
+    coherence_issues: list[str] = synalinks.Field(
+        description="Issues where the narrative arc or chapter connections don't make logical sense"
+    )
+    verdict: str = synalinks.Field(
+        description="Either 'pass' if the plan is good enough, or 'needs_revision' if issues need fixing"
+    )
+    revision_guidance: str = synalinks.Field(
+        description="Specific guidance on what to fix if verdict is needs_revision"
+    )
+
+
+class BookPlanRevisionInput(synalinks.DataModel):
+    """Input for revising a book plan based on critique."""
+    topic: str = synalinks.Field(description="The main topic of the book")
+    goal: str = synalinks.Field(description="The goal of the book")
+    outline_summary: str = synalinks.Field(description="Summary of the book outline")
+    original_plan: str = synalinks.Field(description="The original book plan that needs revision")
+    critique_issues: str = synalinks.Field(description="The issues identified in the critique")
+    revision_guidance: str = synalinks.Field(description="Specific guidance on what to fix")
+
+
+class ChaptersOverviewCritiqueInput(synalinks.DataModel):
+    """Input for critiquing the chapters overview."""
+    topic: str = synalinks.Field(description="The main topic of the book")
+    goal: str = synalinks.Field(description="The goal of the book")
+    book_plan: str = synalinks.Field(description="The book plan for alignment checking")
+    chapters_overview: str = synalinks.Field(description="The chapters overview to critique")
+
+
+class ChaptersOverviewCritique(synalinks.DataModel):
+    """Critique assessment of chapters overview."""
+    thinking: list[str] = synalinks.Field(
+        description="Step by step analysis of the chapters overview quality"
+    )
+    flow_issues: list[str] = synalinks.Field(
+        description="Issues where the narrative flow doesn't describe actual logical progression"
+    )
+    connection_issues: list[str] = synalinks.Field(
+        description="Issues where builds_on/leads_to are vague (e.g., 'previous material') instead of specific concepts"
+    )
+    coverage_issues: list[str] = synalinks.Field(
+        description="Issues where chapters don't adequately address the book's goal"
+    )
+    verdict: str = synalinks.Field(
+        description="Either 'pass' if the overview is good enough, or 'needs_revision' if issues need fixing"
+    )
+    revision_guidance: str = synalinks.Field(
+        description="Specific guidance on what to fix if verdict is needs_revision"
+    )
+
+
+class ChaptersOverviewRevisionInput(synalinks.DataModel):
+    """Input for revising chapters overview based on critique."""
+    topic: str = synalinks.Field(description="The main topic of the book")
+    goal: str = synalinks.Field(description="The goal of the book")
+    book_plan: str = synalinks.Field(description="The book plan for context")
+    chapters: str = synalinks.Field(description="List of chapter names")
+    original_overview: str = synalinks.Field(description="The original overview that needs revision")
+    critique_issues: str = synalinks.Field(description="The issues identified in the critique")
+    revision_guidance: str = synalinks.Field(description="Specific guidance on what to fix")
+
+
+# =============================================================================
+# Section Quality Control Models
 # =============================================================================
 
 class SectionQualityInput(synalinks.DataModel):

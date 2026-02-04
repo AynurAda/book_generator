@@ -25,8 +25,10 @@ from .models import (
     MissingConceptsAddition,
     ChapterPrioritizationInput,
     PrioritizedChapters,
+    VisionGuidedConceptInput,
 )
 from .utils import build_outline_text
+from .vision import format_book_vision
 
 logger = logging.getLogger(__name__)
 
@@ -118,40 +120,117 @@ Do NOT repeat concepts that already exist."""
     return result.get_json().get("new_concepts", [])
 
 
-async def generate_main_concepts(topic_input: Topic, language_model) -> list:
+async def generate_main_concepts(topic_input: Topic, language_model, book_vision: dict = None) -> list:
     """
     Generate and enrich main concepts using multi-branch approach.
+
+    If book_vision is provided, concepts are generated with vision guidance
+    to ensure alignment with the book's focus and key themes.
+
+    Args:
+        topic_input: Topic DataModel with topic, goal, book_name
+        language_model: The LLM to use
+        book_vision: Optional book vision dict to guide concept generation
 
     Returns:
         List of main concept names
     """
-    # Multi-branch concept extraction (run in parallel via asyncio)
-    gen = synalinks.Generator(
-        data_model=ConceptExtractor,
-        language_model=language_model,
-        temperature=1.0
-    )
+    # Build vision-guided instructions if vision is provided
+    if book_vision:
+        vision_text = format_book_vision(book_vision)
+        vision_guidance = f"""
+IMPORTANT: Generate concepts that align with this BOOK VISION:
 
-    branch1 = await gen(topic_input)
-    branch2 = await gen(topic_input)
-    branch3 = await gen(topic_input)
-    branch4 = await gen(topic_input)
+{vision_text}
+
+Your concepts MUST:
+1. Cover ALL key themes listed in the vision
+2. Stay WITHIN the scope boundaries (don't include out-of-scope topics)
+3. Support the reader journey described
+4. Align with the unique angle of this book
+
+Do NOT generate concepts that fall outside the scope boundaries."""
+
+        # Create vision-guided input
+        vision_input = VisionGuidedConceptInput(
+            topic=topic_input.topic,
+            goal=topic_input.goal,
+            book_name=topic_input.book_name,
+            book_vision=vision_text
+        )
+
+        # Multi-branch concept extraction with vision guidance
+        gen = synalinks.Generator(
+            data_model=ConceptExtractor,
+            language_model=language_model,
+            temperature=1.0,
+            instructions=vision_guidance
+        )
+
+        branch1 = await gen(vision_input)
+        branch2 = await gen(vision_input)
+        branch3 = await gen(vision_input)
+        branch4 = await gen(vision_input)
+    else:
+        # Original behavior without vision
+        gen = synalinks.Generator(
+            data_model=ConceptExtractor,
+            language_model=language_model,
+            temperature=1.0
+        )
+
+        branch1 = await gen(topic_input)
+        branch2 = await gen(topic_input)
+        branch3 = await gen(topic_input)
+        branch4 = await gen(topic_input)
 
     merged = branch1 & branch2 & branch3 & branch4
 
     # Merge and dedupe
+    merge_instructions = "Deduplicate and consolidate concepts from all branches."
+    if book_vision:
+        themes = book_vision.get("key_themes", [])
+        scope = book_vision.get("scope_boundaries", "")
+        merge_instructions += f"""
+
+IMPORTANT: Ensure the final list:
+1. Covers these key themes: {', '.join(themes)}
+2. Does NOT include concepts outside scope: {scope}
+3. Orders concepts logically for the reader journey"""
+
     merge_gen = synalinks.Generator(
         data_model=MergedConcepts,
         description="Deduplicate and consolidate concepts from all branches",
         language_model=language_model,
-        temperature=1.0
+        temperature=1.0,
+        instructions=merge_instructions
     )
-    merged_concepts = await merge_gen(topic_input & merged)
+
+    if book_vision:
+        vision_input = VisionGuidedConceptInput(
+            topic=topic_input.topic,
+            goal=topic_input.goal,
+            book_name=topic_input.book_name,
+            book_vision=format_book_vision(book_vision)
+        )
+        merged_concepts = await merge_gen(vision_input & merged)
+    else:
+        merged_concepts = await merge_gen(topic_input & merged)
 
     # Enrichment phase
     enrichment_instructions = """Identify important main concepts that are MISSING.
 Think about: FOUNDATIONAL, HISTORICAL, PRACTICAL, ADVANCED, CROSS-CUTTING, and METHODOLOGY concepts.
 ONLY output concepts that are genuinely MISSING."""
+
+    if book_vision:
+        themes = book_vision.get("key_themes", [])
+        enrichment_instructions += f"""
+
+CRITICAL: Check if these KEY THEMES from the book vision are covered:
+{chr(10).join(f"- {t}" for t in themes)}
+
+If any theme is NOT covered by existing concepts, add a concept for it.
+Stay within the scope boundaries."""
 
     enrich_gen = synalinks.Generator(
         data_model=EnrichmentAdditions,
@@ -160,27 +239,68 @@ ONLY output concepts that are genuinely MISSING."""
         instructions=enrichment_instructions
     )
 
-    enrich1 = await enrich_gen(topic_input & merged_concepts)
-    enrich2 = await enrich_gen(topic_input & merged_concepts)
-    enrich3 = await enrich_gen(topic_input & merged_concepts)
+    if book_vision:
+        vision_input = VisionGuidedConceptInput(
+            topic=topic_input.topic,
+            goal=topic_input.goal,
+            book_name=topic_input.book_name,
+            book_vision=format_book_vision(book_vision)
+        )
+        enrich1 = await enrich_gen(vision_input & merged_concepts)
+        enrich2 = await enrich_gen(vision_input & merged_concepts)
+        enrich3 = await enrich_gen(vision_input & merged_concepts)
+    else:
+        enrich1 = await enrich_gen(topic_input & merged_concepts)
+        enrich2 = await enrich_gen(topic_input & merged_concepts)
+        enrich3 = await enrich_gen(topic_input & merged_concepts)
 
     merged_enrichments = enrich1 & enrich2 & enrich3
 
     # Final merge
+    final_instructions = "Combine original concepts with enrichments. Deduplicate and order logically."
+    if book_vision:
+        final_instructions += """
+
+Final check: Ensure ALL key themes are represented and no out-of-scope concepts remain."""
+
     final_gen = synalinks.Generator(
         data_model=MergedConcepts,
         language_model=language_model,
         temperature=1.0,
-        instructions="Combine original concepts with enrichments. Deduplicate and order logically."
+        instructions=final_instructions
     )
-    enriched = await final_gen(topic_input & merged_concepts & merged_enrichments)
+
+    if book_vision:
+        vision_input = VisionGuidedConceptInput(
+            topic=topic_input.topic,
+            goal=topic_input.goal,
+            book_name=topic_input.book_name,
+            book_vision=format_book_vision(book_vision)
+        )
+        enriched = await final_gen(vision_input & merged_concepts & merged_enrichments)
+    else:
+        enriched = await final_gen(topic_input & merged_concepts & merged_enrichments)
 
     return enriched.get_json().get("main_concepts", [])
 
 
-async def expand_to_hierarchy(topic_input: Topic, concepts: list, language_model) -> dict:
+async def expand_to_hierarchy(
+    topic_input: Topic,
+    concepts: list,
+    language_model,
+    book_vision: dict = None
+) -> dict:
     """
     Expand main concepts to full 3-level hierarchy.
+
+    If book_vision is provided, the hierarchy is generated with
+    vision guidance to ensure focus alignment.
+
+    Args:
+        topic_input: Topic DataModel
+        concepts: List of main concept names
+        language_model: The LLM to use
+        book_vision: Optional vision dict for guidance
 
     Returns:
         The complete hierarchy dict
@@ -193,37 +313,77 @@ async def expand_to_hierarchy(topic_input: Topic, concepts: list, language_model
 
     combined_input = topic_input & concepts_data
 
+    # Build vision guidance if provided
+    vision_guidance = ""
+    if book_vision:
+        vision_guidance = f"""
+
+VISION GUIDANCE:
+- Core thesis: {book_vision.get('core_thesis', '')}
+- Key themes: {', '.join(book_vision.get('key_themes', []))}
+- Scope boundaries (EXCLUDE these): {book_vision.get('scope_boundaries', '')}
+
+Ensure subconcepts align with the vision and stay within scope."""
+
     # Step 1: Generate subconcepts for each main concept
     hierarchy_gen = synalinks.Generator(
         data_model=HierarchicalConcepts,
-        instructions="For each main concept provided, generate ALL relevant subconcepts that belong to that domain. Be comprehensive.",
+        instructions=f"For each main concept provided, generate ALL relevant subconcepts that belong to that domain. Be comprehensive.{vision_guidance}",
         language_model=language_model,
         temperature=1.0
     )
     hierarchy = await hierarchy_gen(combined_input)
 
     # Step 2: Review and add missing
+    review_instructions = "Review the provided concepts and subconcepts. Add any important main concepts that are missing, and add any missing subconcepts to existing concepts."
+    if book_vision:
+        themes = book_vision.get("key_themes", [])
+        review_instructions += f"""
+
+IMPORTANT: Ensure the hierarchy covers these key themes:
+{chr(10).join(f"- {t}" for t in themes)}
+
+Do NOT add concepts outside the scope boundaries."""
+
     review_gen = synalinks.Generator(
         data_model=HierarchicalConcepts,
-        instructions="Review the provided concepts and subconcepts. Add any important main concepts that are missing, and add any missing subconcepts to existing concepts.",
+        instructions=review_instructions,
         language_model=language_model,
         temperature=1.0
     )
     reviewed = await review_gen(topic_input & hierarchy)
 
     # Step 3: Expand to sub-subconcepts
+    deep_instructions = "For each subconcept provided, generate ALL relevant sub-subconcepts. Be comprehensive."
+    if book_vision:
+        deep_instructions += f"""
+
+Keep sub-subconcepts focused on the book's unique angle: {book_vision.get('unique_angle', '')}
+Stay within scope boundaries."""
+
     deep_gen = synalinks.Generator(
         data_model=DeepHierarchy,
-        instructions="For each subconcept provided, generate ALL relevant sub-subconcepts. Be comprehensive.",
+        instructions=deep_instructions,
         language_model=language_model,
         temperature=1.0
     )
     deep = await deep_gen(topic_input & reviewed)
 
-    # Step 4: Verify relevance
+    # Step 4: Verify relevance (stricter with vision)
+    verify_instructions = "Verify each concept is relevant to the book topic and goal. Remove off-topic items."
+    if book_vision:
+        verify_instructions = f"""Verify each concept aligns with the book vision.
+
+REMOVE any concept that:
+1. Falls outside the scope boundaries: {book_vision.get('scope_boundaries', '')}
+2. Does not connect to any key theme: {', '.join(book_vision.get('key_themes', []))}
+3. Is not relevant to the core thesis: {book_vision.get('core_thesis', '')}
+
+Keep the hierarchy FOCUSED."""
+
     verify_gen = synalinks.Generator(
         data_model=DeepHierarchy,
-        instructions="Verify each concept is relevant to the book topic and goal. Remove off-topic items.",
+        instructions=verify_instructions,
         language_model=language_model,
         temperature=1.0
     )
@@ -342,16 +502,23 @@ async def build_outline_pipeline(language_model) -> synalinks.Program:
     )
 
 
-async def generate_outline_with_coverage(topic_data: dict, language_model, max_coverage_attempts: int = 3) -> dict:
+async def generate_outline_with_coverage(
+    topic_data: dict,
+    language_model,
+    max_coverage_attempts: int = 3,
+    book_vision: dict = None
+) -> dict:
     """
     Generate outline with coverage checking loop.
 
-    This ensures the generated concepts adequately cover all topics specified in the goal.
+    If book_vision is provided, concepts are generated with vision guidance
+    and coverage is checked against the vision's key themes.
 
     Args:
         topic_data: Dict with topic, goal, book_name
         language_model: The LLM to use
         max_coverage_attempts: Max attempts to fix coverage (default 3)
+        book_vision: Optional book vision dict to guide concept generation
 
     Returns:
         The complete hierarchy dict
@@ -362,18 +529,34 @@ async def generate_outline_with_coverage(topic_data: dict, language_model, max_c
         book_name=topic_data["book_name"]
     )
 
-    # Step 1: Generate initial main concepts
-    logger.info("Generating main concepts...")
-    concepts = await generate_main_concepts(topic_input, language_model)
+    # Step 1: Generate initial main concepts (with vision if provided)
+    if book_vision:
+        logger.info("Generating vision-guided main concepts...")
+    else:
+        logger.info("Generating main concepts...")
+
+    concepts = await generate_main_concepts(topic_input, language_model, book_vision)
     logger.info(f"Generated {len(concepts)} main concepts")
 
     # Step 2: Coverage check loop
+    # If we have a vision, check against key themes + goal
+    # Otherwise, just check against goal
+    check_goal = topic_data["goal"]
+    if book_vision:
+        themes = book_vision.get("key_themes", [])
+        if themes:
+            themes_text = "\n".join(f"- {t}" for t in themes)
+            check_goal = f"""{topic_data["goal"]}
+
+CRITICAL - The book MUST cover these KEY THEMES from the vision:
+{themes_text}"""
+
     for attempt in range(max_coverage_attempts):
         logger.info(f"Checking coverage (attempt {attempt + 1}/{max_coverage_attempts})...")
 
         adequate, missing = await check_coverage(
             topic=topic_data["topic"],
-            goal=topic_data["goal"],
+            goal=check_goal,
             concepts=concepts,
             language_model=language_model
         )
@@ -388,7 +571,7 @@ async def generate_outline_with_coverage(topic_data: dict, language_model, max_c
                 # Generate concepts for missing topics
                 new_concepts = await generate_missing_concepts(
                     topic=topic_data["topic"],
-                    goal=topic_data["goal"],
+                    goal=check_goal,
                     current_concepts=concepts,
                     missing_topics=missing,
                     language_model=language_model
@@ -405,7 +588,7 @@ async def generate_outline_with_coverage(topic_data: dict, language_model, max_c
 
     # Step 3: Expand to full hierarchy
     logger.info("Expanding concepts to full hierarchy...")
-    hierarchy = await expand_to_hierarchy(topic_input, concepts, language_model)
+    hierarchy = await expand_to_hierarchy(topic_input, concepts, language_model, book_vision)
 
     return hierarchy
 
@@ -619,7 +802,7 @@ async def prioritize_chapters(
     generator = synalinks.Generator(
         data_model=PrioritizedChapters,
         language_model=language_model,
-        temperature=0.7,
+        temperature=1.0,
         instructions=f"""Select exactly {num_chapters} chapters that are MOST important for the given goal, audience, and focus.
 
 FOCUS AREAS: {focus}

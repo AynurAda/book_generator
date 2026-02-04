@@ -13,8 +13,15 @@ audience: "ML researchers and practitioners who want to understand and build neu
 
 # Generation settings
 test_mode: false
-test_max_chapters: 2
+test_max_chapters: 4
 resume_from_dir: null
+
+# Interactive settings
+interactive_outline_approval: false  # Prompt user to approve outline
+
+# Plan quality control
+plan_critique_enabled: true  # Enable self-critique loop for plan generation
+plan_critique_max_attempts: 2  # Max revision attempts per plan
 
 # Model settings
 model_name: "gemini/gemini-3-flash-preview"
@@ -27,9 +34,12 @@ enable_illustrations: true
 enable_generated_images: false
 image_model: "gemini/gemini-3-pro-image-preview"
 
+# Cover settings
+cover_style: "humorous"  # Options: "humorous", "abstract", "cyberpunk"
+
 # Chapter prioritization (optional)
-# num_chapters: 8  # Uncomment to limit to N most important chapters
-# focus: |  # Uncomment to specify focus areas for chapter selection
+num_chapters: 4  # Uncomment to limit to N most important chapters
+focus: "neurosymbolic AI intersection with LLMs and Agentic Reasoning"
 #   Intersection of LLMs with neuro-symbolic AI, knowledge graphs,
 #   agentic reasoning, and RAG systems. Practical implementation patterns.
 

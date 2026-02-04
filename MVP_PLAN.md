@@ -1,40 +1,51 @@
-# MVP Website Plan: Knowledge Synthesizer
+# MVP Website Plan: Learner
 
 ## Product Vision
 
-**Tagline**: "Synthesize any field. Through the lens of yours."
+**Tagline**: "Take anyone to the cutting edge. No barriers."
 
 **What We Do**:
-We synthesize scattered knowledge — papers, blogs, videos, podcasts, documentation — into a coherent, structured book tailored to YOUR domain, YOUR goals, YOUR background, and YOUR interests.
+We collapse the knowledge pipeline — taking anyone from wherever they are to the frontier of any field. Not in years. In hours.
 
-**The Synthesis Problem**:
-Knowledge exists. Understanding doesn't come pre-packaged.
+**The Broken Pipeline**:
+Today, cutting-edge knowledge lives in research lab silos. A decade-long pipeline stands between breakthrough and you:
+1. Breakthrough in a research lab
+2. Years of academic validation
+3. Years for practitioners to apply it
+4. Years to diffuse to other domains
+5. Years for someone to write a textbook
+6. Years for courses to be built
+7. **Too late** — by the time you can learn it, it's too late to build something that matters
 
-You want to learn neuro-symbolic AI. The information is out there — hundreds of papers, dozens of blog posts, conference talks, Twitter threads, textbooks. But:
-- It's fragmented across sources
-- Each source assumes different backgrounds
-- Nobody connects it to YOUR world
-- You spend 100+ hours and still lack a coherent mental model
+The frontier has moved. The window to act has closed. The people who got there first compounded their advantage for years.
 
 **Our Solution**:
-We don't summarize. We don't aggregate. We **synthesize**.
+We collapse this entire pipeline. Learn the latest breakthroughs **in time to make a difference**.
 
-We take fragmented knowledge and forge it into a unified, coherent book — one that speaks YOUR professional language, uses YOUR domain's examples, and builds mental models YOU can apply.
+Technique published Monday → complete personalized book by Tuesday → ship something meaningful by Friday.
+
+We synthesize scattered knowledge — papers, docs, blogs, cross-domain insights — into a book built molecule by molecule for exactly one person. YOUR domain. YOUR goals. YOUR language. YOUR path to the cutting edge.
+
+**When brilliant minds everywhere can reach the frontier, we all move faster.** This isn't just about individual opportunity — it's about accelerating human progress.
 
 ---
 
-## The Core Insight: A Book Written For You
+## The Core Insight: Extreme Precision
 
-This is not "a generic book with some personalization."
+This is not "a generic book with some personalization." This is not tailored across 4 dimensions.
 
-This is a book synthesized for **your specific situation**:
+This is a book synthesized across **infinite dimensions** for exactly one person:
 
 | Dimension | How It Shapes Your Book |
 |-----------|------------------------|
-| **Your Domain** | Every example, every case study drawn from YOUR professional world |
-| **Your Goal** | Content structured around what you want to BE ABLE TO DO |
-| **Your Background** | Depth calibrated to what you already know (skip basics, go deep where needed) |
-| **Your Focus** | Emphasis on the aspects that matter most to YOU |
+| **Your exact knowledge state** | What you know. What you think you know but don't. The gaps you don't even know exist. |
+| **Your specific goal** | Not "learn X" but "build Y using Z for W context" — the precise outcome you need |
+| **Your domain** | Every example, analogy, case study speaks YOUR professional language |
+| **Your native language** | Full fluency, not awkward translation — concepts explained in your thought patterns |
+| **Your learning style** | Visual, textual, example-driven, theory-first — however your brain works |
+| **Your constraints** | 20-minute focus windows, screen reader compatibility, dyslexia-friendly — whatever you need |
+| **Your pace** | Dense and fast, or gentle and thorough — exactly the gradient you can climb |
+| **Your voice preference** | Academic rigor, casual conversation, humor — the tone that keeps you engaged |
 
 **A generic book on Neuro-symbolic AI:**
 ```
@@ -74,15 +85,17 @@ Synthesis is NOT:
 - ❌ AI-generated filler (hallucinated text)
 
 Synthesis IS:
-- ✅ **Integration**: Connecting ideas from multiple sources into coherent whole
+- ✅ **Pipeline Collapse**: Taking cutting-edge knowledge from papers, docs, blogs and making it accessible NOW
+- ✅ **Integration**: Connecting scattered ideas from multiple sources into coherent whole
 - ✅ **Structuring**: Organizing fragmented knowledge into YOUR learning progression
 - ✅ **Calibration**: Adjusting depth based on what YOU already know
 - ✅ **Contextualization**: Every concept grounded in YOUR domain, YOUR goals
 - ✅ **Prioritization**: Emphasizing what matters to YOU, not equal coverage of everything
 - ✅ **Mental Model Building**: Creating frameworks YOU can think and work with
+- ✅ **Barrier Breaking**: Making knowledge accessible regardless of language, background, or cognitive style
 
-> "Synthesis is the art of taking everything out there
-> and forging it into the specific book YOU need."
+> "Synthesis is the art of collapsing the decade-long knowledge pipeline
+> and forging everything out there into the specific book YOU need — now, not in years."
 
 ---
 
@@ -243,9 +256,9 @@ The outline is YOURS to shape:
 
 | Tier | What You Get | Price |
 |------|-------------|-------|
-| **Primer** | 8-10 chapters, ~80 pages, core concepts synthesized for your domain | $49 |
-| **Deep Synthesis** | 15-20 chapters, ~180 pages, comprehensive coverage with your domain throughout | $99 |
-| **Masterwork** | 25+ chapters, ~350 pages, exhaustive synthesis with advanced topics | $199 |
+| **Primer** | 5-8 chapters, ~50 pages, core concepts synthesized for your domain | $19 |
+| **Deep Dive** | 12-15 chapters, ~120 pages, comprehensive coverage with your domain throughout | $39 |
+| **Masterwork** | 20+ chapters, ~200 pages, exhaustive synthesis with advanced topics | $79 |
 
 All tiers include:
 - ✅ Fully personalized to your domain, goals, background, and focus
@@ -269,10 +282,10 @@ All tiers include:
 
 **Category**: Knowledge Synthesis Platform
 
-**One-liner**: "We synthesize scattered knowledge into the specific book you need — tailored to your domain, goals, and background."
+**One-liner**: "Take anyone to the cutting edge. No barriers."
 
 **Elevator Pitch**:
-> "You know that feeling when you've read dozens of papers and blog posts but still can't explain a field coherently? And the books that exist assume you're someone else — wrong background, wrong goals, wrong domain? We solve that. We synthesize fragmented knowledge into a book written specifically for YOU — your domain, your goals, what you already know, what you care about. Not a generic book. YOUR book."
+> "Today, knowledge takes a decade to reach you — from research breakthrough to textbook to course to finally being accessible. By the time you can learn it, the frontier has moved. We collapse this entire pipeline. Technique published Monday → complete personalized book by Tuesday. We synthesize scattered knowledge — papers, docs, blogs, cross-domain insights — into a book built molecule by molecule for exactly one person. YOUR domain. YOUR goals. YOUR language. YOUR path to the cutting edge."
 
 ### Positioning Against Alternatives
 
@@ -302,20 +315,20 @@ All tiers include:
 ### Hero Messages
 
 **Primary:**
-> "Synthesize any field. Tailored to you."
+> "Take anyone to the cutting edge. No barriers."
 
 **Supporting:**
-> "The book that doesn't exist — until you need it."
+> "Collapse the knowledge pipeline. Breakthrough → Your book. In hours, not years."
 
-> "Your domain. Your goals. Your background. Your book."
+> "The book that doesn't exist — synthesized from scratch for exactly one person."
 
-> "From scattered papers to coherent understanding — calibrated to YOU."
+> "Your domain. Your goals. Your language. Your path to the frontier."
 
-> "Stop reading books written for someone else."
+> "Not personalized. Not adapted. SYNTHESIZED — built molecule by molecule for you."
 
-> "We synthesize everything out there into the specific book you need."
+> "Break all barriers: geographic, economic, linguistic, cognitive."
 
-> "Not a generic book. YOUR book."
+> "Stop waiting for textbooks. The cutting edge is accessible now."
 
 ### Social Proof Angles
 
@@ -395,17 +408,18 @@ All tiers include:
 
 ## Demo Strategy
 
-Create ONE exceptional demo synthesis:
+Create ONE exceptional demo synthesis that showcases the vision:
 
 **Topic**: Neuro-symbolic AI
 **Domain Lens**: Enterprise AI Agent Builders
-**Format**: Public, browsable, shows domain adaptation
+**Format**: Public, browsable, shows extreme precision and pipeline collapse
 
 Let visitors:
 - Browse full table of contents
-- Read 2-3 sample chapters
-- See how examples are domain-adapted
-- "Want yours? Tell us your domain →"
+- Read 2-3 sample chapters showing domain-specific examples
+- See how cutting-edge research is made accessible NOW
+- See how the book adapts to specific goals, not generic learning
+- "Want yours? Tell us your domain → Get to the cutting edge"
 
 ---
 

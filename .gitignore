@@ -79,3 +79,11 @@ book_backup.py
 
 # External repositories
 synalinks-skills/
+
+# Web frontend
+web/node_modules/
+web/.next/
+web/out/
+
+# Playwright
+.playwright-mcp/

@@ -36,6 +36,7 @@ from .outline import (
     prioritize_chapters,
 )
 from .planning import run_hierarchical_planning
+from .vision import generate_book_vision, format_book_vision
 from .content import write_all_sections_direct
 from .cover import generate_cover
 from .pdf import generate_pdf
@@ -264,10 +265,9 @@ async def generate_book(config: Config) -> str:
     topic_data = config.get_topic_data()
 
     # Log configuration
-    if config.test_mode:
-        logger.info("=== TEST MODE ENABLED ===")
-        logger.info(f"Max chapters: {config.test_max_chapters}")
-        save_to_file(output_dir, "00_test_mode.txt", f"TEST MODE\nMax chapters: {config.test_max_chapters}")
+    if config.num_chapters:
+        logger.info(f"=== LIMITED TO {config.num_chapters} CHAPTERS ===")
+        save_to_file(output_dir, "00_chapter_limit.txt", f"Chapter limit: {config.num_chapters}")
 
     save_to_file(
         output_dir,
@@ -279,9 +279,27 @@ async def generate_book(config: Config) -> str:
     language_model = synalinks.LanguageModel(model=config.model_name)
 
     # ==========================================================================
-    # STAGE 1: OUTLINE GENERATION
+    # STAGE 0: BOOK VISION (guides all subsequent generation)
     # ==========================================================================
-    logger.info("Starting outline generation...")
+    logger.info("Generating book vision...")
+
+    book_vision = await generate_book_vision(topic_data, language_model, output_dir)
+
+    # Display vision summary
+    print(f"\n{'='*60}")
+    print("BOOK VISION")
+    print(f"{'='*60}")
+    print(f"\nCore Thesis: {book_vision.get('core_thesis', 'N/A')[:200]}...")
+    print(f"\nKey Themes:")
+    for theme in book_vision.get('key_themes', []):
+        print(f"  - {theme}")
+    print(f"\nScope Boundaries: {book_vision.get('scope_boundaries', 'N/A')[:150]}...")
+    print(f"{'='*60}\n")
+
+    # ==========================================================================
+    # STAGE 1: OUTLINE GENERATION (vision-guided)
+    # ==========================================================================
+    logger.info("Starting vision-guided outline generation...")
 
     results = None
 
@@ -296,8 +314,10 @@ async def generate_book(config: Config) -> str:
             logger.info("Loaded existing outline from file")
 
     if results is None:
-        # Use coverage-checked generation
-        results = await generate_outline_with_coverage(topic_data, language_model)
+        # Use coverage-checked generation WITH vision guidance
+        results = await generate_outline_with_coverage(
+            topic_data, language_model, book_vision=book_vision
+        )
 
         # Save outline
         save_json_to_file(output_dir, "01_outline.json", results)
@@ -353,8 +373,10 @@ async def generate_book(config: Config) -> str:
                         print(f"   {i}.{j} {subconcept_name}")
                     print()
             elif user_input in ('r', 'regenerate'):
-                print("\nRegenerating outline (with coverage check)...")
-                results = await generate_outline_with_coverage(topic_data, language_model)
+                print("\nRegenerating outline (vision-guided with coverage check)...")
+                results = await generate_outline_with_coverage(
+                    topic_data, language_model, book_vision=book_vision
+                )
                 save_json_to_file(output_dir, "01_outline.json", results)
                 save_to_file(output_dir, "01_outline.txt", build_outline_text(results))
 
@@ -468,11 +490,16 @@ async def generate_book(config: Config) -> str:
     # STAGE 2: HIERARCHICAL PLANNING
     # ==========================================================================
     logger.info("Starting hierarchical planning...")
+    if config.plan_critique_enabled:
+        logger.info(f"Plan critique enabled (max {config.plan_critique_max_attempts} attempts)")
 
-    max_chapters = config.test_max_chapters if config.test_mode else None
+    max_chapters = config.num_chapters
 
     book_plan, chapters_overview, chapter_plans, all_section_plans, hierarchy = await run_hierarchical_planning(
-        topic_data, results, language_model, output_dir, max_chapters
+        topic_data, results, language_model, output_dir, max_chapters,
+        critique_enabled=config.plan_critique_enabled,
+        critique_max_attempts=config.plan_critique_max_attempts,
+        book_vision=book_vision
     )
 
     print(f"\n{'='*60}")
@@ -574,12 +601,23 @@ async def generate_book(config: Config) -> str:
     if writing_style and writing_style.name:
         display_authors = writing_style.name
 
+    # Get chapter names for cover prompt context
+    chapter_names = [c.get("concept", "") for c in results.get("concepts", [])]
+    key_concepts = "\n".join(f"- {name}" for name in chapter_names)
+
     cover_path = os.path.join(output_dir, "book_cover.png")
-    generate_cover(
+    await generate_cover(
         topic_data["book_name"],
         config.subtitle,
         display_authors,
-        cover_path
+        cover_path,
+        style=config.cover_style,
+        topic=topic_data["topic"],
+        goal=topic_data["goal"],
+        audience=topic_data.get("audience", "technical readers"),
+        key_concepts=key_concepts,
+        language_model=language_model,
+        image_model=config.image_model
     )
 
     # ==========================================================================

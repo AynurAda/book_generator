@@ -17,6 +17,13 @@ test_mode: false
 test_max_chapters: 2
 resume_from_dir: null
 
+# Interactive settings
+interactive_outline_approval: true  # Prompt user to approve outline
+
+# Plan quality control
+plan_critique_enabled: true  # Enable self-critique loop for plan generation
+plan_critique_max_attempts: 2  # Max revision attempts per plan
+
 # Model settings
 model_name: "gemini/gemini-3-flash-preview"
 
@@ -27,3 +34,6 @@ author_key: "waitbutwhy"
 enable_illustrations: true
 enable_generated_images: true
 image_model: "gemini/gemini-3-pro-image-preview"
+
+# Cover settings
+cover_style: "humorous"  # Options: "humorous", "abstract", "cyberpunk"

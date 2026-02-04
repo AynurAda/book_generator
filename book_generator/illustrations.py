@@ -167,7 +167,7 @@ async def generate_concept_image(
     image_number: int,
     language_model,
     output_dir: str,
-    image_model: str = "gemini/imagen-3.0-generate-002"
+    image_model: str = "gemini/gemini-3-pro-image-preview"
 ) -> Optional[str]:
     """
     Generate a concept image using AI image generation.
@@ -205,38 +205,50 @@ Include style guidance like: "clean illustration style", "technical diagram aest
         prompt_result = await prompt_generator(prompt_input)
         image_prompt = prompt_result.get_json().get("image_prompt", description)
 
-        # Generate image using the image model
-        # Note: This assumes the image model API is available through synalinks or similar
+        # Generate image using the Gemini model
         try:
-            import google.generativeai as genai
-            from PIL import Image
-            import io
+            from google import genai
+            from google.genai import types
 
-            # Configure the image model
-            imagen = genai.ImageGenerationModel(image_model.split("/")[-1])
+            api_key = os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY')
+            if not api_key:
+                logger.warning("No API key found for image generation")
+                return None
 
-            # Generate the image
-            response = imagen.generate_images(
-                prompt=image_prompt,
-                number_of_images=1,
-                aspect_ratio="16:9",
-                safety_filter_level="block_only_high",
+            client = genai.Client(api_key=api_key)
+            model_id = image_model.split("/")[-1] if "/" in image_model else image_model
+
+            response = client.models.generate_content(
+                model=model_id,
+                contents=image_prompt,
+                config=types.GenerateContentConfig(
+                    response_modalities=["IMAGE", "TEXT"],
+                )
             )
 
-            if response.images:
-                # Save the image
-                safe_chapter = sanitize_filename(chapter_name)
-                image_filename = f"img_{safe_chapter}_{image_number:02d}.png"
-                image_path = os.path.join(output_dir, image_filename)
+            # Extract image from response
+            if response.candidates:
+                for part in response.candidates[0].content.parts:
+                    if part.inline_data and part.inline_data.mime_type.startswith("image/"):
+                        image_data = part.inline_data.data
+                        if isinstance(image_data, str):
+                            image_data = base64.b64decode(image_data)
 
-                # Save image from response
-                response.images[0].save(image_path)
+                        safe_chapter = sanitize_filename(chapter_name)
+                        image_filename = f"img_{safe_chapter}_{image_number:02d}.png"
+                        image_path = os.path.join(output_dir, image_filename)
 
-                logger.info(f"Generated image: {image_filename}")
-                return image_path
+                        with open(image_path, 'wb') as f:
+                            f.write(image_data)
+
+                        logger.info(f"Generated image: {image_filename}")
+                        return image_path
+
+            logger.warning("No image in response")
+            return None
 
         except ImportError:
-            logger.warning("google-generativeai not available for image generation")
+            logger.warning("google-genai not available for image generation")
             return None
         except Exception as e:
             logger.warning(f"Image generation failed: {e}")
@@ -320,7 +332,7 @@ async def illustrate_chapter(
     language_model,
     output_dir: str,
     enable_images: bool = True,
-    image_model: str = "gemini/imagen-3.0-generate-002"
+    image_model: str = "gemini/gemini-3-pro-image-preview"
 ) -> str:
     """
     Add illustrations to a chapter based on LLM analysis.
@@ -408,7 +420,7 @@ async def illustrate_all_chapters(
     language_model,
     output_dir: str,
     enable_images: bool = True,
-    image_model: str = "gemini/imagen-3.0-generate-002"
+    image_model: str = "gemini/gemini-3-pro-image-preview"
 ) -> List[tuple]:
     """
     Add illustrations to all chapters.
