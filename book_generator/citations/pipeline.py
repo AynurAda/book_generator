@@ -3,7 +3,7 @@ Main citation pipeline orchestration.
 
 This module coordinates the full citation workflow:
 1. Extract claims from outline
-2. Find sources for claims
+2. Find sources for claims (using Perplexity API)
 3. Download and process sources
 4. Verify claims against sources
 5. Build citation context for content generation
@@ -31,13 +31,24 @@ from ..utils import save_json_to_file, save_to_file
 logger = logging.getLogger(__name__)
 
 
+def create_embedding_model() -> synalinks.EmbeddingModel:
+    """
+    Create the embedding model for citation retrieval.
+
+    Uses OpenAI's text-embedding-3-small model.
+    """
+    return synalinks.EmbeddingModel(
+        model="openai/text-embedding-3-small",
+    )
+
+
 async def run_citation_pipeline(
     outline: dict,
     topic: str,
     goal: str,
     output_dir: str,
     language_model,
-    embedding_model,
+    embedding_model=None,
     search_func: Optional[Callable] = None,
     confidence_threshold: float = 0.75,
     skip_low_importance: bool = True,
@@ -65,6 +76,11 @@ async def run_citation_pipeline(
     logger.info("="*60)
     logger.info("STARTING CITATION PIPELINE")
     logger.info("="*60)
+
+    # Create embedding model if not provided
+    if embedding_model is None:
+        logger.info("Creating OpenAI embedding model...")
+        embedding_model = create_embedding_model()
 
     citations_dir = os.path.join(output_dir, "citations")
     os.makedirs(citations_dir, exist_ok=True)

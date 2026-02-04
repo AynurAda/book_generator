@@ -14,6 +14,11 @@ latex2mathml>=3.0.0
 # Cover image generation (optional)
 google-genai>=0.1.0
 
+# Citation verification pipeline
+PyMuPDF>=1.23.0  # PDF text extraction
+beautifulsoup4>=4.12.0  # HTML parsing
+openai>=1.0.0  # Embeddings
+
 # API Server
 fastapi>=0.109.0
 uvicorn[standard]>=0.27.0

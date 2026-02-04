@@ -1,15 +1,19 @@
 """
 Source discovery for claims.
 
-Uses web search to find potential sources that might
+Uses Perplexity API to find potential sources that might
 support factual claims extracted from the outline.
 """
 
 import logging
 import hashlib
 import asyncio
+import json
+import re
 from typing import List, Optional
 import os
+import urllib.request
+import urllib.error
 
 import synalinks
 
@@ -21,6 +25,100 @@ from .models import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+async def perplexity_search(query: str, max_results: int = 5) -> List[dict]:
+    """
+    Search using Perplexity API.
+
+    Args:
+        query: Search query
+        max_results: Maximum results to return
+
+    Returns:
+        List of search result dicts with url, title, snippet
+    """
+    api_key = os.getenv("PERPLEXITY_API_KEY")
+    if not api_key or api_key == "your_perplexity_api_key_here":
+        logger.warning("Perplexity API key not configured. Skipping search.")
+        return []
+
+    url = "https://api.perplexity.ai/chat/completions"
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+
+    # Use Perplexity's sonar model for search
+    payload = {
+        "model": "sonar",
+        "messages": [
+            {
+                "role": "system",
+                "content": "You are a research assistant. Find authoritative sources for the given query. Return results as a JSON array with objects containing: url, title, authors (if known), year (if known), snippet. Focus on academic papers, official documentation, and authoritative websites."
+            },
+            {
+                "role": "user",
+                "content": f"Find authoritative sources for: {query}\n\nReturn ONLY a JSON array of sources, no other text."
+            }
+        ],
+        "max_tokens": 1024,
+        "return_citations": True,
+    }
+
+    try:
+        data = json.dumps(payload).encode('utf-8')
+        request = urllib.request.Request(url, data=data, headers=headers, method='POST')
+
+        with urllib.request.urlopen(request, timeout=30) as response:
+            result = json.loads(response.read().decode('utf-8'))
+
+        # Extract sources from response
+        content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+        citations = result.get("citations", [])
+
+        # Try to parse JSON from content
+        sources = []
+
+        # First try citations from API
+        for cite in citations:
+            sources.append({
+                "url": cite.get("url", ""),
+                "title": cite.get("title", "Unknown"),
+                "authors": cite.get("author", "Unknown"),
+                "year": "",
+                "snippet": cite.get("snippet", ""),
+            })
+
+        # Also try to parse any JSON in the content
+        try:
+            # Find JSON array in content
+            json_match = re.search(r'\[.*\]', content, re.DOTALL)
+            if json_match:
+                parsed = json.loads(json_match.group())
+                if isinstance(parsed, list):
+                    for item in parsed:
+                        if isinstance(item, dict) and item.get("url"):
+                            sources.append({
+                                "url": item.get("url", ""),
+                                "title": item.get("title", "Unknown"),
+                                "authors": item.get("authors", "Unknown"),
+                                "year": item.get("year", ""),
+                                "snippet": item.get("snippet", ""),
+                            })
+        except (json.JSONDecodeError, AttributeError):
+            pass
+
+        logger.info(f"Perplexity returned {len(sources)} sources for query")
+        return sources[:max_results]
+
+    except urllib.error.HTTPError as e:
+        logger.warning(f"Perplexity API error: {e.code} - {e.reason}")
+        return []
+    except Exception as e:
+        logger.warning(f"Perplexity search failed: {e}")
+        return []
 
 
 def generate_source_id(url: str) -> str:
@@ -80,10 +178,7 @@ async def search_for_sources(
     max_results_per_query: int = 5,
 ) -> List[dict]:
     """
-    Execute search queries to find potential sources.
-
-    Uses Perplexity search via MCP if available, otherwise falls back
-    to basic web search.
+    Execute search queries to find potential sources using Perplexity API.
 
     Args:
         queries: SearchQueries object with query lists
@@ -94,33 +189,29 @@ async def search_for_sources(
     """
     all_results = []
 
-    # Combine all queries
+    # Combine all queries, prioritizing academic
+    queries_dict = queries.get_json()
     all_queries = (
-        queries.get_json().get("academic_queries", []) +
-        queries.get_json().get("documentation_queries", []) +
-        queries.get_json().get("general_queries", [])
+        queries_dict.get("academic_queries", []) +
+        queries_dict.get("documentation_queries", []) +
+        queries_dict.get("general_queries", [])
     )
 
-    for query in all_queries[:6]:  # Limit to 6 queries total
+    # Limit to 4 queries total to avoid rate limits
+    for query in all_queries[:4]:
         try:
-            # Try using perplexity search (would be via MCP in practice)
-            # For now, this is a placeholder - the actual implementation
-            # would call the perplexity MCP tool
-            logger.info(f"Searching: {query}")
+            logger.info(f"Searching: {query[:60]}...")
+            results = await perplexity_search(query, max_results_per_query)
+            all_results.extend(results)
 
-            # Placeholder for search results
-            # In real implementation, this calls:
-            # results = await mcp_perplexity_search(query)
-            # or
-            # results = await mcp_firecrawl_search(query)
-
-            # For now, we'll structure expected results
-            # The actual search integration happens in the pipeline
+            # Small delay between queries to avoid rate limiting
+            await asyncio.sleep(0.5)
 
         except Exception as e:
             logger.warning(f"Search failed for query '{query}': {e}")
             continue
 
+    logger.info(f"Total search results: {len(all_results)}")
     return all_results
 
 
