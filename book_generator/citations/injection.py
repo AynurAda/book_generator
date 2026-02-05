@@ -8,6 +8,10 @@ THE KEY PRINCIPLE:
 Content generation receives a list of "allowed claims" - factual
 statements that have been verified against sources. The generator
 is instructed to ONLY use these claims and must cite them properly.
+
+SIMPLIFIED APPROACH:
+With Perplexity-direct verification, we don't need CitationStore.
+The CitationManager from pipeline.py handles all citation lookup.
 """
 
 import logging
@@ -17,8 +21,8 @@ from .models import (
     Claim,
     VerifiedCitation,
     CitationContext,
+    CitableClaimEntry,
 )
-from .knowledge_base import CitationStore
 
 logger = logging.getLogger(__name__)
 
@@ -61,12 +65,11 @@ def build_citation_context(
                 None
             )
             if citation:
-                allowed_claims.append({
-                    "claim": claim.content,
-                    "citation": citation.citation_text,
-                    "source_quote": citation.supporting_quote,
-                    "importance": claim.importance,
-                })
+                allowed_claims.append(CitableClaimEntry(
+                    claim=claim.content,
+                    citation=citation.citation_text,
+                    source_quote=citation.supporting_quote[:200] if citation.supporting_quote else "",
+                ))
                 references.add(citation.full_reference)
 
     return CitationContext(
@@ -74,35 +77,6 @@ def build_citation_context(
         allowed_claims=allowed_claims,
         citation_format="(Author, Year) or (Author, Year, p. X)",
         references=sorted(list(references)),
-    )
-
-
-def get_citation_context_for_section(
-    chapter: str,
-    section: str,
-    citation_store: CitationStore,
-    claims: List[Claim],
-) -> CitationContext:
-    """
-    Get the citation context for a specific section.
-
-    Args:
-        chapter: Chapter name
-        section: Section name
-        citation_store: CitationStore with verified citations
-        claims: All claims
-
-    Returns:
-        CitationContext for the section
-    """
-    claim_lookup = {c.id: c for c in claims}
-
-    return build_citation_context(
-        chapter=chapter,
-        section=section,
-        claims=claims,
-        verified_citations=citation_store.verified_citations,
-        claim_lookup=claim_lookup,
     )
 
 
@@ -138,7 +112,7 @@ When in doubt, phrase things as explanations rather than facts.
 """
 
     claims_text = "\n".join([
-        f"- CLAIM: \"{c['claim']}\"\n  CITE AS: {c['citation']}\n  SOURCE SAYS: \"{c['source_quote'][:200]}...\""
+        f"- CLAIM: \"{c.claim}\"\n  CITE AS: {c.citation}\n  SOURCE SAYS: \"{c.source_quote[:200] if c.source_quote else ''}...\""
         for c in context.allowed_claims
     ])
 
@@ -178,18 +152,16 @@ REMEMBER: It's better to have less content than to include unverified claims.
 """
 
 
-def format_bibliography(citation_store: CitationStore) -> str:
+def format_bibliography(references: List[str]) -> str:
     """
     Format the full bibliography for the book.
 
     Args:
-        citation_store: CitationStore with all citations
+        references: List of full reference strings
 
     Returns:
         Formatted bibliography markdown
     """
-    references = citation_store.get_all_references()
-
     if not references:
         return ""
 

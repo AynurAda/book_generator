@@ -75,15 +75,22 @@ async def generate_book_plan(
     logger.info("Generating book plan...")
 
     outline_text = build_outline_text(outline_results)
+    num_chapters = len(outline_results.get("concepts", []))
+    chapter_names = [c.get("concept", "") for c in outline_results.get("concepts", [])]
 
-    # Build vision-guided instructions if vision is provided
-    instructions = """Create a comprehensive plan for the book.
+    instructions = f"""Create a plan for this book.
+
+ACTUAL STRUCTURE: This book has exactly {num_chapters} chapter(s):
+{chr(10).join(f"  {i+1}. {name}" for i, name in enumerate(chapter_names))}
 
 The plan should:
 - Provide a 2-3 paragraph overview of what the book covers
 - Describe the narrative arc from beginning to end
 - Explain how chapters connect and build upon each other
 - Identify key themes that run throughout
+
+IMPORTANT: Only reference chapters that actually exist in the outline above.
+Chapter 1 is the FIRST chapter - do not reference prior content that doesn't exist.
 
 This plan will guide all subsequent content generation."""
 
@@ -264,7 +271,7 @@ async def generate_book_plan_with_critique(
     outline_results: dict,
     language_model,
     output_dir: str,
-    max_attempts: int = 2,
+    max_attempts: int = 5,
     book_vision: dict = None
 ) -> dict:
     """
@@ -277,7 +284,7 @@ async def generate_book_plan_with_critique(
         outline_results: The generated outline hierarchy
         language_model: The LLM to use
         output_dir: Directory to save outputs
-        max_attempts: Maximum revision attempts (default 2)
+        max_attempts: Maximum revision attempts (default 5)
         book_vision: Optional book vision for alignment guidance
 
     Returns:
@@ -495,13 +502,13 @@ async def generate_chapters_overview_with_critique(
     language_model,
     output_dir: str,
     max_chapters: Optional[int] = None,
-    max_attempts: int = 2
+    max_attempts: int = 5
 ) -> dict:
     """
     Generate chapters overview with self-critique loop.
 
     Args:
-        max_attempts: Maximum revision attempts (default 2)
+        max_attempts: Maximum revision attempts (default 5)
 
     Returns:
         Dictionary with chapters overview data
@@ -568,11 +575,16 @@ async def _generate_chapters_overview_internal(
 
     book_plan_text = format_book_plan(book_plan)
 
+    num_chapters = len(chapter_names)
+
     generator = synalinks.Generator(
         data_model=ChaptersOverview,
         language_model=language_model,
         temperature=1.0,
-        instructions="""Generate a coherent overview of all chapters in this book.
+        instructions=f"""Generate a coherent overview of all chapters in this book.
+
+ACTUAL STRUCTURE: This book has exactly {num_chapters} chapter(s).
+Chapter 1 is the FIRST chapter - there is no prior content before it.
 
 Your task is to create a "birds-eye view" that shows how all chapters fit together.
 This overview will guide detailed planning for each individual chapter.
@@ -587,11 +599,10 @@ For each chapter_brief:
 - chapter_name: Use the EXACT chapter name provided (do not modify it)
 - brief_role: 1-2 sentences on what this chapter accomplishes
 - key_concepts: The main ideas introduced or developed
-- builds_on: SPECIFIC prerequisite knowledge (name concepts, not "previous material")
-- leads_to: SPECIFIC concepts this enables (name them, not "more advanced topics")
+- builds_on: SPECIFIC prerequisite knowledge from EARLIER chapters in THIS book (or "None - this is the opening chapter" for Chapter 1)
+- leads_to: SPECIFIC concepts this enables in LATER chapters (or "Conclusion" for the final chapter)
 
-IMPORTANT: Vague connections like "builds on previous chapters" are NOT acceptable.
-Be specific: "builds on the memory management model from Chapter 3" is correct."""
+IMPORTANT: Only reference chapters that actually exist. Do not invent or reference chapters outside the provided outline."""
     )
 
     input_data = ChaptersOverviewInput(
@@ -789,7 +800,7 @@ async def generate_chapter_plans_with_critique(
     output_dir: str,
     max_chapters: Optional[int] = None,
     critique_enabled: bool = True,
-    critique_max_attempts: int = 2
+    critique_max_attempts: int = 5
 ) -> tuple:
     """
     Generate plans for all chapters with self-critique loop on overview.
@@ -1047,7 +1058,7 @@ async def run_hierarchical_planning(
     output_dir: str,
     max_chapters: Optional[int] = None,
     critique_enabled: bool = True,
-    critique_max_attempts: int = 2,
+    critique_max_attempts: int = 5,
     book_vision: dict = None
 ) -> tuple:
     """
@@ -1066,6 +1077,43 @@ async def run_hierarchical_planning(
     Returns:
         Tuple of (book_plan, chapters_overview, chapter_plans, all_section_plans, hierarchy)
     """
+    import os
+
+    # =========================================================================
+    # CACHE INVALIDATION: Check if cached plans match current outline
+    # =========================================================================
+    current_chapter_count = len(outline_results.get("concepts", []))
+    current_chapters = [c.get("concept", "") for c in outline_results.get("concepts", [])]
+
+    # Check if cached chapters_overview exists and matches current outline
+    if output_dir and output_exists(output_dir, "02_chapters_overview.json"):
+        cached_overview = load_json_from_file(output_dir, "02_chapters_overview.json")
+        if cached_overview:
+            cached_briefs = cached_overview.get("chapter_briefs", [])
+            cached_chapter_count = len(cached_briefs)
+
+            if cached_chapter_count != current_chapter_count:
+                logger.warning(f"Outline changed: cached plans have {cached_chapter_count} chapters, "
+                             f"current outline has {current_chapter_count} chapters")
+                logger.warning("Invalidating cached plans to regenerate for new outline...")
+
+                # Remove cached planning files
+                files_to_remove = [
+                    "02_book_plan.json", "02_book_plan.txt",
+                    "02_chapters_overview.json", "02_chapters_overview.txt",
+                    "02_chapter_plans.json",
+                ]
+                # Also remove critique files
+                for f in os.listdir(output_dir):
+                    if f.startswith("02_") and (f.endswith(".json") or f.endswith(".txt")):
+                        files_to_remove.append(f)
+
+                for filename in set(files_to_remove):
+                    filepath = os.path.join(output_dir, filename)
+                    if os.path.exists(filepath):
+                        os.remove(filepath)
+                        logger.info(f"Removed stale cache: {filename}")
+
     # Generate book plan (with or without critique)
     # Pass book_vision for alignment
     if critique_enabled and critique_max_attempts > 0:

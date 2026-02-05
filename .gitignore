@@ -87,3 +87,10 @@ web/out/
 
 # Playwright
 .playwright-mcp/
+
+# Deep research test files
+test_deep_research.py
+test_gemini_grounding.py
+convert_to_pdf.py
+deep_research_output.pdf
+deep_research_results.json

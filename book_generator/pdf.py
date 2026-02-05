@@ -314,6 +314,9 @@ BOOK_CSS = '''
 @page part {
     @top-center { content: none; }
 }
+@page toc {
+    @top-center { content: none; }
+}
 .cover-page {
     page-break-after: always;
     margin: 0;
@@ -455,6 +458,7 @@ li > ul, li > ol {
     margin-top: 1em;
 }
 .toc {
+    page: toc;
     page-break-before: always;
     page-break-after: always;
 }

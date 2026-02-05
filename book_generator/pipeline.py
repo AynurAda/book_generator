@@ -42,6 +42,7 @@ from .cover import generate_cover
 from .pdf import generate_pdf
 from .authors import get_author_profile, generate_about_author
 from .illustrations import illustrate_all_chapters
+from .citations import run_citation_pipeline, CitationManager
 
 logger = logging.getLogger(__name__)
 
@@ -400,58 +401,7 @@ async def generate_book(config: Config) -> str:
                 print("Invalid input. Please enter 'y', 'e', 'r', or 'q'.")
 
     # ==========================================================================
-    # STAGE 1a2: CHAPTER PRIORITIZATION (if num_chapters is set)
-    # ==========================================================================
-    if config.num_chapters and len(results.get("concepts", [])) > config.num_chapters:
-        print(f"\n{'='*60}")
-        print(f"Selecting {config.num_chapters} most important chapters...")
-        if config.focus:
-            print(f"Focus: {config.focus}")
-        print(f"{'='*60}\n")
-
-        results = await prioritize_chapters(
-            topic_data,
-            results,
-            config.num_chapters,
-            config.focus,
-            language_model
-        )
-
-        # Save prioritized outline
-        save_json_to_file(output_dir, "01_outline_prioritized.json", results)
-        save_to_file(output_dir, "01_outline_prioritized.txt", build_outline_text(results))
-
-        # Display selected chapters
-        concepts_list = results.get("concepts", [])
-        print(f"Selected {len(concepts_list)} chapters:")
-        for i, concept_data in enumerate(concepts_list, 1):
-            concept_name = concept_data.get("concept", "Unknown")
-            print(f"  {i}. {concept_name}")
-        print()
-
-    # ==========================================================================
-    # STAGE 1a3: GENERATE SUBSUBCONCEPTS IF MISSING
-    # ==========================================================================
-    if outline_needs_subsubconcepts(results):
-        logger.info("Outline missing subsubconcepts, generating...")
-        print(f"\n{'='*60}")
-        print("Generating detailed subsections for each section...")
-        print(f"{'='*60}\n")
-
-        results = await generate_subsubconcepts(topic_data, results, language_model)
-        save_json_to_file(output_dir, "01_outline.json", results)
-        save_to_file(output_dir, "01_outline.txt", build_outline_text(results))
-
-        # Count subsubconcepts
-        total_subsections = sum(
-            len(sub.get("subsubconcepts", []))
-            for concept in results.get("concepts", [])
-            for sub in concept.get("subconcepts", [])
-        )
-        print(f"Generated {total_subsections} subsections across all sections")
-
-    # ==========================================================================
-    # STAGE 1b: OUTLINE REORGANIZATION
+    # STAGE 1b: OUTLINE REORGANIZATION (before prioritization for best flow)
     # ==========================================================================
     was_reorganized = False
     reorg_reasoning = "Not analyzed"
@@ -487,6 +437,57 @@ async def generate_book(config: Config) -> str:
     print(f"{'='*60}\n")
 
     # ==========================================================================
+    # STAGE 1c: CHAPTER PRIORITIZATION (after reorganization, before planning)
+    # ==========================================================================
+    if config.num_chapters and len(results.get("concepts", [])) > config.num_chapters:
+        print(f"\n{'='*60}")
+        print(f"Selecting {config.num_chapters} most important chapters...")
+        if config.focus:
+            print(f"Focus: {config.focus}")
+        print(f"{'='*60}\n")
+
+        results = await prioritize_chapters(
+            topic_data,
+            results,
+            config.num_chapters,
+            config.focus,
+            language_model
+        )
+
+        # Save prioritized outline
+        save_json_to_file(output_dir, "01_outline_prioritized.json", results)
+        save_to_file(output_dir, "01_outline_prioritized.txt", build_outline_text(results))
+
+        # Display selected chapters
+        concepts_list = results.get("concepts", [])
+        print(f"Selected {len(concepts_list)} chapters:")
+        for i, concept_data in enumerate(concepts_list, 1):
+            concept_name = concept_data.get("concept", "Unknown")
+            print(f"  {i}. {concept_name}")
+        print()
+
+    # ==========================================================================
+    # STAGE 1d: GENERATE SUBSUBCONCEPTS IF MISSING (only for selected chapters)
+    # ==========================================================================
+    if outline_needs_subsubconcepts(results):
+        logger.info("Outline missing subsubconcepts, generating...")
+        print(f"\n{'='*60}")
+        print("Generating detailed subsections for each section...")
+        print(f"{'='*60}\n")
+
+        results = await generate_subsubconcepts(topic_data, results, language_model)
+        save_json_to_file(output_dir, "01_outline_final.json", results)
+        save_to_file(output_dir, "01_outline_final.txt", build_outline_text(results))
+
+        # Count subsubconcepts
+        total_subsections = sum(
+            len(sub.get("subsubconcepts", []))
+            for concept in results.get("concepts", [])
+            for sub in concept.get("subconcepts", [])
+        )
+        print(f"Generated {total_subsections} subsections across all sections")
+
+    # ==========================================================================
     # STAGE 2: HIERARCHICAL PLANNING
     # ==========================================================================
     logger.info("Starting hierarchical planning...")
@@ -511,6 +512,59 @@ async def generate_book(config: Config) -> str:
     print(f"{'='*60}\n")
 
     # ==========================================================================
+    # STAGE 2b: CLAIM-FIRST CITATION PIPELINE (Optional)
+    # ==========================================================================
+    citation_manager = None
+    get_citation_instructions_callback = None
+
+    if config.enable_citations:
+        logger.info("Starting claim-first citation pipeline...")
+        logger.info("This will plan claims for each subsection, then verify them.")
+
+        from .planning import format_book_plan
+
+        try:
+            citation_manager = await run_citation_pipeline(
+                topic_data=topic_data,
+                hierarchy=hierarchy,
+                book_plan=format_book_plan(book_plan),
+                section_plans=all_section_plans,
+                output_dir=output_dir,
+                language_model=language_model,
+                confidence_threshold=config.citation_confidence_threshold,
+                skip_low_importance=config.skip_low_importance_claims,
+                max_concurrent_verifications=5,
+            )
+
+            # Create callback for content generation (subsection-level)
+            def get_citation_instructions_callback(chapter: str, section: str, subsection: str = None) -> str:
+                if citation_manager:
+                    if subsection:
+                        return citation_manager.get_subsection_citation_instructions(chapter, section, subsection)
+                    return citation_manager.get_citation_instructions(chapter, section)
+                return ""
+
+            print(f"\n{'='*60}")
+            print("CLAIM-FIRST CITATION PIPELINE COMPLETE:")
+            print(f"  - Claims planned: {len(citation_manager.claims)}")
+            print(f"  - Claims verified: {len(citation_manager.verified_citations)}")
+            print(f"  - Unverified claims: {len(citation_manager.unverified_claims)}")
+            print(f"  - Unique references: {len(citation_manager.get_all_references())}")
+            verification_rate = len(citation_manager.verified_citations) / len(citation_manager.claims) * 100 if citation_manager.claims else 0
+            print(f"  - Verification rate: {verification_rate:.1f}%")
+            print(f"{'='*60}\n")
+
+        except Exception as e:
+            logger.error(f"Citation pipeline failed: {e}")
+            import traceback
+            traceback.print_exc()
+            logger.info("Continuing without citation verification")
+            print(f"\n{'='*60}")
+            print(f"WARNING: Citation pipeline failed: {e}")
+            print("Continuing without citation verification...")
+            print(f"{'='*60}\n")
+
+    # ==========================================================================
     # STAGE 3: CONTENT GENERATION (Direct Write with Style)
     # ==========================================================================
 
@@ -530,7 +584,7 @@ async def generate_book(config: Config) -> str:
     chapters = await write_all_sections_direct(
         topic_data, hierarchy, book_plan, chapters_overview, chapter_plans,
         all_section_plans, language_model, output_dir, config.intro_styles,
-        max_chapters, writing_style
+        max_chapters, writing_style, get_citation_instructions_callback
     )
 
     total_sections = sum(len(sections) for sections in hierarchy.values())
@@ -652,6 +706,14 @@ async def generate_book(config: Config) -> str:
         else:
             combined_output.append(f"## {chapter_title}\n\n")
             combined_output.append("*Content generation failed for this chapter*\n\n")
+
+    # Add bibliography if citations were enabled
+    if citation_manager:
+        bibliography = citation_manager.get_bibliography_markdown()
+        if bibliography:
+            combined_output.append("\n---\n\n")
+            combined_output.append(bibliography)
+            combined_output.append("\n")
 
     book_content = "".join(combined_output)
     save_to_file(output_dir, "06_full_book.txt", book_content)

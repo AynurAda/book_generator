@@ -139,13 +139,33 @@ class ClaimExtractionInput(synalinks.DataModel):
     )
 
 
+class ExtractedClaimItem(synalinks.DataModel):
+    """A single extracted claim from the outline."""
+    content: str = synalinks.Field(
+        description="The factual claim text"
+    )
+    section: str = synalinks.Field(
+        description="Section name this claim belongs to"
+    )
+    subsection: str = synalinks.Field(
+        default="",
+        description="Subsection name if applicable"
+    )
+    claim_type: str = synalinks.Field(
+        description="Type: statistic, research_finding, definition, attribution, historical, technical"
+    )
+    importance: str = synalinks.Field(
+        description="Importance level: critical, high, medium, low"
+    )
+
+
 class ExtractedClaims(synalinks.DataModel):
     """Output from claim extraction."""
     thinking: list[str] = synalinks.Field(
         description="Step-by-step reasoning about what claims exist"
     )
-    claims: list[dict] = synalinks.Field(
-        description="List of extracted claims with content, section, type, importance"
+    claims: list[ExtractedClaimItem] = synalinks.Field(
+        description="List of extracted claims"
     )
 
 
@@ -217,27 +237,6 @@ class VerificationResult(synalinks.DataModel):
 # Citation Context for Content Generation
 # =============================================================================
 
-class CitationContext(synalinks.DataModel):
-    """
-    Citation context passed to content generation.
-
-    This is the KEY structure that constrains content generation
-    to only include verified, citable claims.
-    """
-    section_name: str = synalinks.Field(
-        description="The section being generated"
-    )
-    allowed_claims: list[dict] = synalinks.Field(
-        description="List of claims that CAN be made (with their citations)"
-    )
-    citation_format: str = synalinks.Field(
-        description="How to format inline citations"
-    )
-    references: list[str] = synalinks.Field(
-        description="Full references for the bibliography"
-    )
-
-
 class CitableClaimEntry(synalinks.DataModel):
     """A single citable claim with its citation info."""
     claim: str = synalinks.Field(
@@ -248,4 +247,25 @@ class CitableClaimEntry(synalinks.DataModel):
     )
     source_quote: str = synalinks.Field(
         description="Supporting quote from source for accuracy"
+    )
+
+
+class CitationContext(synalinks.DataModel):
+    """
+    Citation context passed to content generation.
+
+    This is the KEY structure that constrains content generation
+    to only include verified, citable claims.
+    """
+    section_name: str = synalinks.Field(
+        description="The section being generated"
+    )
+    allowed_claims: list[CitableClaimEntry] = synalinks.Field(
+        description="List of claims that CAN be made (with their citations)"
+    )
+    citation_format: str = synalinks.Field(
+        description="How to format inline citations"
+    )
+    references: list[str] = synalinks.Field(
+        description="Full references for the bibliography"
     )

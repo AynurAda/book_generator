@@ -46,7 +46,7 @@ class Config:
 
     # Plan quality control
     plan_critique_enabled: bool = True  # Enable self-critique loop for plan generation
-    plan_critique_max_attempts: int = 2  # Max revision attempts per plan
+    plan_critique_max_attempts: int = 5  # Max revision attempts per plan
 
     # Default outline (optional) - if provided, skip outline generation
     default_outline: Optional[dict] = None
@@ -183,7 +183,7 @@ class Config:
             resume_from_dir=data.get("resume_from_dir"),
             interactive_outline_approval=data.get("interactive_outline_approval", True),
             plan_critique_enabled=data.get("plan_critique_enabled", True),
-            plan_critique_max_attempts=data.get("plan_critique_max_attempts", 2),
+            plan_critique_max_attempts=data.get("plan_critique_max_attempts", 5),
             default_outline=default_outline,
             num_chapters=data.get("num_chapters"),
             focus=data.get("focus"),

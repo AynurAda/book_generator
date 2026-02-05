@@ -1,11 +1,12 @@
 """
 Citation generation and verification system.
 
-This module handles:
-- Extracting factual claims from outlines
-- Finding and downloading sources
-- Verifying claims against source passages
-- Injecting citations into content generation
+CLAIM-FIRST APPROACH:
+1. Plan claims for each subsection BEFORE writing
+2. Verify all planned claims with Perplexity
+3. Content generation is STRICTLY constrained to verified claims only
+
+This ensures NO unverified factual claims can appear in the final text.
 """
 
 from .models import (
@@ -15,8 +16,17 @@ from .models import (
     VerifiedCitation,
     CitationContext,
 )
-from .pipeline import run_citation_pipeline
-from .injection import get_citation_context_for_section
+from .pipeline import run_citation_pipeline, CitationManager
+from .claim_planning import (
+    plan_all_subsection_claims,
+    SubsectionClaimPlan,
+    PlannedClaim,
+)
+from .injection import (
+    format_citation_instructions,
+    remove_unverified_claims_from_outline,
+    format_bibliography,
+)
 
 __all__ = [
     "Claim",
@@ -24,6 +34,12 @@ __all__ = [
     "Passage",
     "VerifiedCitation",
     "CitationContext",
+    "CitationManager",
     "run_citation_pipeline",
-    "get_citation_context_for_section",
+    "plan_all_subsection_claims",
+    "SubsectionClaimPlan",
+    "PlannedClaim",
+    "format_citation_instructions",
+    "remove_unverified_claims_from_outline",
+    "format_bibliography",
 ]

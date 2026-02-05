@@ -145,6 +145,7 @@ async def generate_search_queries(
     generator = synalinks.Generator(
         data_model=SearchQueries,
         language_model=language_model,
+        temperature=1.0,
         instructions="""Generate effective search queries to find authoritative sources for this claim.
 
 For ACADEMIC queries (papers, journals):

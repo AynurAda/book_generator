@@ -618,21 +618,9 @@ class SubsectionInput(synalinks.DataModel):
 
 
 class SubsectionContent(synalinks.DataModel):
-    """Output for a generated subsection with structured components."""
-    core_explanation: str = synalinks.Field(
-        description="Definition and core explanation - what this concept IS, explained from first principles (2-4 paragraphs)"
-    )
-    mechanics: str = synalinks.Field(
-        description="How it works - the underlying principles, algorithms, or processes in detail (2-4 paragraphs)"
-    )
-    examples: str = synalinks.Field(
-        description="Concrete, specific examples that illustrate different aspects of the concept (2-3 examples)"
-    )
-    nuances: str = synalinks.Field(
-        description="Edge cases, limitations, common misconceptions, and important caveats (1-2 paragraphs)"
-    )
-    connections: str = synalinks.Field(
-        description="How this relates to other concepts in the section/chapter and when to use it (1-2 paragraphs)"
+    """Output for a generated subsection - free-flowing textbook prose."""
+    content: str = synalinks.Field(
+        description="The complete subsection content as flowing textbook prose. Write naturally, covering the topic in depth with appropriate structure for the material. Include definitions, explanations, examples, and nuances as they fit organically into the narrative."
     )
 
 

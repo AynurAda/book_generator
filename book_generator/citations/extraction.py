@@ -60,6 +60,7 @@ async def extract_claims_from_chapter(
     extractor = synalinks.Generator(
         data_model=ExtractedClaims,
         language_model=language_model,
+        temperature=1.0,
         instructions="""You are a fact-checker analyzing a book outline to identify claims that need citations.
 
 TASK: Extract ALL factual claims from this chapter outline that would require a citation in an academic or professional book.
@@ -95,14 +96,29 @@ DO NOT include: opinions, explanations, examples the author creates, or general 
 
     claims = []
     for i, claim_data in enumerate(result_dict.get("claims", [])):
+        # Handle both dict and object access patterns
+        if isinstance(claim_data, dict):
+            content = claim_data.get("content", "")
+            section = claim_data.get("section", "")
+            subsection = claim_data.get("subsection")
+            claim_type = claim_data.get("claim_type", "technical")
+            importance = claim_data.get("importance", "medium")
+        else:
+            # Object-style access
+            content = getattr(claim_data, "content", "")
+            section = getattr(claim_data, "section", "")
+            subsection = getattr(claim_data, "subsection", None)
+            claim_type = getattr(claim_data, "claim_type", "technical")
+            importance = getattr(claim_data, "importance", "medium")
+
         claim = Claim(
-            id=generate_claim_id(chapter_name, claim_data.get("section", ""), i),
-            content=claim_data.get("content", ""),
+            id=generate_claim_id(chapter_name, section, i),
+            content=content,
             chapter=chapter_name,
-            section=claim_data.get("section", ""),
-            subsection=claim_data.get("subsection"),
-            claim_type=claim_data.get("claim_type", "technical"),
-            importance=claim_data.get("importance", "medium"),
+            section=section,
+            subsection=subsection,
+            claim_type=claim_type,
+            importance=importance,
         )
         claims.append(claim)
 

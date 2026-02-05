@@ -160,60 +160,59 @@ Apply this style while maintaining all depth requirements. Style does NOT mean s
 
 """
 
-    instructions = f"""{style_section}{citation_section}Write comprehensive content for this specific subsection/topic.
+    instructions = f"""{style_section}{citation_section}Write comprehensive content for this specific subsection/topic in WaitButWhy style (Tim Urban's blog) but with TEXTBOOK-LEVEL DEPTH AND RIGOR.
 
 You have access to the full book context: book plan, chapters overview, chapter plan, and section plan.
 Use this context to understand what depth and coverage is expected.
 
 TARGET AUDIENCE: Write for the specified audience with appropriate technical depth.
 
-LANGUAGE STYLE: Write with CLARITY and RIGOR:
-- Precise and technically accurate throughout
-- Clear logical flow between concepts
-- Professional textbook quality
+=== WAITBUTWHY + TEXTBOOK HYBRID ===
 
-=== OPENING APPROACH ===
+Channel Tim Urban's WaitButWhy style:
+- Conversational, engaging tone that pulls readers in
+- Break down complex ideas so they truly click
+- Use analogies and thought experiments that illuminate
+- Don't be afraid to be a bit playful or use humor naturally
+- Write like you're explaining to a smart friend over coffee
 
-For the core_explanation field, use the opening approach specified in the input's "opening_approach" field.
-Do NOT use "Imagine..." as an opening - this is overused. Follow the specified approach instead.
+BUT maintain textbook rigor:
+- Be technically precise - no hand-waving or oversimplification
+- Include the actual mechanisms, algorithms, and formal details
+- Don't sacrifice accuracy for accessibility - do BOTH
+- Cover the topic comprehensively, not superficially
+- This should be something a student could study from
 
-=== STRUCTURED OUTPUT ===
+ORIGINAL THINKING (encouraged):
+- Share novel interpretations: "One way to think about this is..."
+- Make connections: "This suggests a potential link to..."
+- Offer mental models: "A useful way to visualize this..."
+- Speculate on implications: "This opens the possibility that..."
+- Provide author insights: "What makes this particularly elegant is..."
 
-Fill each field with substantive content:
+You CAN be original and speculative - just don't present speculation as established fact.
 
-1. core_explanation: Define and explain from first principles (2-4 paragraphs)
-   - What IS this concept? Define it precisely
-   - Build understanding incrementally from basics
-   - Include the "why" behind every "what"
+OPENING: Use the approach specified in the input's "opening_approach" field. Do NOT use "Imagine..." - this is overused.
 
-2. mechanics: How it works in detail (2-4 paragraphs)
-   - The underlying principles, algorithms, or processes
-   - Step-by-step breakdown of how it operates
-   - Technical details appropriate for the audience
+=== CONTENT REQUIREMENTS ===
 
-3. examples: Concrete illustrations (2-3 examples)
-   - Real, specific examples from the domain
-   - Each example should highlight different aspects
-   - Include enough detail to be instructive
+Write free-flowing, well-organized prose that:
 
-4. nuances: Important caveats (1-2 paragraphs)
-   - Edge cases and limitations
-   - Common misconceptions to avoid
-   - When this doesn't apply or works differently
+1. **Defines and explains** - Establish what the concept IS. Be precise with definitions but explain them in accessible terms. Build understanding from first principles.
 
-5. connections: Relationships to other concepts (1-2 paragraphs)
-   - How this relates to other topics in the section/chapter
-   - When and why to use this vs alternatives
-   - How it fits into the bigger picture
+2. **Goes deep into mechanisms** - Explain HOW things work, not just what they are. Include the underlying principles, algorithms, or processes. Make technical content engaging, not dry.
 
-=== EXPLANATION APPROACH ===
+3. **Illustrates with examples** - Weave in concrete, specific examples that illuminate different aspects. Good examples make abstract concepts click.
 
-Every field MUST be:
-- SELF-CONTAINED: Define ALL terms when first used
-- NO ASSUMED PRIOR KNOWLEDGE: Don't skip "obvious" steps
-- IN-DEPTH: Go beyond definitions to true understanding
+4. **Addresses nuances** - Cover edge cases, limitations, and common misconceptions. Anticipate where readers might get confused and address it.
 
-=== IMPORTANT: WHAT NOT TO INCLUDE ===
+5. **Shows connections** - Help readers see how this fits into the broader picture. Reference related concepts and show how ideas build on each other.
+
+Let the content dictate structure - some topics need more examples, others need more theory. Paragraphs should flow naturally.
+
+LENGTH: Write substantial content. A subsection should be thorough enough to stand alone as a complete explanation. Think 800-1500 words depending on topic complexity.
+
+=== WHAT NOT TO INCLUDE ===
 
 Do NOT include generic "why it matters" content about:
 - Explainability/interpretability benefits
@@ -226,7 +225,7 @@ These are covered in a separate part-level conclusion. Focus on explaining WHAT 
 FORMATTING:
 - Do NOT use markdown headers (no #, ##, ###, ####)
 - You CAN use **bold** for emphasis
-- Write in flowing prose, not bullet points (except in examples)"""
+- Write in flowing prose (occasional bullets for lists are OK)"""
 
     generator = synalinks.Generator(
         data_model=SubsectionContent,
@@ -238,25 +237,8 @@ FORMATTING:
     result = await generator(subsection_input)
     data = result.get_json()
 
-    # Combine structured fields into cohesive content
-    parts = []
-
-    if data.get("core_explanation"):
-        parts.append(data["core_explanation"])
-
-    if data.get("mechanics"):
-        parts.append(data["mechanics"])
-
-    if data.get("examples"):
-        parts.append(data["examples"])
-
-    if data.get("nuances"):
-        parts.append(data["nuances"])
-
-    if data.get("connections"):
-        parts.append(data["connections"])
-
-    return "\n\n".join(parts)
+    # Return the free-flowing content
+    return data.get("content", "")
 
 
 async def generate_section_intro(
@@ -468,11 +450,15 @@ async def write_section_with_subsections(
     output_dir: str,
     section_num: int,
     writing_style: Optional[object] = None,
-    citation_instructions: Optional[str] = None,
+    get_citation_instructions: Optional[callable] = None,
 ) -> tuple:
     """
     Write a complete section by generating each subsection separately.
     If quality check fails, regenerates subsections with feedback.
+
+    Args:
+        get_citation_instructions: Optional callback(chapter, section, subsection) -> str
+            Returns STRICT citation instructions for each subsection.
     """
     safe_section = sanitize_filename(section_name)
     section_filename = f"03_section_{section_num:03d}_{safe_section}.txt"
@@ -520,6 +506,11 @@ async def write_section_with_subsections(
             augmented_plan = section_plan_text
             if quality_feedback:
                 augmented_plan = f"{section_plan_text}\n\n=== QUALITY FEEDBACK (fix these issues) ===\n{quality_feedback}"
+
+            # Get subsection-specific citation instructions
+            citation_instructions = None
+            if get_citation_instructions:
+                citation_instructions = get_citation_instructions(chapter_name, section_name, subsection_name)
 
             subsection_input = SubsectionInput(
                 topic=topic_data["topic"],
@@ -653,11 +644,6 @@ async def write_chapter_with_sections(
         intro_style = intro_styles[style_idx % len(intro_styles)]
         style_idx += 1
 
-        # Get citation instructions for this section if citation pipeline is enabled
-        citation_instructions = None
-        if get_citation_instructions:
-            citation_instructions = get_citation_instructions(chapter_name, section_name)
-
         section_content, style_idx = await write_section_with_subsections(
             topic_data=topic_data,
             full_outline=full_outline,
@@ -675,7 +661,7 @@ async def write_chapter_with_sections(
             output_dir=output_dir,
             section_num=section_counter + i + 1,
             writing_style=writing_style,
-            citation_instructions=citation_instructions,
+            get_citation_instructions=get_citation_instructions,
         )
 
         section_contents.append((section_name, section_content))

@@ -37,8 +37,13 @@ image_model: "gemini/gemini-3-pro-image-preview"
 # Cover settings
 cover_style: "humorous"  # Options: "humorous", "abstract", "cyberpunk"
 
+# Citation settings
+enable_citations: true  # Enable Perplexity-based citation verification
+citation_confidence_threshold: 0.75  # Min confidence to accept a citation
+skip_low_importance_claims: true  # Skip verification for low-importance claims
+
 # Chapter prioritization (optional)
-num_chapters: 4  # Uncomment to limit to N most important chapters
+num_chapters: 1  # Uncomment to limit to N most important chapters1
 focus: "neurosymbolic AI intersection with LLMs and Agentic Reasoning"
 #   Intersection of LLMs with neuro-symbolic AI, knowledge graphs,
 #   agentic reasoning, and RAG systems. Practical implementation patterns.
