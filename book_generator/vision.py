@@ -56,7 +56,8 @@ PREREQUISITE KNOWLEDGE:
 async def generate_book_vision(
     topic_data: dict,
     language_model,
-    output_dir: str = None
+    output_dir: str = None,
+    research_context: str = None,
 ) -> dict:
     """
     Generate the book vision before concept generation.
@@ -100,12 +101,8 @@ async def generate_book_vision(
         audience=topic_data.get("audience", "technical readers")
     )
 
-    # Branch generator - each branch proposes a vision
-    branch_generator = synalinks.Generator(
-        data_model=BookVision,
-        language_model=language_model,
-        temperature=1.0,
-        instructions="""Propose a VISION for this book that will guide all content generation.
+    # Build instructions with optional research context
+    base_instructions = """Propose a VISION for this book that will guide all content generation.
 
 Think carefully about what makes this book focused and valuable.
 
@@ -129,6 +126,26 @@ Think carefully about what makes this book focused and valuable.
 6. PREREQUISITES: What knowledge is assumed?
 
 The goal is FOCUS. A great book is focused and deep, not comprehensive."""
+
+    if research_context:
+        base_instructions = f"""You have access to recent research findings about this field.
+Use this knowledge to inform your vision - ensure the book covers cutting-edge developments.
+
+RECENT RESEARCH SUMMARY:
+{research_context}
+
+---
+
+{base_instructions}
+
+IMPORTANT: Your key themes should incorporate the recent advances discovered in the research."""
+
+    # Branch generator - each branch proposes a vision
+    branch_generator = synalinks.Generator(
+        data_model=BookVision,
+        language_model=language_model,
+        temperature=1.0,
+        instructions=base_instructions,
     )
 
     # Generate 3 diverse vision proposals (multi-branch pattern)

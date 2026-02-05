@@ -506,7 +506,8 @@ async def generate_outline_with_coverage(
     topic_data: dict,
     language_model,
     max_coverage_attempts: int = 3,
-    book_vision: dict = None
+    book_vision: dict = None,
+    research_context: str = None,
 ) -> dict:
     """
     Generate outline with coverage checking loop.
@@ -514,11 +515,15 @@ async def generate_outline_with_coverage(
     If book_vision is provided, concepts are generated with vision guidance
     and coverage is checked against the vision's key themes.
 
+    If research_context is provided, it's included in the coverage check
+    to ensure cutting-edge topics are covered.
+
     Args:
         topic_data: Dict with topic, goal, book_name
         language_model: The LLM to use
         max_coverage_attempts: Max attempts to fix coverage (default 3)
         book_vision: Optional book vision dict to guide concept generation
+        research_context: Optional research context for coverage checking
 
     Returns:
         The complete hierarchy dict
@@ -550,6 +555,13 @@ async def generate_outline_with_coverage(
 
 CRITICAL - The book MUST cover these KEY THEMES from the vision:
 {themes_text}"""
+
+    # Add research context to coverage check if available
+    if research_context:
+        check_goal = f"""{check_goal}
+
+CUTTING-EDGE RESEARCH - The book should also address these recent developments:
+{research_context}"""
 
     for attempt in range(max_coverage_attempts):
         logger.info(f"Checking coverage (attempt {attempt + 1}/{max_coverage_attempts})...")

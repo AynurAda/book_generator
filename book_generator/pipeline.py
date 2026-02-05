@@ -43,6 +43,12 @@ from .pdf import generate_pdf
 from .authors import get_author_profile, generate_about_author
 from .illustrations import illustrate_all_chapters
 from .citations import run_citation_pipeline, CitationManager
+from .research import (
+    DeepResearchClient,
+    generate_research_queries,
+    parse_research,
+    ResearchManager,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -280,11 +286,124 @@ async def generate_book(config: Config) -> str:
     language_model = synalinks.LanguageModel(model=config.model_name)
 
     # ==========================================================================
+    # STAGE -1: DEEP RESEARCH (optional, for cutting-edge content)
+    # ==========================================================================
+    research_manager = None
+
+    if config.enable_research:
+        logger.info("Starting deep research phase...")
+
+        research_dir = os.path.join(output_dir, "00_research")
+        os.makedirs(research_dir, exist_ok=True)
+
+        # Check for cached parsed knowledge first (fastest resume path)
+        cached_knowledge_file = os.path.join(research_dir, "field_knowledge.json")
+        cached_queries_file = os.path.join(research_dir, "queries.json")
+
+        if config.research_cache and os.path.exists(cached_knowledge_file):
+            # Full cache hit - load parsed knowledge directly
+            logger.info("Loading cached research knowledge...")
+            from .research.models import FieldKnowledge
+            cached_data = load_json_from_file(research_dir, "field_knowledge.json")
+            if cached_data:
+                field_knowledge = FieldKnowledge(**cached_data)
+                research_manager = ResearchManager(field_knowledge)
+
+                print(f"\n{'='*60}")
+                print("DEEP RESEARCH (CACHED)")
+                print(f"{'='*60}")
+                print(f"  Papers: {len(field_knowledge.papers)}")
+                print(f"  Frameworks: {len(field_knowledge.frameworks)}")
+                print(f"  Themes: {len(field_knowledge.themes)}")
+                print(f"{'='*60}\n")
+
+        if research_manager is None:
+            # Check for cached queries (partial resume)
+            queries = None
+            if config.research_cache and os.path.exists(cached_queries_file):
+                cached_queries = load_json_from_file(research_dir, "queries.json")
+                if cached_queries and "queries" in cached_queries:
+                    queries = cached_queries["queries"]
+                    logger.info(f"Loaded {len(queries)} cached queries")
+
+            # Generate queries if not cached
+            if not queries:
+                logger.info("Generating research queries...")
+                queries = await generate_research_queries(
+                    topic=topic_data["topic"],
+                    goal=topic_data["goal"],
+                    audience=topic_data.get("audience", "technical readers"),
+                    language_model=language_model,
+                )
+                save_json_to_file(research_dir, "queries.json", {"queries": queries})
+
+            print(f"\n{'='*60}")
+            print("RESEARCH QUERIES")
+            print(f"{'='*60}")
+            for i, q in enumerate(queries, 1):
+                print(f"  {i}. {q[:80]}...")
+            print(f"{'='*60}\n")
+
+            # Check which queries already have cached results
+            queries_to_run = queries[:config.research_max_queries]
+            cached_count = 0
+            for i in range(len(queries_to_run)):
+                cache_file = os.path.join(research_dir, f"research_query_{i}.txt")
+                if os.path.exists(cache_file):
+                    cached_count += 1
+
+            if cached_count > 0:
+                print(f"Found {cached_count}/{len(queries_to_run)} cached query results")
+
+            # Run deep research (client handles per-query caching)
+            if cached_count < len(queries_to_run):
+                logger.info(f"Running {len(queries_to_run) - cached_count} deep research queries...")
+                print("Running deep research (this may take several minutes)...")
+            else:
+                logger.info("All queries cached, loading results...")
+
+            client = DeepResearchClient()
+            raw_results = await client.research_all(
+                queries_to_run,
+                cache_dir=research_dir if config.research_cache else None,
+            )
+
+            # Save raw results
+            save_json_to_file(research_dir, "raw_results.json", raw_results)
+
+            # Parse into structured data
+            logger.info("Parsing research into structured data...")
+            field_knowledge = await parse_research(raw_results, language_model)
+
+            # Save parsed knowledge
+            save_json_to_file(research_dir, "field_knowledge.json", field_knowledge.get_json())
+
+            # Create manager
+            research_manager = ResearchManager(field_knowledge)
+
+            print(f"\n{'='*60}")
+            print("DEEP RESEARCH COMPLETE")
+            print(f"{'='*60}")
+            print(f"  Papers discovered: {len(field_knowledge.papers)}")
+            print(f"  Frameworks found: {len(field_knowledge.frameworks)}")
+            print(f"  Themes identified: {len(field_knowledge.themes)}")
+            print(f"  Open problems: {len(field_knowledge.open_problems)}")
+            print(f"{'='*60}\n")
+
+    # ==========================================================================
     # STAGE 0: BOOK VISION (guides all subsequent generation)
     # ==========================================================================
     logger.info("Generating book vision...")
 
-    book_vision = await generate_book_vision(topic_data, language_model, output_dir)
+    # Get research context for vision if available
+    vision_research_context = None
+    if research_manager:
+        vision_research_context = research_manager.for_vision()
+
+    book_vision = await generate_book_vision(
+        topic_data, language_model, output_dir,
+        research_context=vision_research_context
+    )
 
     # Display vision summary
     print(f"\n{'='*60}")
@@ -316,8 +435,13 @@ async def generate_book(config: Config) -> str:
 
     if results is None:
         # Use coverage-checked generation WITH vision guidance
+        outline_research_context = None
+        if research_manager:
+            outline_research_context = research_manager.for_outline()
+
         results = await generate_outline_with_coverage(
-            topic_data, language_model, book_vision=book_vision
+            topic_data, language_model, book_vision=book_vision,
+            research_context=outline_research_context
         )
 
         # Save outline
@@ -376,7 +500,8 @@ async def generate_book(config: Config) -> str:
             elif user_input in ('r', 'regenerate'):
                 print("\nRegenerating outline (vision-guided with coverage check)...")
                 results = await generate_outline_with_coverage(
-                    topic_data, language_model, book_vision=book_vision
+                    topic_data, language_model, book_vision=book_vision,
+                    research_context=outline_research_context
                 )
                 save_json_to_file(output_dir, "01_outline.json", results)
                 save_to_file(output_dir, "01_outline.txt", build_outline_text(results))

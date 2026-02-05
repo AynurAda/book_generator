@@ -456,16 +456,69 @@ For a typical book with 5 research queries:
 
 ---
 
-## Test Results (Feb 5, 2025)
+## Test Results (Feb 5-6, 2025)
 
-Ran 4 test queries for Neurosymbolic AI:
-- theoretical_advances: 20K chars, 8 min
-- reasoning_methods: 15K chars, 5 min
-- knowledge_integration: 17K chars, 5 min
-- learning_reasoning_unification: (pending)
+Ran 3 test queries for Neurosymbolic AI:
+- Query 0 (differentiable logic): 560s
+- Query 1 (neural-symbolic integration): 409s
+- Query 2 (program synthesis): 400s
 
-Total: ~$1.20 for 4 queries
+Total: ~$0.90 for 3 queries (~62K chars of research)
 
-Results saved in:
-- `deep_research_results.json`
-- `deep_research_output.pdf`
+Results cached in:
+- `output/20260205_234203/00_research/research_query_*.txt`
+- `output/20260205_234203/00_research/queries.json`
+- `output/20260205_234203/00_research/raw_results.json`
+
+---
+
+## Implementation Status
+
+### Completed ✅
+- [x] `models.py` - Synalinks DataModels (Paper, Framework, FieldKnowledge, etc.)
+- [x] `gemini_client.py` - Deep Research API wrapper with caching
+- [x] `query_generator.py` - Synalinks query generation program
+- [x] `parser.py` - Synalinks research parsing program
+- [x] `manager.py` - ResearchManager with context retrieval (dict-based access)
+- [x] Integration into `pipeline.py` with caching/resume logic
+- [x] Config options (`enable_research`, `research_max_queries`, `research_cache`)
+- [x] Research context injection into vision stage
+- [x] Research context injection into outline stage
+
+### TODO 🔲
+- [ ] Inject research context into chapter planning stage
+- [ ] Inject research context into section writing stage (cutting-edge chapters)
+- [ ] Chapter classification (foundational vs cutting-edge)
+- [ ] Global research cache (currently per-output-directory)
+- [ ] Parallel deep research queries (currently sequential)
+- [ ] Research cost tracking and display
+
+---
+
+## Known Issues
+
+1. **Caching is per-output-directory**: Each run creates a new output directory, so research isn't shared across runs. Use `--resume <dir>` to reuse cached research.
+
+2. **Synalinks returns JsonDataModel**: When accessing results from Synalinks Generator, use `.get_json()` to get dict, then construct DataModel objects. The manager works with dicts directly.
+
+3. **Gemini 3 temperature warning**: Set `temperature=1.0` for all Generators using Gemini 3 models to avoid infinite loops.
+
+---
+
+## Usage
+
+```bash
+# First run (generates research)
+python main.py --config configs/neurosymbolic.yaml
+
+# Resume from cached research
+python main.py --config configs/neurosymbolic.yaml --resume /path/to/output/dir
+```
+
+Config options:
+```yaml
+# Deep research settings
+enable_research: true
+research_max_queries: 3  # Number of queries to run
+research_cache: true     # Cache individual query results
+```

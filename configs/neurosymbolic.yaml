@@ -37,8 +37,12 @@ image_model: "gemini/gemini-3-pro-image-preview"
 # Cover settings
 cover_style: "humorous"  # Options: "humorous", "abstract", "cyberpunk"
 
+# Deep research settings (for cutting-edge content)
+enable_research: true
+research_max_queries: 3  # Start with 3 queries for testing
+
 # Citation settings
-enable_citations: true  # Enable Perplexity-based citation verification
+enable_citations: false  # Disabled for testing
 citation_confidence_threshold: 0.75  # Min confidence to accept a citation
 skip_low_importance_claims: true  # Skip verification for low-importance claims
 

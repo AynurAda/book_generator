@@ -82,6 +82,11 @@ class Config:
     citation_confidence_threshold: float = 0.75  # Minimum confidence to accept a citation
     skip_low_importance_claims: bool = True  # Skip verification for low-importance claims
 
+    # Deep research settings
+    enable_research: bool = False  # Enable Gemini Deep Research for cutting-edge content
+    research_max_queries: int = 5  # Maximum research queries to run
+    research_cache: bool = True  # Cache research results for reuse
+
     # Introduction styles for variety (will be shuffled at runtime)
     intro_styles: List[str] = field(default_factory=lambda: [
         # Question-based openings
@@ -196,6 +201,9 @@ class Config:
             enable_citations=data.get("enable_citations", False),
             citation_confidence_threshold=data.get("citation_confidence_threshold", 0.75),
             skip_low_importance_claims=data.get("skip_low_importance_claims", True),
+            enable_research=data.get("enable_research", False),
+            research_max_queries=data.get("research_max_queries", 5),
+            research_cache=data.get("research_cache", True),
         )
 
     @staticmethod
