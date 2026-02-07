@@ -298,7 +298,16 @@ export function ConceptGraph3D({
   }, []);
 
   return (
-    <div id="graph-container" className={`relative ${className}`}>
+    <div
+      id="graph-container"
+      className={`relative ${className}`}
+      role="img"
+      aria-label={`Interactive 3D knowledge graph showing concepts and relationships for ${topic}`}
+    >
+      <div className="sr-only">
+        Knowledge graph with {graphData.nodes.length} concepts connected by {graphData.links.length} relationships.
+        Node types: topic, concept, chapter, skill, project.
+      </div>
       <ForceGraph3D
         ref={fgRef}
         width={dimensions.width}
@@ -332,6 +341,7 @@ export function ConceptGraph3D({
               <div
                 className="w-3 h-3 rounded-full"
                 style={{ backgroundColor: color }}
+                aria-hidden="true"
               />
               <span className="text-slate-300 capitalize">{type}</span>
             </div>

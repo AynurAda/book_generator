@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Users, Quote } from "lucide-react";
@@ -48,9 +49,11 @@ export function UserStoriesSection() {
                   : "bg-white/5 text-slate-300 hover:bg-white/10 border border-white/10"
               }`}
             >
-              <img
+              <Image
                 src={story.avatar}
                 alt={story.name}
+                width={28}
+                height={28}
                 className="w-7 h-7 rounded-full object-cover"
               />
               <span>{story.name}</span>
@@ -72,9 +75,11 @@ export function UserStoriesSection() {
               <CardContent className="p-8 md:p-10">
                 <div className="flex items-start gap-4 mb-6">
                   <div className={`w-20 h-20 rounded-2xl bg-gradient-to-br ${userStories[activeStory].color} p-0.5 shadow-lg overflow-hidden`}>
-                    <img
+                    <Image
                       src={userStories[activeStory].avatar}
                       alt={userStories[activeStory].name}
+                      width={80}
+                      height={80}
                       className="w-full h-full rounded-xl object-cover"
                     />
                   </div>
@@ -123,10 +128,13 @@ export function UserStoriesSection() {
         </AnimatePresence>
 
         {/* Story Navigation Dots */}
-        <div className="flex justify-center gap-2 mt-8">
-          {userStories.map((_, index) => (
+        <div className="flex justify-center gap-2 mt-8" role="tablist" aria-label="User stories">
+          {userStories.map((story, index) => (
             <button
               key={index}
+              role="tab"
+              aria-selected={activeStory === index}
+              aria-label={`Story ${index + 1}: ${story.name}`}
               onClick={() => setActiveStory(index)}
               className={`w-2 h-2 rounded-full transition-all ${
                 activeStory === index

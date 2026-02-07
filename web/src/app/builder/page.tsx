@@ -344,7 +344,7 @@ export default function BuilderPage() {
         <div className="max-w-2xl mx-auto">
           {/* Progress Steps - hide on step 6 */}
           {step < 6 && (
-            <div className="flex justify-between mb-12">
+            <nav aria-label="Book builder progress" className="flex justify-between mb-12">
               {stepInfo.map((s, index) => {
                 const StepIcon = s.icon;
                 const isActive = index + 1 === step;
@@ -352,6 +352,7 @@ export default function BuilderPage() {
                 return (
                   <div
                     key={index}
+                    aria-current={isActive ? "step" : undefined}
                     className={`flex flex-col items-center gap-2 ${
                       isActive
                         ? "text-slate-900"
@@ -370,9 +371,9 @@ export default function BuilderPage() {
                       }`}
                     >
                       {isComplete ? (
-                        <Check className="h-5 w-5" />
+                        <Check className="h-5 w-5" aria-label={`${s.label} complete`} />
                       ) : (
-                        <StepIcon className="h-5 w-5" />
+                        <StepIcon className="h-5 w-5" aria-hidden="true" />
                       )}
                     </div>
                     <span className="text-xs font-medium hidden sm:block">
@@ -381,7 +382,7 @@ export default function BuilderPage() {
                   </div>
                 );
               })}
-            </div>
+            </nav>
           )}
 
           {/* Step Content */}
@@ -407,6 +408,7 @@ export default function BuilderPage() {
                       </div>
                       <Input
                         placeholder="e.g., Neuro-symbolic AI, Quantum Computing, Knowledge Graphs"
+                        aria-label="Topic you want to learn"
                         value={formData.topic}
                         onChange={(e) => updateField("topic", e.target.value)}
                         className="text-lg py-6"
@@ -445,6 +447,7 @@ export default function BuilderPage() {
                       </div>
                       <Input
                         placeholder="e.g., Enterprise AI agents, Healthcare diagnostics, Legal tech"
+                        aria-label="Your professional domain"
                         value={formData.domain}
                         onChange={(e) => updateField("domain", e.target.value)}
                         className="text-lg py-6"
@@ -485,6 +488,7 @@ export default function BuilderPage() {
                       </div>
                       <textarea
                         placeholder="e.g., Design and build hybrid LLM + knowledge graph systems for enterprise reasoning..."
+                        aria-label="What you want to be able to do"
                         value={formData.goal}
                         onChange={(e) => updateField("goal", e.target.value)}
                         className="w-full min-h-[120px] px-4 py-3 text-lg border rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-slate-900"
@@ -506,6 +510,7 @@ export default function BuilderPage() {
                       </div>
                       <textarea
                         placeholder="e.g., ML engineer with 3 years experience, familiar with transformers and Python. New to symbolic AI and knowledge graphs."
+                        aria-label="Your background and experience"
                         value={formData.background}
                         onChange={(e) =>
                           updateField("background", e.target.value)
@@ -530,7 +535,17 @@ export default function BuilderPage() {
                         {focusOptions.map((option) => (
                           <div
                             key={option}
+                            role="checkbox"
+                            aria-checked={formData.focus.includes(option)}
+                            aria-label={option}
+                            tabIndex={0}
                             onClick={() => toggleFocus(option)}
+                            onKeyDown={(e) => {
+                              if (e.key === " " || e.key === "Enter") {
+                                e.preventDefault();
+                                toggleFocus(option);
+                              }
+                            }}
                             className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
                               formData.focus.includes(option)
                                 ? "border-slate-900 bg-slate-50"
@@ -544,6 +559,7 @@ export default function BuilderPage() {
                                     ? "border-slate-900 bg-slate-900"
                                     : "border-slate-300"
                                 }`}
+                                aria-hidden="true"
                               >
                                 {formData.focus.includes(option) && (
                                   <Check className="h-3 w-3 text-white" />
@@ -655,7 +671,14 @@ export default function BuilderPage() {
                           </div>
 
                           {/* Progress bar */}
-                          <div className="w-full bg-slate-200 rounded-full h-3">
+                          <div
+                            className="w-full bg-slate-200 rounded-full h-3"
+                            role="progressbar"
+                            aria-valuenow={jobStatus?.progress || 5}
+                            aria-valuemin={0}
+                            aria-valuemax={100}
+                            aria-label="Book generation progress"
+                          >
                             <motion.div
                               className="bg-gradient-to-r from-cyan-600 to-teal-600 h-3 rounded-full"
                               initial={{ width: 0 }}

@@ -70,6 +70,7 @@ export function WaitlistSection() {
                 <Input
                   type="email"
                   placeholder="you@example.com"
+                  aria-label="Email address"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required

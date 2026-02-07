@@ -24,8 +24,8 @@ Tracking file for identified issues from code review (2026-02-07).
 - [x] **#12 Frontend page.tsx is 850+ lines** — Extracted into 7 component files (`HeroSection`, `UserStoriesSection`, `SynthesisSection`, `RoadmapSection`, `WaitlistSection`, `Footer`) + `constants/userStories.ts`. `page.tsx` reduced to ~100-line composition shell.
 - [x] **#13 No Form Persistence in Builder** — Added localStorage persistence (`polaris-builder` key). Form data, job ID, and step restored on mount, persisted on change, cleared on reset.
 - [x] **#14 Frontend Polling is Too Aggressive** — Replaced fixed 3s `setInterval` with exponential backoff `setTimeout` chain (3s initial, 1.5x multiplier, 30s cap, 10 error max).
-- [ ] **#15 Missing Accessibility** — No form labels, 3D graph inaccessible, color-only indicators, broken heading hierarchy.
-- [ ] **#16 No Image Optimization** — Uses `<img>` instead of Next.js `<Image>`. No lazy loading or WebP.
+- [x] **#15 Missing Accessibility** — Added `aria-label` to all form inputs/textareas, email input, nav dots (`role="tablist"`), custom checkboxes (`role="checkbox"` + `aria-checked` + keyboard support), step indicator (`aria-current="step"`), progress bar (`role="progressbar"`), 3D graph container (`role="img"` + sr-only description), decorative dots (`aria-hidden`).
+- [x] **#16 No Image Optimization** — Replaced `<img>` with Next.js `<Image>` in UserStoriesSection (both avatar thumbnail and full avatar). Provides automatic lazy loading, WebP/AVIF, and responsive sizing.
 - [ ] **#17 Waitlist API is a Stub** — In-memory storage, no database, no email service.
 - [ ] **#18 vision.py Copy-Pasted Instruction Blocks** — Three near-identical blocks for practitioner/academic/hybrid. Should parameterize.
 
