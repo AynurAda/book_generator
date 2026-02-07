@@ -5,7 +5,42 @@ This module contains all the structured data models used throughout
 the book generation pipeline.
 """
 
+from enum import Enum
+from typing import Optional
+
 import synalinks
+
+
+# =============================================================================
+# Reader Mode and Chapter Roles
+# =============================================================================
+
+class ReaderMode(str, Enum):
+    """Reader mode determines organization logic and presentation style.
+
+    Inferred from goal keywords at vision stage. Does NOT change after research.
+    """
+    PRACTITIONER = "practitioner"  # Problem-Centric organization
+    ACADEMIC = "academic"          # Evolution-Centric organization
+    HYBRID = "hybrid"              # Mixed approach
+
+
+class ChapterRole(str, Enum):
+    """Abstract roles that chapters fulfill regardless of organization.
+
+    Used by critique system to check role fulfillment rather than
+    demanding theoretical foundations in every chapter.
+    """
+    PROBLEM_MOTIVATION = "problem_motivation"   # Why this matters
+    ESSENTIAL_BACKGROUND = "essential_background"  # Just-enough theory (practitioner)
+    PREREQUISITES = "prerequisites"             # Formal background (academic)
+    LANDSCAPE = "landscape"                     # Survey of approaches
+    DEEP_METHOD = "deep_method"                 # Detailed key approach
+    IMPLEMENTATION = "implementation"           # Code, patterns
+    CASE_STUDY = "case_study"                   # Real applications
+    HISTORICAL = "historical"                   # Field evolution (academic)
+    FORMAL_THEORY = "formal_theory"             # Proofs (academic)
+    FRONTIERS = "frontiers"                     # Open problems
 
 
 # =============================================================================
@@ -168,9 +203,16 @@ class BookVision(synalinks.DataModel):
 
     This is generated BEFORE concepts to ensure all generated content
     aligns with the book's core purpose and reader journey.
+
+    Includes reader_mode which is FIXED from this point and determines
+    organization logic throughout the pipeline.
     """
     thinking: list[str] = synalinks.Field(
         description="Step by step thinking about the book's purpose, audience needs, and what makes this book unique"
+    )
+    reader_mode: str = synalinks.Field(
+        description="Reader mode inferred from goal: 'practitioner' (build/implement focus), "
+                    "'academic' (understand/research focus), or 'hybrid'. This is FIXED and determines organization logic."
     )
     core_thesis: str = synalinks.Field(
         description="The central argument or insight of the book in 2-3 sentences. What is the ONE key thing readers should understand?"
@@ -317,6 +359,134 @@ class DeepHierarchy(synalinks.DataModel):
     concepts: list[ConceptDeep] = synalinks.Field(
         description="Complete three-level hierarchy of concepts"
     )
+
+
+# =============================================================================
+# Role-Tagged Outline Models (Research-Informed Structure)
+# =============================================================================
+
+class RoleTaggedChapter(synalinks.DataModel):
+    """A chapter with its role in the book clearly defined.
+
+    Role tagging guides the LLM to think about chapter function, not just content.
+    This enables role-aware critique that checks if each chapter fulfills its purpose.
+    """
+    chapter_name: str = synalinks.Field(description="The chapter title")
+    role: str = synalinks.Field(
+        description="Chapter role: PROBLEM_MOTIVATION, LANDSCAPE, DEEP_METHOD, "
+                    "IMPLEMENTATION, CASE_STUDY, ESSENTIAL_BACKGROUND, "
+                    "PREREQUISITES, HISTORICAL, FORMAL_THEORY, or FRONTIERS"
+    )
+    key_concepts: list[str] = synalinks.Field(description="Main concepts covered in this chapter")
+    relevant_papers: list[str] = synalinks.Field(
+        description="Papers or research relevant to this chapter (from Stage 1 research)"
+    )
+    sections: list[str] = synalinks.Field(
+        description="Section names within this chapter"
+    )
+
+
+class ResearchInformedOutline(synalinks.DataModel):
+    """An outline generated AFTER research, with role-tagged chapters.
+
+    This is the "real" outline - the initial outline exists only to
+    generate research queries. This outline reflects what research discovered.
+    """
+    thinking: list[str] = synalinks.Field(
+        description="Your analysis of how research findings should shape the book structure"
+    )
+    organization_logic: str = synalinks.Field(
+        description="The organization approach used: 'problem_centric' (practitioner), "
+                    "'evolution_centric' (academic), or 'taxonomy_based' (if research revealed categories)"
+    )
+    taxonomy_source: str = synalinks.Field(
+        description="If using taxonomy-based organization, cite the source (e.g., 'Kautz 2020 six types'). "
+                    "Otherwise 'N/A'"
+    )
+    chapters: list[RoleTaggedChapter] = synalinks.Field(
+        description="Role-tagged chapters reflecting research-informed structure"
+    )
+
+
+class InformedVision(synalinks.DataModel):
+    """Book vision updated with research insights.
+
+    Generated AFTER research to incorporate actual papers, methods, and landscape.
+    Guides writing to reference real discoveries, not generic concepts.
+    """
+    thinking: list[str] = synalinks.Field(
+        description="How research findings update and refine the book vision"
+    )
+    key_papers: list[str] = synalinks.Field(
+        description="Specific papers that are central to the book's topic"
+    )
+    actual_landscape: str = synalinks.Field(
+        description="The real landscape of the field as discovered by research"
+    )
+    central_methods: list[str] = synalinks.Field(
+        description="Key methods/frameworks that the book must cover"
+    )
+    cutting_edge_insights: list[str] = synalinks.Field(
+        description="What's truly cutting-edge vs established (from research)"
+    )
+    updated_scope: str = synalinks.Field(
+        description="How the scope should be refined based on research discoveries"
+    )
+
+
+class ResearchInformedOutlineInput(synalinks.DataModel):
+    """Input for generating a research-informed outline."""
+    topic: str = synalinks.Field(description="The main topic of the book")
+    goal: str = synalinks.Field(description="The goal of the book")
+    book_name: str = synalinks.Field(description="The name of the book")
+    reader_mode: str = synalinks.Field(
+        description="Reader mode: 'practitioner', 'academic', or 'hybrid'"
+    )
+    initial_outline_summary: str = synalinks.Field(
+        description="Summary of the initial (draft) outline used for research queries"
+    )
+    research_summary: str = synalinks.Field(
+        description="Summary of Stage 1 deep research findings"
+    )
+    research_papers: str = synalinks.Field(
+        description="Key papers discovered in research"
+    )
+    research_themes: str = synalinks.Field(
+        description="Major themes identified in research"
+    )
+
+
+class TaxonomyDetectionInput(synalinks.DataModel):
+    """Input for detecting if research reveals a taxonomy."""
+    research_summary: str = synalinks.Field(description="Summary of research findings")
+    research_themes: str = synalinks.Field(description="Key themes from research")
+    research_papers: str = synalinks.Field(description="Papers discovered in research")
+
+
+class TaxonomyDetectionOutput(synalinks.DataModel):
+    """Output from taxonomy detection - determines organization logic."""
+    thinking: list[str] = synalinks.Field(
+        description="Your analysis of whether research reveals a natural categorization"
+    )
+    has_taxonomy: bool = synalinks.Field(
+        description="True if research reveals an explicit taxonomy or categorization scheme"
+    )
+    taxonomy_name: str = synalinks.Field(
+        description="Name of the taxonomy if found (e.g., 'Kautz six types'), otherwise 'N/A'"
+    )
+    taxonomy_categories: list[str] = synalinks.Field(
+        description="The categories in the taxonomy if found, otherwise empty list"
+    )
+
+
+class InformedVisionInput(synalinks.DataModel):
+    """Input for updating vision with research insights."""
+    topic: str = synalinks.Field(description="The main topic of the book")
+    goal: str = synalinks.Field(description="The goal of the book")
+    original_vision: str = synalinks.Field(description="The original book vision")
+    research_summary: str = synalinks.Field(description="Summary of research findings")
+    research_papers: str = synalinks.Field(description="Key papers discovered")
+    final_outline_summary: str = synalinks.Field(description="The research-informed outline")
 
 
 class ReorganizedOutline(synalinks.DataModel):
@@ -615,12 +785,51 @@ class SubsectionInput(synalinks.DataModel):
     section_plan: str = synalinks.Field(description="The plan for this section")
     subsection_name: str = synalinks.Field(description="The name of this subsection to write")
     opening_approach: str = synalinks.Field(description="The approach to use for opening the explanation")
+    previous_subsections: str = synalinks.Field(
+        description="Content of previously written subsections in this section (to maintain coherence and avoid repetition)",
+        default=""
+    )
 
 
 class SubsectionContent(synalinks.DataModel):
     """Output for a generated subsection - free-flowing textbook prose."""
     content: str = synalinks.Field(
         description="The complete subsection content as flowing textbook prose. Write naturally, covering the topic in depth with appropriate structure for the material. Include definitions, explanations, examples, and nuances as they fit organically into the narrative."
+    )
+
+
+# =============================================================================
+# Research Distribution Planning (prevents repetition across subsections)
+# =============================================================================
+
+class ResearchDistributionInput(synalinks.DataModel):
+    """Input for planning how to distribute research across subsections."""
+    section_name: str = synalinks.Field(description="The section name")
+    section_plan: str = synalinks.Field(description="The section plan with goals")
+    subsection_names: str = synalinks.Field(description="List of subsection names, one per line")
+    research_context: str = synalinks.Field(description="Full research context with papers, methods, findings")
+
+
+class SubsectionResearchAssignment(synalinks.DataModel):
+    """Research assignment for a single subsection."""
+    subsection_name: str = synalinks.Field(
+        description="Name/title of the subsection this assignment is for"
+    )
+    assigned_concepts: list[str] = synalinks.Field(
+        description="Specific concepts/papers/methods this subsection should cover - each concept can only appear in ONE subsection"
+    )
+    example_domain: str = synalinks.Field(
+        description="Example domain for this subsection (e.g., 'healthcare', 'robotics', 'finance') - MUST be different from other subsections"
+    )
+    focus_area: str = synalinks.Field(
+        description="Brief description of what aspect of the research this subsection should emphasize"
+    )
+
+
+class ResearchDistributionPlan(synalinks.DataModel):
+    """Plan for distributing research across all subsections in a section."""
+    assignments: list[SubsectionResearchAssignment] = synalinks.Field(
+        description="Research assignments for each subsection - concepts should NOT overlap between subsections"
     )
 
 

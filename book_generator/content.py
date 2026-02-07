@@ -25,6 +25,7 @@ from .models import (
     ChapterIntroInput, ChapterIntro,
     PartConclusionInput, PartConclusion,
     SectionQualityInput, QualityAssessment,
+    ResearchDistributionInput, ResearchDistributionPlan,
 )
 from .utils import (
     sanitize_filename,
@@ -104,6 +105,250 @@ Be specific about issues. Set verdict to 'pass' if acceptable, 'needs_rewrite' i
 
 
 # =============================================================================
+# RESEARCH DISTRIBUTION PLANNING
+# =============================================================================
+
+class SubsectionMatchInput(synalinks.DataModel):
+    """Input for subsection matching Decision."""
+    subsection_name: str = synalinks.Field(description="The subsection name to match")
+
+
+async def match_subsection_to_assignment(
+    subsection_name: str,
+    assignments: List[dict],
+    language_model,
+) -> Optional[dict]:
+    """
+    Use synalinks.Decision to match a subsection to its research assignment.
+
+    Args:
+        subsection_name: The actual subsection name we're generating
+        assignments: List of assignment dicts from plan_research_distribution
+        language_model: Synalinks language model
+
+    Returns:
+        The matched assignment dict, or None if no match
+    """
+    if not assignments:
+        return None
+
+    # Build labels from assignment names
+    labels = [a.get("subsection_name", f"Assignment {i+1}") for i, a in enumerate(assignments)]
+
+    # Build descriptive text for the question
+    assignments_text = "\n".join(
+        f"  {i+1}. {a.get('subsection_name', 'Unknown')}: {a.get('focus_area', '')[:60]}"
+        for i, a in enumerate(assignments)
+    )
+
+    match_input = SubsectionMatchInput(subsection_name=subsection_name)
+
+    try:
+        decision = await synalinks.Decision(
+            question=f"""Which research assignment should be used for this subsection?
+
+SUBSECTION: "{subsection_name}"
+
+AVAILABLE ASSIGNMENTS:
+{assignments_text}
+
+Select the assignment whose topic best matches this subsection.""",
+            labels=labels,
+            language_model=language_model,
+            temperature=1.0,
+        )(match_input)
+
+        if decision is None:
+            logger.warning(f"    Decision returned None for '{subsection_name[:40]}...'")
+            return None
+
+        # Get the selected label and find the corresponding assignment
+        decision_json = decision.get_json()
+        selected_label = decision_json.get("choice")
+        logger.debug(f"    Decision result: {decision_json}")
+
+        if selected_label:
+            for i, label in enumerate(labels):
+                if label == selected_label:
+                    logger.info(f"    Decision: '{subsection_name[:30]}...' → '{selected_label[:30]}...'")
+                    return assignments[i]
+        else:
+            logger.warning(f"    Decision has no 'choice' field: {decision_json}")
+
+    except Exception as e:
+        logger.error(f"    Decision failed for '{subsection_name[:40]}...': {e}")
+
+    return None
+
+
+async def plan_research_distribution(
+    section_name: str,
+    section_plan: str,
+    subsection_names: List[str],
+    research_context: str,
+    language_model,
+) -> List[dict]:
+    """
+    Plan how to distribute research findings across subsections.
+
+    Returns a LIST of assignments (not a dict). Each subsection will use
+    synalinks.Decision to match itself to the appropriate assignment.
+
+    Returns:
+        List of assignment dicts, each with:
+            "subsection_name": str (LLM's name for this assignment)
+            "concepts": [...]
+            "example_domain": str
+            "focus_area": str
+    """
+    if not research_context or not subsection_names:
+        return []
+
+    logger.info(f"  Planning research distribution for {len(subsection_names)} subsections...")
+
+    # Format subsection names for the LLM
+    numbered_names = "\n".join(f"{i+1}. {name}" for i, name in enumerate(subsection_names))
+
+    distribution_input = ResearchDistributionInput(
+        section_name=section_name,
+        section_plan=section_plan,
+        subsection_names=numbered_names,
+        research_context=research_context,
+    )
+
+    generator = synalinks.Generator(
+        data_model=ResearchDistributionPlan,
+        language_model=language_model,
+        temperature=1.0,
+        instructions=f"""Distribute research concepts across subsections to PREVENT REPETITION.
+
+THE SUBSECTIONS ARE:
+{numbered_names}
+
+=== CONCEPT EXCLUSIVITY (CRITICAL) ===
+
+Each concept/paper/method can ONLY appear in ONE subsection's assigned_concepts.
+
+Example: If research mentions VeriCoT, DomiKnowS, LoT, Z3:
+- VeriCoT → assign to ONE subsection ONLY
+- DomiKnowS → assign to a DIFFERENT subsection ONLY
+- LoT → assign to a DIFFERENT subsection ONLY
+- Z3 → assign to a DIFFERENT subsection ONLY
+
+NO CONCEPT SHOULD APPEAR IN MULTIPLE ASSIGNMENTS.
+
+=== DOMAIN EXCLUSIVITY ===
+
+Each subsection gets a UNIQUE example_domain:
+- Subsection 1: e.g., "healthcare"
+- Subsection 2: e.g., "finance" (NOT healthcare)
+- Subsection 3: e.g., "robotics" (NOT healthcare or finance)
+- Subsection 4: e.g., "education" (NOT any used above)
+
+=== OUTPUT ===
+
+Create one assignment per subsection with:
+- subsection_name: the subsection this is for
+- assigned_concepts: list of concepts EXCLUSIVE to this subsection
+- example_domain: domain UNIQUE to this subsection
+- focus_area: what this subsection emphasizes"""
+    )
+
+    result = await generator(distribution_input)
+    if result is None:
+        logger.warning("  Research distribution planning failed")
+        return []
+
+    data = result.get_json()
+    assignments = data.get("assignments", [])
+
+    # Convert to list of dicts
+    distribution_list = []
+    for assignment in assignments:
+        distribution_list.append({
+            "subsection_name": assignment.get("subsection_name", ""),
+            "concepts": assignment.get("assigned_concepts", []),
+            "example_domain": assignment.get("example_domain", ""),
+            "focus_area": assignment.get("focus_area", ""),
+        })
+        logger.info(f"    {assignment.get('subsection_name', '')[:40]}: {len(assignment.get('assigned_concepts', []))} concepts, domain={assignment.get('example_domain', '')}")
+
+    all_concepts = []
+    for a in distribution_list:
+        all_concepts.extend(a.get("concepts", []))
+    logger.info(f"  Distribution complete: {len(all_concepts)} total concepts across {len(distribution_list)} assignments")
+
+    return distribution_list
+
+
+def format_assigned_research(
+    assignment: dict,
+    full_research: str,
+    all_assignments: Optional[List[dict]] = None,
+    current_subsection: str = "",
+) -> str:
+    """
+    Format the assigned research for a specific subsection.
+
+    Args:
+        assignment: The assignment for this subsection
+        full_research: The full research context
+        all_assignments: Optional list of all assignments (for showing banned concepts)
+        current_subsection: Name of current subsection (for filtering)
+    """
+    if not assignment:
+        return ""
+
+    parts = []
+
+    # Show assigned concepts prominently
+    if assignment.get("concepts"):
+        parts.append("╔══════════════════════════════════════════════════════════════╗")
+        parts.append("║ YOUR EXCLUSIVE CONCEPTS (explain ONLY these in depth):       ║")
+        parts.append("╚══════════════════════════════════════════════════════════════╝")
+        for concept in assignment["concepts"]:
+            parts.append(f"  ✓ {concept}")
+        parts.append("")
+
+    # Show banned concepts (assigned to other subsections)
+    if all_assignments:
+        other_concepts = []
+        current_concepts = set(assignment.get("concepts", []))
+        for other_assignment in all_assignments:
+            # Skip if this is the same assignment (compare by concepts)
+            other_concepts_set = set(other_assignment.get("concepts", []))
+            if other_concepts_set != current_concepts:
+                other_concepts.extend(other_assignment.get("concepts", []))
+        if other_concepts:
+            parts.append("╔══════════════════════════════════════════════════════════════╗")
+            parts.append("║ BANNED CONCEPTS (assigned to other subsections - DO NOT      ║")
+            parts.append("║ explain these, just reference them if needed):               ║")
+            parts.append("╚══════════════════════════════════════════════════════════════╝")
+            for concept in other_concepts[:10]:  # Limit to avoid token overflow
+                parts.append(f"  ✗ {concept}")
+            if len(other_concepts) > 10:
+                parts.append(f"  ... and {len(other_concepts) - 10} more")
+            parts.append("")
+
+    # Show assigned domain
+    if assignment.get("example_domain"):
+        parts.append(f"YOUR EXAMPLE DOMAIN: {assignment['example_domain']}")
+        parts.append("(Use examples from this domain ONLY. Other subsections use different domains.)")
+        parts.append("")
+
+    # Show focus area
+    if assignment.get("focus_area"):
+        parts.append(f"YOUR FOCUS: {assignment['focus_area']}")
+        parts.append("")
+
+    # Include research for reference
+    parts.append("RESEARCH CONTEXT (for reference - but only cover YOUR assigned concepts):")
+    parts.append(full_research[:6000])  # Slightly reduced to make room for banned concepts
+
+    return "\n".join(parts)
+
+
+# =============================================================================
 # SUBSECTION GENERATION
 # =============================================================================
 
@@ -112,6 +357,7 @@ async def generate_subsection(
     language_model,
     writing_style: Optional[object] = None,
     citation_instructions: Optional[str] = None,
+    research_context: Optional[str] = None,
 ) -> str:
     """
     Generate a single subsection with full planning context.
@@ -132,6 +378,7 @@ async def generate_subsection(
         citation_instructions: Optional citation constraints from verification pipeline.
             When provided, the generator is CONSTRAINED to only make factual claims
             that appear in the allowed claims list and must cite them properly.
+        research_context: Optional research findings to incorporate (cutting-edge content)
 
     Returns:
         The subsection content
@@ -160,7 +407,63 @@ Apply this style while maintaining all depth requirements. Style does NOT mean s
 
 """
 
-    instructions = f"""{style_section}{citation_section}Write comprehensive content for this specific subsection/topic in WaitButWhy style (Tim Urban's blog) but with TEXTBOOK-LEVEL DEPTH AND RIGOR.
+    # Build research section if provided - FOR CUTTING-EDGE CONTENT
+    research_section = ""
+    if research_context:
+        research_section = f"""
+=== YOUR EXCLUSIVE RESEARCH ASSIGNMENT ===
+
+{research_context}
+
+=== CONCEPT EXCLUSIVITY RULES (MANDATORY) ===
+
+A planner has DIVIDED the research concepts among subsections. You have been assigned SPECIFIC concepts above.
+
+1. EXPLAIN ONLY your assigned concepts in depth
+2. If you need to mention a concept NOT in your list:
+   - Do NOT explain it
+   - Just reference it briefly: "Using VeriCoT (covered in Section 1.1.2)..."
+3. Use ONLY your assigned example domain (other subsections have different domains)
+4. If a concept appears in a previous subsection, reference it, don't re-explain
+
+Violating these rules causes repetition across subsections - the #1 quality issue we need to avoid.
+
+=== END RESEARCH ===
+
+"""
+
+    # Build previous subsections section - FOR COHERENCE AND SAFETY
+    previous_section = ""
+    previous_subsections = getattr(subsection_input, 'previous_subsections', '')
+    if previous_subsections:
+        previous_section = f"""
+=== PREVIOUSLY WRITTEN SUBSECTIONS (READ CAREFULLY) ===
+
+{previous_subsections}
+
+=== ANTI-REPETITION CHECK (MANDATORY) ===
+
+Before you write, scan the above content for:
+
+1. **Concepts already explained** - If VeriCoT, DomiKnowS, Z3, LoT, or any framework was explained above:
+   - Do NOT re-explain it
+   - Reference it: "As we saw with VeriCoT in Section 1.1.2..."
+   - Focus on NEW aspects not covered above
+
+2. **Example domains used** - Note what domains were used (e.g., finance, healthcare, robotics)
+   - Use YOUR assigned domain (which should be different)
+   - Do NOT use the same domain as a previous section
+
+3. **Opening patterns** - Note how previous sections started
+   - Vary your opening style
+
+If you find yourself about to explain something that was explained above, STOP and reference it instead.
+
+=== END PREVIOUS SUBSECTIONS ===
+
+"""
+
+    instructions = f"""{style_section}{citation_section}{research_section}{previous_section}Write comprehensive content for this specific subsection/topic in WaitButWhy style (Tim Urban's blog) but with TEXTBOOK-LEVEL DEPTH AND RIGOR.
 
 You have access to the full book context: book plan, chapters overview, chapter plan, and section plan.
 Use this context to understand what depth and coverage is expected.
@@ -193,6 +496,23 @@ ORIGINAL THINKING (encouraged):
 You CAN be original and speculative - just don't present speculation as established fact.
 
 OPENING: Use the approach specified in the input's "opening_approach" field. Do NOT use "Imagine..." - this is overused.
+
+=== CONCEPT DEFINITIONS (CRITICAL) ===
+
+When you first introduce a technical term or concept, you MUST define it clearly.
+
+For each new technical term or method:
+1. **Bold** the term on first use
+2. Immediately follow with a brief, accessible definition
+3. Use format: "**Term Name** — definition explanation."
+
+Examples:
+- "**Noise-tolerant ILP** — a variant of Inductive Logic Programming that can handle noisy or inconsistent training examples without failing."
+- "**Top-k Provenance Semiring** — a mathematical structure that tracks not just whether a conclusion is derivable, but the k most important proofs of it."
+- "**Differentiable logic** — an approach that makes discrete logical operations continuous, allowing gradient-based optimization to flow through symbolic reasoning."
+
+DO NOT assume readers know specialized terminology. Every first-use technical term needs a clear definition inline.
+If you reference a paper or method by name, explain what it does, not just that it exists.
 
 === CONTENT REQUIREMENTS ===
 
@@ -451,6 +771,7 @@ async def write_section_with_subsections(
     section_num: int,
     writing_style: Optional[object] = None,
     get_citation_instructions: Optional[callable] = None,
+    get_research_context: Optional[callable] = None,
 ) -> tuple:
     """
     Write a complete section by generating each subsection separately.
@@ -459,6 +780,8 @@ async def write_section_with_subsections(
     Args:
         get_citation_instructions: Optional callback(chapter, section, subsection) -> str
             Returns STRICT citation instructions for each subsection.
+        get_research_context: Optional callback(chapter, section) -> str
+            Returns research context for cutting-edge content.
     """
     safe_section = sanitize_filename(section_name)
     section_filename = f"03_section_{section_num:03d}_{safe_section}.txt"
@@ -477,6 +800,26 @@ async def write_section_with_subsections(
     attempt = 0
     max_attempts = 5  # Safety limit
 
+    # Get research context ONCE for the entire section (outside the loop)
+    full_research_context = None
+    research_assignments = []  # List of assignments from planning
+    if get_research_context:
+        import inspect
+        if inspect.iscoroutinefunction(get_research_context):
+            full_research_context = await get_research_context(chapter_name, section_name)
+        else:
+            full_research_context = get_research_context(chapter_name, section_name)
+        if full_research_context:
+            logger.info(f"  Research context for section: {len(full_research_context)} chars")
+            # Plan how to distribute research across subsections (prevents repetition)
+            research_assignments = await plan_research_distribution(
+                section_name=section_name,
+                section_plan=section_plan_text,
+                subsection_names=subsection_names,
+                research_context=full_research_context,
+                language_model=language_model,
+            )
+
     while attempt < max_attempts:
         # Generate section introduction (only on first attempt)
         if attempt == 0:
@@ -491,8 +834,10 @@ async def write_section_with_subsections(
                 language_model=language_model
             )
 
-        # Generate each subsection
+        # Generate each subsection with sequential awareness
         subsection_contents = []
+        previous_subsections_text = ""  # Build up as we generate
+
         for i, subsection_name in enumerate(subsection_names):
             if attempt == 0:
                 logger.info(f"  Generating subsection {i+1}/{len(subsection_names)}: {subsection_name}")
@@ -512,6 +857,31 @@ async def write_section_with_subsections(
             if get_citation_instructions:
                 citation_instructions = get_citation_instructions(chapter_name, section_name, subsection_name)
 
+            # Get ASSIGNED research for this subsection using Decision
+            research_context = None
+            if full_research_context and research_assignments:
+                # Use synalinks.Decision to match subsection to its assignment
+                assignment = await match_subsection_to_assignment(
+                    subsection_name=subsection_name,
+                    assignments=research_assignments,
+                    language_model=language_model,
+                )
+                if assignment:
+                    research_context = format_assigned_research(
+                        assignment,
+                        full_research_context,
+                        all_assignments=research_assignments,
+                        current_subsection=subsection_name,
+                    )
+                    logger.info(f"    Assigned: {len(assignment.get('concepts', []))} concepts, domain={assignment.get('example_domain', 'N/A')}")
+                else:
+                    # Fallback to full context if Decision fails
+                    logger.warning(f"    No assignment matched for '{subsection_name[:40]}...', using full context")
+                    research_context = full_research_context
+            elif full_research_context:
+                # No assignments planned, use full context
+                research_context = full_research_context
+
             subsection_input = SubsectionInput(
                 topic=topic_data["topic"],
                 goal=topic_data["goal"],
@@ -525,7 +895,8 @@ async def write_section_with_subsections(
                 section_name=section_name,
                 section_plan=augmented_plan,
                 subsection_name=subsection_name,
-                opening_approach=opening_approach
+                opening_approach=opening_approach,
+                previous_subsections=previous_subsections_text,
             )
 
             content = await generate_subsection(
@@ -533,10 +904,13 @@ async def write_section_with_subsections(
                 language_model=language_model,
                 writing_style=writing_style,
                 citation_instructions=citation_instructions,
+                research_context=research_context,
             )
 
             if content:
                 subsection_contents.append((subsection_name, content))
+                # Add to previous subsections for sequential awareness
+                previous_subsections_text += f"\n### {subsection_name}\n{content}\n"
 
         # Assemble section
         section_content = _assemble_section(section_intro, subsection_contents)
@@ -590,12 +964,20 @@ async def write_chapter_with_sections(
     style_idx: int,
     writing_style: Optional[object] = None,
     get_citation_instructions: Optional[callable] = None,
+    get_research_context: Optional[callable] = None,
+    citation_manager: Optional[object] = None,
+    chapter_papers: Optional[List[dict]] = None,
 ) -> tuple:
     """
     Write a complete chapter by:
     1. Generating a chapter introduction
     2. Generating each section (which generates each subsection separately)
     3. Concatenating everything
+
+    Args:
+        get_research_context: Optional callback(chapter, section) -> str for research context
+        citation_manager: Optional CitationManager for per-chapter references (from full citation pipeline)
+        chapter_papers: Optional list of paper dicts for fast chapter references (from research)
 
     Returns:
         Tuple of (chapter_content, new_style_idx)
@@ -662,6 +1044,7 @@ async def write_chapter_with_sections(
             section_num=section_counter + i + 1,
             writing_style=writing_style,
             get_citation_instructions=get_citation_instructions,
+            get_research_context=get_research_context,
         )
 
         section_contents.append((section_name, section_content))
@@ -720,6 +1103,52 @@ async def write_chapter_with_sections(
         chapter_parts.append(part_conclusion)
         chapter_parts.append("")
 
+    # Per-chapter references
+    # Option 1: From full citation pipeline (slow, verified)
+    if citation_manager:
+        chapter_refs = citation_manager.get_chapter_bibliography_markdown(chapter_name)
+        if chapter_refs:
+            chapter_parts.append("")
+            chapter_parts.append(chapter_refs)
+    # Option 2: From research papers (fast, unverified)
+    elif chapter_papers:
+        chapter_parts.append("")
+        chapter_parts.append("### References")
+        chapter_parts.append("")
+        for paper in chapter_papers:
+            # Format references properly, handling missing data
+            authors_raw = paper.get('authors', '')
+            year = paper.get('year', '')
+            title = paper.get('title', 'Untitled')
+            venue = paper.get('venue', '')
+
+            # Skip bad author values
+            authors = authors_raw.strip() if authors_raw else ''
+            if authors.lower() in ['unknown', 'not specified', 'n/a', 'none', '']:
+                authors = ''
+
+            # Skip bad venue values
+            if venue.lower() in ['unknown', 'not specified', 'n/a', 'none', 'arxiv', 'technical report']:
+                venue = ''
+
+            # Build reference line
+            if authors and year and venue:
+                # Full reference: Authors (Year). Title. *Venue*.
+                chapter_parts.append(f"- {authors} ({year}). *{title}*. {venue}.")
+            elif authors and year:
+                # No venue: Authors (Year). Title.
+                chapter_parts.append(f"- {authors} ({year}). *{title}*.")
+            elif year and venue:
+                # No authors: Title (Year). Venue.
+                chapter_parts.append(f"- *{title}* ({year}). {venue}.")
+            elif year:
+                # Just title and year: Title (Year).
+                chapter_parts.append(f"- *{title}* ({year}).")
+            else:
+                # Minimal: just title
+                chapter_parts.append(f"- *{title}*.")
+        chapter_parts.append("")
+
     full_chapter = "\n".join(chapter_parts)
     chapter_data = {"chapter_content": full_chapter}
 
@@ -743,6 +1172,9 @@ async def write_all_sections_direct(
     max_chapters: Optional[int] = None,
     writing_style: Optional[object] = None,
     get_citation_instructions: Optional[callable] = None,
+    get_research_context: Optional[callable] = None,
+    citation_manager: Optional[object] = None,
+    chapter_paper_assignments: Optional[Dict[str, List[dict]]] = None,
 ) -> List[tuple]:
     """
     Write all chapters by generating each subsection separately with full context.
@@ -759,6 +1191,10 @@ async def write_all_sections_direct(
         get_citation_instructions: Optional callback function that takes (chapter_name, section_name)
             and returns citation instructions string. When provided, content generation
             is CONSTRAINED to only include verified, citable factual claims.
+        get_research_context: Optional callback function that takes (chapter_name, section_name)
+            and returns research context string for cutting-edge content.
+        citation_manager: Optional CitationManager for per-chapter references (slow path)
+        chapter_paper_assignments: Optional dict mapping chapter_name -> list of paper dicts (fast path)
 
     Returns:
         List of (chapter_name, chapter_content_dict) tuples
@@ -789,6 +1225,16 @@ async def write_all_sections_direct(
         chapter_sections = hierarchy.get(chapter_name, {})
         chapter_section_plans = all_section_plans.get(chapter_name, {})
 
+        # Get papers for this chapter (for fast references)
+        # Note: chapter_name has number prefix like "1. Chapter Name"
+        # but chapter_paper_assignments uses names without prefix
+        chapter_papers = None
+        if chapter_paper_assignments:
+            # Strip number prefix (e.g., "1. " or "2. ") to match assignment keys
+            import re
+            base_chapter_name = re.sub(r'^\d+\.\s*', '', chapter_name)
+            chapter_papers = chapter_paper_assignments.get(base_chapter_name, [])
+
         chapter_data, style_idx = await write_chapter_with_sections(
             topic_data=topic_data,
             full_outline=full_outline,
@@ -806,6 +1252,9 @@ async def write_all_sections_direct(
             style_idx=style_idx,
             writing_style=writing_style,
             get_citation_instructions=get_citation_instructions,
+            get_research_context=get_research_context,
+            citation_manager=citation_manager,
+            chapter_papers=chapter_papers,
         )
 
         written_chapters.append((chapter_name, chapter_data))

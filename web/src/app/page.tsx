@@ -25,6 +25,10 @@ import {
   Users,
   ChevronDown,
   Star,
+  GraduationCap,
+  Layers,
+  Play,
+  Route,
 } from "lucide-react";
 
 
@@ -715,174 +719,94 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Pricing */}
-      <section className="py-20 px-6">
-        <div className="max-w-5xl mx-auto">
+      {/* Vision — Platform Roadmap */}
+      <section className="py-20 px-6 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-indigo-950/30 to-transparent" />
+        <div className="max-w-4xl mx-auto relative">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             className="text-center mb-12"
           >
-            <h2 className="text-4xl md:text-5xl font-bold mb-4">Simple pricing</h2>
-            <p className="text-xl text-slate-300">
-              Pay once, own forever. Your knowledge, always accessible.
+            <Badge className="bg-indigo-500/20 text-indigo-300 border-indigo-500/30 mb-4">
+              The bigger picture
+            </Badge>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+              Beyond books. A learning platform built for{" "}
+              <span className="bg-gradient-to-r from-amber-400 to-yellow-300 bg-clip-text text-transparent">you</span>.
+            </h2>
+            <p className="text-lg text-slate-300 max-w-2xl mx-auto">
+              Polaris is growing into a fully personalized learning experience — where every course,
+              every path, and every exercise adapts to who you are and what you need.
             </p>
           </motion.div>
 
-          {/* Citation Value Prop */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="mb-10 bg-gradient-to-br from-amber-900/20 to-orange-900/20 rounded-2xl border border-amber-500/30 p-6"
-          >
-            <div className="flex flex-col md:flex-row md:items-center gap-6">
-              <div className="flex-shrink-0">
-                <div className="w-14 h-14 rounded-xl bg-amber-500/20 flex items-center justify-center">
-                  <FileText className="w-7 h-7 text-amber-400" />
-                </div>
-              </div>
-              <div className="flex-1">
-                <h3 className="text-xl font-bold text-white mb-2">
-                  Fully Grounded & Cited
-                </h3>
-                <p className="text-slate-300">
-                  Every claim backed by real sources. Every technique traceable to its origin.
-                  Go deeper with direct links to papers, docs, and primary sources.
-                  <span className="text-amber-400 font-medium"> Trust what you learn.</span>
-                </p>
-              </div>
-              <div className="flex-shrink-0 text-right">
-                <div className="text-sm text-slate-400 mb-1">Available in</div>
-                <div className="text-amber-400 font-semibold">Scholar & Research tiers</div>
-              </div>
-            </div>
-          </motion.div>
-
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
               {
-                name: "Explorer",
-                price: "$29",
-                description: "Quick synthesis",
-                time: "~30 min",
-                features: [
-                  "8-10 chapters",
-                  "~80 pages",
-                  "Domain-tailored examples",
-                  "PDF + Markdown",
-                ],
-                cta: "Start Learning",
+                icon: BookOpen,
+                label: "Personalized Books",
+                status: "Live now",
+                statusColor: "text-emerald-400",
+                dotColor: "bg-emerald-400",
+                description: "Deep-dive books synthesized for your exact background",
               },
               {
-                name: "Scholar",
-                price: "$79",
-                description: "Grounded knowledge",
-                time: "~2-3 hours",
-                features: [
-                  "12-15 chapters",
-                  "~150 pages",
-                  "Full citations & sources",
-                  "Verified references",
-                  "PDF + Markdown",
-                  "Illustrations",
-                ],
-                popular: true,
-                cta: "Get Scholar",
-                hasCitations: true,
+                icon: Play,
+                label: "Interactive Courses",
+                status: "Coming soon",
+                statusColor: "text-amber-400",
+                dotColor: "bg-amber-400",
+                description: "Learn-by-doing modules with exercises tailored to your level",
               },
               {
-                name: "Research",
-                price: "$149",
-                description: "Publication-ready",
-                time: "~4-6 hours",
-                features: [
-                  "20+ chapters",
-                  "~250 pages",
-                  "Deep citations with links",
-                  "Cross-referenced sources",
-                  "Bibliography included",
-                  "All formats + LaTeX",
-                  "Custom illustrations",
-                ],
-                cta: "Go Research",
-                hasCitations: true,
+                icon: Route,
+                label: "Learning Paths",
+                status: "Coming soon",
+                statusColor: "text-amber-400",
+                dotColor: "bg-amber-400",
+                description: "Multi-step curricula that adapt as you grow",
               },
-            ].map((tier, index) => (
+              {
+                icon: GraduationCap,
+                label: "Assessments",
+                status: "On the horizon",
+                statusColor: "text-slate-400",
+                dotColor: "bg-slate-400",
+                description: "Prove mastery with personalized evaluations",
+              },
+            ].map((item, index) => (
               <motion.div
-                key={tier.name}
+                key={item.label}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
                 viewport={{ once: true }}
+                className="bg-white/5 border border-white/10 rounded-xl p-5 hover:bg-white/[0.07] transition-colors"
               >
-                <Card
-                  className={`relative h-full ${
-                    tier.popular
-                      ? "bg-gradient-to-br from-amber-900/30 to-indigo-900/40 border-amber-500/50 shadow-xl shadow-amber-500/20"
-                      : "bg-slate-800/50 border-slate-700/30"
-                  }`}
-                >
-                  {tier.popular && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                      <Badge className="bg-gradient-to-r from-amber-500 to-yellow-500 text-white border-0">
-                        Most Popular
-                      </Badge>
-                    </div>
-                  )}
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between mb-1">
-                      <h3 className="text-xl font-semibold text-white">{tier.name}</h3>
-                      {tier.hasCitations && (
-                        <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/30 text-xs">
-                          Cited
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-slate-300 text-sm mb-2">{tier.description}</p>
-                    <div className="flex items-baseline gap-2 mb-4">
-                      <span className="text-4xl font-bold text-white">{tier.price}</span>
-                      <span className="text-slate-400 text-sm">• {tier.time}</span>
-                    </div>
-                    <ul className="space-y-3 mb-6">
-                      {tier.features.map((feature, i) => (
-                        <li key={i} className="flex items-center gap-2 text-sm text-slate-300">
-                          <Check className="h-4 w-4 text-amber-400 flex-shrink-0" />
-                          {feature}
-                        </li>
-                      ))}
-                    </ul>
-                    <Button
-                      className={`w-full ${
-                        tier.popular
-                          ? "bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500"
-                          : "bg-white/10 hover:bg-white/20 border border-white/20"
-                      }`}
-                      asChild
-                    >
-                      <a href="#waitlist">{tier.cta}</a>
-                    </Button>
-                  </CardContent>
-                </Card>
+                <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center mb-3">
+                  <item.icon className="w-5 h-5 text-amber-400" />
+                </div>
+                <h3 className="font-semibold text-white text-sm mb-1">{item.label}</h3>
+                <p className="text-xs text-slate-400 mb-3">{item.description}</p>
+                <div className="flex items-center gap-1.5">
+                  <div className={`w-1.5 h-1.5 rounded-full ${item.dotColor}`} />
+                  <span className={`text-xs font-medium ${item.statusColor}`}>{item.status}</span>
+                </div>
               </motion.div>
             ))}
           </div>
 
-          {/* Generation time explanation */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
+          <motion.p
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
-            className="mt-10 text-center"
+            className="text-center text-sm text-slate-400 mt-8"
           >
-            <p className="text-slate-400 text-sm max-w-2xl mx-auto">
-              <span className="text-slate-300 font-medium">Why citation tiers take longer:</span>{" "}
-              We verify every claim against real sources, cross-reference multiple papers,
-              and ensure your book is fully grounded in reliable research.
-              <span className="text-amber-400"> Quality knowledge takes time.</span>
-            </p>
-          </motion.div>
+            Not one-size-fits-all. Not pre-recorded lectures.{" "}
+            <span className="text-slate-300">Every piece of content generated for exactly one learner — you.</span>
+          </motion.p>
         </div>
       </section>
 

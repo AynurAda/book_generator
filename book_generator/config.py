@@ -48,8 +48,9 @@ class Config:
     plan_critique_enabled: bool = True  # Enable self-critique loop for plan generation
     plan_critique_max_attempts: int = 5  # Max revision attempts per plan
 
-    # Default outline (optional) - if provided, skip outline generation
+    # Default outline (optional) - if provided and enabled, skip outline generation
     default_outline: Optional[dict] = None
+    use_default_outline: bool = True  # Set to false to ignore default_outline even if defined
 
     # Chapter limit (optional) - if provided, select most important chapters
     num_chapters: Optional[int] = None
@@ -78,7 +79,8 @@ class Config:
     cover_style: str = "abstract"
 
     # Citation settings
-    enable_citations: bool = False  # Enable citation verification pipeline
+    enable_citations: bool = False  # Enable full citation verification pipeline (slow)
+    enable_chapter_references: bool = False  # Fast: add references from research papers at end of each chapter
     citation_confidence_threshold: float = 0.75  # Minimum confidence to accept a citation
     skip_low_importance_claims: bool = True  # Skip verification for low-importance claims
 
@@ -86,6 +88,14 @@ class Config:
     enable_research: bool = False  # Enable Gemini Deep Research for cutting-edge content
     research_max_queries: int = 5  # Maximum research queries to run
     research_cache: bool = True  # Cache research results for reuse
+
+    # Stage 2 research settings (requires mcp-graphiti Docker container running)
+    enable_stage2_research: bool = False  # Enable Stage 2 with knowledge graph
+    graphiti_mcp_url: str = "http://localhost:8000/mcp/"  # mcp-graphiti SSE endpoint
+    graphiti_group_id: str = "book_research"  # Namespace for this book's research
+
+    # Reader mode override for testing (bypasses Branch decision)
+    reader_mode_override: Optional[str] = None  # 'practitioner', 'academic', or 'hybrid'
 
     # Introduction styles for variety (will be shuffled at runtime)
     intro_styles: List[str] = field(default_factory=lambda: [
@@ -171,9 +181,10 @@ class Config:
     @classmethod
     def from_dict(cls, data: dict) -> "Config":
         """Create config from dictionary."""
-        # Parse default_outline if provided
+        # Parse default_outline if provided, enabled, and not empty
         default_outline = None
-        if "default_outline" in data:
+        use_default_outline = data.get("use_default_outline", True)
+        if use_default_outline and "default_outline" in data and data["default_outline"]:
             default_outline = cls._parse_outline(data["default_outline"])
 
         return cls(
@@ -190,6 +201,7 @@ class Config:
             plan_critique_enabled=data.get("plan_critique_enabled", True),
             plan_critique_max_attempts=data.get("plan_critique_max_attempts", 5),
             default_outline=default_outline,
+            use_default_outline=use_default_outline,
             num_chapters=data.get("num_chapters"),
             focus=data.get("focus"),
             model_name=data.get("model_name", "gemini/gemini-3-flash-preview"),
@@ -199,11 +211,16 @@ class Config:
             image_model=data.get("image_model", "gemini/gemini-3-pro-image-preview"),
             cover_style=data.get("cover_style", "humorous"),
             enable_citations=data.get("enable_citations", False),
+            enable_chapter_references=data.get("enable_chapter_references", False),
             citation_confidence_threshold=data.get("citation_confidence_threshold", 0.75),
             skip_low_importance_claims=data.get("skip_low_importance_claims", True),
             enable_research=data.get("enable_research", False),
             research_max_queries=data.get("research_max_queries", 5),
             research_cache=data.get("research_cache", True),
+            enable_stage2_research=data.get("enable_stage2_research", False),
+            graphiti_mcp_url=data.get("graphiti_mcp_url", "http://localhost:8000/mcp/"),
+            graphiti_group_id=data.get("graphiti_group_id", "book_research"),
+            reader_mode_override=data.get("reader_mode_override"),
         )
 
     @staticmethod

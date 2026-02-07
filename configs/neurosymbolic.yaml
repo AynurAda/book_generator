@@ -13,7 +13,7 @@ audience: "ML researchers and practitioners who want to understand and build neu
 
 # Generation settings
 test_mode: false
-test_max_chapters: 4
+test_max_chapters: 2
 resume_from_dir: null
 
 # Interactive settings
@@ -21,7 +21,7 @@ interactive_outline_approval: false  # Prompt user to approve outline
 
 # Plan quality control
 plan_critique_enabled: true  # Enable self-critique loop for plan generation
-plan_critique_max_attempts: 2  # Max revision attempts per plan
+plan_critique_max_attempts: 1  # Max revision attempts per plan
 
 # Model settings
 model_name: "gemini/gemini-3-flash-preview"
@@ -30,7 +30,7 @@ model_name: "gemini/gemini-3-flash-preview"
 author_key: "waitbutwhy"
 
 # Illustration settings
-enable_illustrations: true
+enable_illustrations: false
 enable_generated_images: false
 image_model: "gemini/gemini-3-pro-image-preview"
 
@@ -41,8 +41,14 @@ cover_style: "humorous"  # Options: "humorous", "abstract", "cyberpunk"
 enable_research: true
 research_max_queries: 3  # Start with 3 queries for testing
 
+# Stage 2 research with Graphiti knowledge graph (requires mcp-graphiti Docker)
+enable_stage2_research: true
+graphiti_mcp_url: "http://localhost:8000/mcp/"
+graphiti_group_id: "neurosymbolic_book"
+
 # Citation settings
-enable_citations: false  # Disabled for testing
+enable_citations: false  # Full verification (slow)
+enable_chapter_references: true  # Fast: add references from research at end of chapters
 citation_confidence_threshold: 0.75  # Min confidence to accept a citation
 skip_low_importance_claims: true  # Skip verification for low-importance claims
 
@@ -52,7 +58,8 @@ focus: "neurosymbolic AI intersection with LLMs and Agentic Reasoning"
 #   Intersection of LLMs with neuro-symbolic AI, knowledge graphs,
 #   agentic reasoning, and RAG systems. Practical implementation patterns.
 
-# Default outline - if provided, skips outline generation stage
+# Default outline - if provided and enabled, skips outline generation stage
+use_default_outline: false  # Set to true to use the outline below, false to generate dynamically
 default_outline:
   - concept: "Historical Evolution: The Great Divide between Connectionism and Symbolism"
     subconcepts:

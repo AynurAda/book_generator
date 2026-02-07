@@ -109,6 +109,7 @@ def process_latex_math(content: str) -> str:
     - Display math: $$...$$ or \[...\]
     - Inline math: $...$ or \(...\)
     - Escaped parentheses with math: (\mathbb{...})
+    - Common math symbols: \alpha, \beta, \sum, etc.
 
     Returns:
         Content with LaTeX converted to MathML
@@ -121,8 +122,23 @@ def process_latex_math(content: str) -> str:
         has_latex2mathml = False
         return content
 
+    # First, protect code blocks from LaTeX processing
+    code_blocks = []
+    code_block_pattern = re.compile(r'(```[\s\S]*?```|`[^`\n]+`)', re.MULTILINE)
+
+    def save_code_block(match):
+        code_blocks.append(match.group(0))
+        return f'<<<CODE_BLOCK_{len(code_blocks) - 1}>>>'
+
+    content = code_block_pattern.sub(save_code_block, content)
+
     def latex_to_mathml(latex_code: str, display: bool = False) -> str:
         """Convert a single LaTeX expression to MathML."""
+        # Clean up common issues
+        latex_code = latex_code.strip()
+        if not latex_code:
+            return ""
+
         try:
             mathml = latex2mathml.converter.convert(latex_code)
             if display:
@@ -132,49 +148,74 @@ def process_latex_math(content: str) -> str:
                 return f'<span class="math-inline">{mathml}</span>'
         except Exception as e:
             logger.warning(f"Failed to convert LaTeX: {latex_code[:50]}... - {e}")
-            # Return formatted code block as fallback
-            return f'<code class="math-fallback">{latex_code}</code>'
+            # Return nicely formatted fallback with HTML escaping
+            escaped = latex_code.replace('<', '&lt;').replace('>', '&gt;')
+            if display:
+                return f'<div class="math-display"><code class="math-fallback">{escaped}</code></div>'
+            else:
+                return f'<code class="math-fallback">{escaped}</code>'
 
-    # Pattern for display math: $$...$$ or \[...\]
-    display_pattern1 = re.compile(r'\$\$(.+?)\$\$', re.DOTALL)
-    display_pattern2 = re.compile(r'\\\[(.+?)\\\]', re.DOTALL)
+    # Pattern for display math: $$...$$ (allowing multiline)
+    display_pattern1 = re.compile(r'\$\$\s*([\s\S]+?)\s*\$\$')
+    # Pattern for \[...\] display math
+    display_pattern2 = re.compile(r'\\\[\s*([\s\S]+?)\s*\\\]')
 
-    # Pattern for inline math: $...$ (not $$)
-    inline_pattern1 = re.compile(r'(?<!\$)\$(?!\$)(.+?)(?<!\$)\$(?!\$)')
+    # Pattern for inline math: $...$ (not $$, not in middle of words like $100)
+    # This pattern avoids matching currency like $100 or $50
+    inline_pattern1 = re.compile(r'(?<![\\$\w])\$(?!\d)([^$\n]+?)\$(?![\\$\w])')
 
-    # Pattern for \(...\)
-    inline_pattern2 = re.compile(r'\\\((.+?)\\\)')
+    # Pattern for \(...\) inline math
+    inline_pattern2 = re.compile(r'\\\(\s*(.+?)\s*\\\)')
 
     # Pattern for (\mathbb{...}) style - common malformed LaTeX
     paren_math_pattern = re.compile(r'\(\\(math[a-z]*\{[^}]+\}[^)]*)\)')
 
     # Process display math first (to avoid conflicts with inline)
     def replace_display(match):
-        return latex_to_mathml(match.group(1).strip(), display=True)
+        return latex_to_mathml(match.group(1), display=True)
 
     content = display_pattern1.sub(replace_display, content)
     content = display_pattern2.sub(replace_display, content)
 
     # Process inline math
     def replace_inline(match):
-        return latex_to_mathml(match.group(1).strip(), display=False)
+        return latex_to_mathml(match.group(1), display=False)
 
     content = inline_pattern1.sub(replace_inline, content)
     content = inline_pattern2.sub(replace_inline, content)
 
     # Process parenthesized math expressions like (\mathbb{R}^d)
     def replace_paren_math(match):
-        return latex_to_mathml(match.group(1).strip(), display=False)
+        return latex_to_mathml(match.group(1), display=False)
 
     content = paren_math_pattern.sub(replace_paren_math, content)
 
-    # Also catch standalone \mathbf, \mathbb, etc. that might be outside delimiters
+    # Catch standalone math commands that might be outside delimiters
+    # \mathbf{...}, \mathbb{...}, \mathcal{...}, etc.
     standalone_math = re.compile(r'\\(math(?:bf|bb|cal|rm|it|sf|tt|frak)\{[^}]+\})')
 
     def replace_standalone(match):
         return latex_to_mathml(match.group(0), display=False)
 
     content = standalone_math.sub(replace_standalone, content)
+
+    # Also handle common standalone symbols: \alpha, \beta, \gamma, \sum, \prod, etc.
+    greek_and_symbols = re.compile(
+        r'\\(alpha|beta|gamma|delta|epsilon|zeta|eta|theta|iota|kappa|lambda|mu|nu|xi|pi|rho|sigma|tau|upsilon|phi|chi|psi|omega|'
+        r'Alpha|Beta|Gamma|Delta|Epsilon|Theta|Lambda|Xi|Pi|Sigma|Phi|Psi|Omega|'
+        r'sum|prod|int|oint|partial|nabla|infty|pm|mp|times|div|cdot|ldots|cdots|forall|exists|neg|in|notin|subset|supset|cup|cap|emptyset|'
+        r'rightarrow|leftarrow|Rightarrow|Leftarrow|leftrightarrow|Leftrightarrow|'
+        r'leq|geq|neq|approx|equiv|sim|propto|perp|parallel)(?![a-zA-Z])'
+    )
+
+    def replace_symbol(match):
+        return latex_to_mathml('\\' + match.group(1), display=False)
+
+    content = greek_and_symbols.sub(replace_symbol, content)
+
+    # Restore code blocks
+    for i, block in enumerate(code_blocks):
+        content = content.replace(f'<<<CODE_BLOCK_{i}>>>', block)
 
     return content
 

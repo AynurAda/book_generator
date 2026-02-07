@@ -44,12 +44,12 @@ class Paper(synalinks.DataModel):
 class Framework(synalinks.DataModel):
     """A tool or framework extracted from deep research."""
 
-    name: str = synalinks.Field(description="Framework name")
-    description: str = synalinks.Field(description="What it does")
+    name: str = synalinks.Field(description="Framework/library name (e.g., 'PyTorch', 'Scallop')")
+    description: str = synalinks.Field(description="What it does in 1-2 sentences")
     approach: str = synalinks.Field(description="How it works conceptually")
-    use_cases: str = synalinks.Field(description="What it's good for")
+    use_cases: str = synalinks.Field(description="What problems it solves, when to use it")
     url: Optional[str] = synalinks.Field(
-        default=None, description="Project URL if mentioned"
+        default=None, description="GitHub URL or project website for readers to explore"
     )
 
 

@@ -34,6 +34,8 @@ from .outline import (
     outline_needs_subsubconcepts,
     generate_subsubconcepts,
     prioritize_chapters,
+    generate_research_informed_outline,
+    convert_research_outline_to_hierarchy,
 )
 from .planning import run_hierarchical_planning
 from .vision import generate_book_vision, format_book_vision
@@ -48,9 +50,82 @@ from .research import (
     generate_research_queries,
     parse_research,
     ResearchManager,
+    run_stage2_research,
+    Stage2MCPPipeline,
+    Stage2ArxivFallback,
 )
 
 logger = logging.getLogger(__name__)
+
+
+class PaperMatchInput(synalinks.DataModel):
+    """Input for paper matching Decision."""
+    query_title: str = synalinks.Field(description="The paper title to match")
+
+
+async def match_paper_title_to_dict(
+    query_title: str,
+    all_papers: list,
+    language_model,
+) -> Optional[dict]:
+    """
+    Use synalinks.Decision to match a paper title to a full paper dict.
+
+    Args:
+        query_title: The paper title from the outline (may include year)
+        all_papers: List of paper dicts from research
+        language_model: The LLM to use for matching
+
+    Returns:
+        The matched paper dict, or None if no match found
+    """
+    if not all_papers:
+        return None
+
+    # Build labels from paper titles
+    labels = [p.get("title", f"Paper {i+1}") for i, p in enumerate(all_papers)]
+
+    # Format papers list for the prompt
+    papers_text = "\n".join(
+        f"  {i+1}. {p.get('title', 'Unknown')} ({p.get('year', 'N/A')})"
+        for i, p in enumerate(all_papers)
+    )
+
+    match_input = PaperMatchInput(query_title=query_title)
+
+    try:
+        decision = await synalinks.Decision(
+            question=f"""Which paper from the research database matches this title?
+
+QUERY TITLE: "{query_title}"
+
+AVAILABLE PAPERS:
+{papers_text}
+
+Select the paper that best matches the query title. The query may include a year suffix like "(2024)" that should help identify the correct paper.""",
+            labels=labels,
+            language_model=language_model,
+            temperature=1.0,
+        )(match_input)
+
+        if decision is None:
+            logger.debug(f"    Paper decision returned None for '{query_title[:40]}...'")
+            return None
+
+        decision_json = decision.get_json()
+        selected_label = decision_json.get("choice")
+
+        if selected_label:
+            for i, label in enumerate(labels):
+                if label == selected_label:
+                    logger.info(f"    Matched: '{query_title[:30]}...' → '{selected_label[:30]}...'")
+                    return all_papers[i]
+        else:
+            logger.debug(f"    Paper decision has no 'choice': {decision_json}")
+    except Exception as e:
+        logger.error(f"Paper matching failed for '{query_title[:40]}...': {e}")
+
+    return None
 
 
 def outline_to_editable_yaml(results: dict) -> str:
@@ -307,7 +382,7 @@ async def generate_book(config: Config) -> str:
             cached_data = load_json_from_file(research_dir, "field_knowledge.json")
             if cached_data:
                 field_knowledge = FieldKnowledge(**cached_data)
-                research_manager = ResearchManager(field_knowledge)
+                research_manager = ResearchManager(field_knowledge, language_model=language_model)
 
                 print(f"\n{'='*60}")
                 print("DEEP RESEARCH (CACHED)")
@@ -378,8 +453,8 @@ async def generate_book(config: Config) -> str:
             # Save parsed knowledge
             save_json_to_file(research_dir, "field_knowledge.json", field_knowledge.get_json())
 
-            # Create manager
-            research_manager = ResearchManager(field_knowledge)
+            # Create manager with language model for LLM-based matching
+            research_manager = ResearchManager(field_knowledge, language_model=language_model)
 
             print(f"\n{'='*60}")
             print("DEEP RESEARCH COMPLETE")
@@ -399,10 +474,13 @@ async def generate_book(config: Config) -> str:
     vision_research_context = None
     if research_manager:
         vision_research_context = research_manager.for_vision()
+        if vision_research_context:
+            logger.info(f"Research context for vision: {len(vision_research_context)} chars")
 
     book_vision = await generate_book_vision(
         topic_data, language_model, output_dir,
-        research_context=vision_research_context
+        research_context=vision_research_context,
+        reader_mode_override=config.reader_mode_override,
     )
 
     # Display vision summary
@@ -438,6 +516,8 @@ async def generate_book(config: Config) -> str:
         outline_research_context = None
         if research_manager:
             outline_research_context = research_manager.for_outline()
+            if outline_research_context:
+                logger.info(f"Research context for outline: {len(outline_research_context)} chars")
 
         results = await generate_outline_with_coverage(
             topic_data, language_model, book_vision=book_vision,
@@ -466,67 +546,64 @@ async def generate_book(config: Config) -> str:
         print()
 
     # ==========================================================================
-    # STAGE 1a: OUTLINE APPROVAL (interactive)
+    # STAGE 1b: RESEARCH-INFORMED OUTLINE (replaces initial with research-based structure)
     # ==========================================================================
-    if config.interactive_outline_approval and not config.resume_from_dir:
-        while True:
-            print(f"{'='*60}")
-            print("OUTLINE APPROVAL")
-            print(f"{'='*60}")
-            user_input = input("[y]es / [e]dit / [r]egenerate / [q]uit: ").strip().lower()
+    # The initial outline was just LLM's mental model for generating research queries.
+    # After research, we generate a NEW outline based on what research discovered.
+    chapter_paper_assignments = {}  # chapter_name -> list of paper titles
 
-            if user_input in ('y', 'yes', ''):
-                print("Outline approved. Continuing...")
-                break
-            elif user_input in ('e', 'edit'):
-                # Open in editor for manual editing
-                results = edit_outline_interactive(results, output_dir)
+    if research_manager and config.enable_research:
+        print(f"\n{'='*60}")
+        print("Generating research-informed outline...")
+        print(f"{'='*60}\n")
+
+        research_outline = await generate_research_informed_outline(
+            topic_data=topic_data,
+            book_vision=book_vision,
+            research_manager=research_manager,
+            initial_outline=results,
+            language_model=language_model,
+            output_dir=output_dir,
+        )
+
+        # Use the research-informed outline if generation succeeded
+        if research_outline and research_outline.get("chapters"):
+            # Convert research-informed outline to DeepHierarchy format
+            # This replaces the initial outline with the research-informed structure
+            converted_outline = convert_research_outline_to_hierarchy(research_outline)
+
+            # Only replace if we got valid chapters
+            if converted_outline.get("concepts"):
+                old_chapter_count = len(results.get("concepts", []))
+                results = converted_outline
+                logger.info(f"Replaced initial outline ({old_chapter_count} chapters) with research-informed outline ({len(results.get('concepts', []))} chapters)")
+
+                # Save the converted outline
                 save_json_to_file(output_dir, "01_outline.json", results)
                 save_to_file(output_dir, "01_outline.txt", build_outline_text(results))
 
-                # Display edited outline
-                concepts_list = results.get("concepts", [])
-                print(f"\n{'='*60}")
-                print(f"Edited outline: {len(concepts_list)} chapters")
-                print(f"{'='*60}\n")
-                for i, concept_data in enumerate(concepts_list, 1):
-                    concept_name = concept_data.get("concept", "Unknown")
-                    subconcepts = concept_data.get("subconcepts", [])
-                    print(f"{i}. {concept_name}")
-                    for j, subconcept_data in enumerate(subconcepts, 1):
-                        subconcept_name = subconcept_data.get("subconcept", "Unknown")
-                        print(f"   {i}.{j} {subconcept_name}")
-                    print()
-            elif user_input in ('r', 'regenerate'):
-                print("\nRegenerating outline (vision-guided with coverage check)...")
-                results = await generate_outline_with_coverage(
-                    topic_data, language_model, book_vision=book_vision,
-                    research_context=outline_research_context
-                )
-                save_json_to_file(output_dir, "01_outline.json", results)
-                save_to_file(output_dir, "01_outline.txt", build_outline_text(results))
+                # Extract paper assignments from the research-informed outline
+                for chapter in research_outline.get("chapters", []):
+                    chapter_name = chapter.get("chapter_name", "")
+                    papers = chapter.get("relevant_papers", [])
+                    if chapter_name and papers:
+                        chapter_paper_assignments[chapter_name] = papers
 
-                # Display new outline
-                concepts_list = results.get("concepts", [])
-                print(f"\n{'='*60}")
-                print(f"Regenerated {len(concepts_list)} main concepts:")
-                print(f"{'='*60}\n")
-                for i, concept_data in enumerate(concepts_list, 1):
-                    concept_name = concept_data.get("concept", "Unknown")
-                    subconcepts = concept_data.get("subconcepts", [])
-                    print(f"{i}. {concept_name}")
-                    for j, subconcept_data in enumerate(subconcepts, 1):
-                        subconcept_name = subconcept_data.get("subconcept", "Unknown")
-                        print(f"   {i}.{j} {subconcept_name}")
-                    print()
-            elif user_input in ('q', 'quit'):
-                print("Generation cancelled by user.")
-                return None
+                print(f"Research-informed outline applied:")
+                print(f"  - Chapters: {len(results.get('concepts', []))}")
+                print(f"  - Organization: {research_outline.get('organization_logic', 'N/A')}")
+                print(f"\nChapters:")
+                for i, concept in enumerate(results.get("concepts", []), 1):
+                    ch_name = concept.get("concept", "Unknown")
+                    paper_count = len(chapter_paper_assignments.get(ch_name, []))
+                    print(f"  {i}. {ch_name} ({paper_count} papers)")
             else:
-                print("Invalid input. Please enter 'y', 'e', 'r', or 'q'.")
+                logger.warning("Research-informed outline conversion failed, keeping initial outline")
+        else:
+            logger.warning("Research-informed outline failed, using initial outline")
 
     # ==========================================================================
-    # STAGE 1b: OUTLINE REORGANIZATION (before prioritization for best flow)
+    # STAGE 1c: OUTLINE REORGANIZATION (before prioritization for best flow)
     # ==========================================================================
     was_reorganized = False
     reorg_reasoning = "Not analyzed"
@@ -562,7 +639,7 @@ async def generate_book(config: Config) -> str:
     print(f"{'='*60}\n")
 
     # ==========================================================================
-    # STAGE 1c: CHAPTER PRIORITIZATION (after reorganization, before planning)
+    # STAGE 1d: CHAPTER PRIORITIZATION (after reorganization, before planning)
     # ==========================================================================
     if config.num_chapters and len(results.get("concepts", [])) > config.num_chapters:
         print(f"\n{'='*60}")
@@ -592,7 +669,7 @@ async def generate_book(config: Config) -> str:
         print()
 
     # ==========================================================================
-    # STAGE 1d: GENERATE SUBSUBCONCEPTS IF MISSING (only for selected chapters)
+    # STAGE 1e: GENERATE SUBSUBCONCEPTS IF MISSING (only for selected chapters)
     # ==========================================================================
     if outline_needs_subsubconcepts(results):
         logger.info("Outline missing subsubconcepts, generating...")
@@ -625,7 +702,9 @@ async def generate_book(config: Config) -> str:
         topic_data, results, language_model, output_dir, max_chapters,
         critique_enabled=config.plan_critique_enabled,
         critique_max_attempts=config.plan_critique_max_attempts,
-        book_vision=book_vision
+        book_vision=book_vision,
+        research_manager=research_manager,
+        chapter_paper_assignments=chapter_paper_assignments,
     )
 
     print(f"\n{'='*60}")
@@ -690,6 +769,43 @@ async def generate_book(config: Config) -> str:
             print(f"{'='*60}\n")
 
     # ==========================================================================
+    # STAGE 2c: KNOWLEDGE GRAPH RESEARCH (Optional - requires mcp-graphiti)
+    # ==========================================================================
+    stage2_pipeline = None
+
+    if config.enable_stage2_research and research_manager:
+        logger.info("Starting Stage 2 research with knowledge graph...")
+        logger.info("This requires mcp-graphiti Docker container running.")
+
+        try:
+            stage2_pipeline = await run_stage2_research(
+                config=config,
+                research_manager=research_manager,
+                language_model=language_model,
+            )
+
+            if stage2_pipeline:
+                print(f"\n{'='*60}")
+                print("STAGE 2 KNOWLEDGE GRAPH RESEARCH COMPLETE:")
+                print(f"  - Connected to: {config.graphiti_mcp_url}")
+                print(f"  - Group ID: {config.graphiti_group_id}")
+                print(f"  - Papers processed: {len(research_manager.get_all_papers())}")
+                print(f"{'='*60}\n")
+            else:
+                print(f"\n{'='*60}")
+                print("STAGE 2 RESEARCH SKIPPED:")
+                print("  mcp-graphiti not available - using arXiv data only")
+                print(f"{'='*60}\n")
+
+        except Exception as e:
+            logger.warning(f"Stage 2 research failed: {e}")
+            logger.info("Continuing without knowledge graph - using arXiv data only")
+            print(f"\n{'='*60}")
+            print(f"WARNING: Stage 2 research failed: {e}")
+            print("Continuing with Stage 1 research only...")
+            print(f"{'='*60}\n")
+
+    # ==========================================================================
     # STAGE 3: CONTENT GENERATION (Direct Write with Style)
     # ==========================================================================
 
@@ -706,10 +822,109 @@ async def generate_book(config: Config) -> str:
 
     logger.info("Writing sections directly from topic names...")
 
+    # Create research context callback for content generation
+    # Uses Stage 2 pipeline if available, otherwise falls back to ResearchManager
+    # Now also filters by chapter paper assignments
+    get_research_context_callback = None
+    _chapter_paper_assignments = chapter_paper_assignments  # Capture for closure
+
+    if stage2_pipeline and stage2_pipeline.connected:
+        logger.info("Stage 2 knowledge graph context enabled for content generation")
+        logger.info("Using LLM-generated smart queries for section context")
+        if _chapter_paper_assignments:
+            logger.info(f"Chapter paper assignments available for {len(_chapter_paper_assignments)} chapters")
+
+        # Capture context needed for smart query generation
+        _section_plans = all_section_plans
+        _book_topic = topic_data["topic"]
+        _language_model = language_model
+
+        async def get_research_context_callback(chapter: str, section: str) -> str:
+            """Get research context from Stage 2 knowledge graph using smart queries (async).
+
+            Uses Synalinks to generate targeted search queries based on section plan,
+            instead of naive keyword extraction.
+            """
+            # Look up section plan for this section
+            section_plan = ""
+            chapter_plans = _section_plans.get(chapter, {})
+            section_plan_list = chapter_plans.get("section_plans", [])
+
+            # Find matching section plan (by position or name match)
+            for plan in section_plan_list:
+                if isinstance(plan, dict):
+                    plan_section = plan.get("section_name", "")
+                    if plan_section == section or section in plan_section:
+                        from .planning import format_section_plan
+                        section_plan = format_section_plan(plan)
+                        break
+
+            try:
+                # Use smart query generation with full section context
+                context = await stage2_pipeline.get_context_for_section(
+                    chapter_name=chapter,
+                    section_name=section,
+                    section_plan=section_plan or f"Section about {section}",
+                    book_topic=_book_topic,
+                    language_model=_language_model,
+                )
+                if context:
+                    return context
+            except Exception as e:
+                logger.warning(f"Stage 2 smart context retrieval failed: {e}")
+                import traceback
+                logger.debug(f"Traceback: {traceback.format_exc()}")
+
+            # Fall back to ResearchManager with paper filtering
+            if research_manager:
+                # Strip number prefix (e.g., "1. ") from chapter name to match assignment keys
+                import re
+                base_chapter = re.sub(r'^\d+\.\s*', '', chapter)
+                assigned_papers = _chapter_paper_assignments.get(base_chapter, [])
+                return await research_manager.for_section_writing(chapter, section, assigned_papers=assigned_papers)
+            return ""
+
+    elif research_manager:
+        logger.info("Research context enabled for content generation")
+        if _chapter_paper_assignments:
+            logger.info(f"Chapter paper assignments available for {len(_chapter_paper_assignments)} chapters")
+
+        async def get_research_context_callback(chapter: str, section: str) -> str:
+            # Strip number prefix (e.g., "1. ") from chapter name to match assignment keys
+            import re
+            base_chapter = re.sub(r'^\d+\.\s*', '', chapter)
+            assigned_papers = _chapter_paper_assignments.get(base_chapter, [])
+            return await research_manager.for_section_writing(chapter, section, assigned_papers=assigned_papers)
+
+    # Build full paper dicts for fast chapter references (if enabled)
+    # Uses synalinks.Decision to match paper titles to full paper dicts
+    chapter_paper_dicts = None
+    if config.enable_chapter_references and research_manager and _chapter_paper_assignments:
+        logger.info("Building chapter reference lists using LLM matching...")
+        chapter_paper_dicts = {}
+        all_papers = research_manager.get_all_papers()
+
+        for chapter_name, paper_titles in _chapter_paper_assignments.items():
+            # Match paper titles to full paper dicts using synalinks.Decision
+            matched_papers = []
+            for title in paper_titles:
+                matched_paper = await match_paper_title_to_dict(
+                    query_title=title,
+                    all_papers=all_papers,
+                    language_model=language_model,
+                )
+                if matched_paper:
+                    matched_papers.append(matched_paper)
+
+            if matched_papers:
+                chapter_paper_dicts[chapter_name] = matched_papers
+                logger.info(f"  {chapter_name[:40]}...: {len(matched_papers)} references")
+
     chapters = await write_all_sections_direct(
         topic_data, hierarchy, book_plan, chapters_overview, chapter_plans,
         all_section_plans, language_model, output_dir, config.intro_styles,
-        max_chapters, writing_style, get_citation_instructions_callback
+        max_chapters, writing_style, get_citation_instructions_callback,
+        get_research_context_callback, citation_manager, chapter_paper_dicts
     )
 
     total_sections = sum(len(sections) for sections in hierarchy.values())

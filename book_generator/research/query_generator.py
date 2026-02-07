@@ -14,14 +14,23 @@ from .models import BookTopic, ResearchQueries
 logger = logging.getLogger(__name__)
 
 
-QUERY_GENERATION_INSTRUCTIONS = """Generate 3-5 research questions to discover cutting-edge knowledge for this book.
+QUERY_GENERATION_INSTRUCTIONS = """Generate 4-6 research questions to discover cutting-edge knowledge for this book.
 
-The questions should help uncover:
-- New theoretical frameworks and paradigms (focus on 2024-2025)
-- Recent methods and how they work conceptually
-- Important papers and their key contributions
-- Current tools, frameworks, and libraries
-- Open problems and future research directions
+You MUST include these types of queries:
+
+1. **FRAMEWORKS & LIBRARIES QUERY (REQUIRED)**: One query MUST specifically ask:
+   "What are the main frameworks, libraries, and tools for [topic]?
+   Include what each does and when to use it."
+   This helps readers understand what tools exist in the field.
+
+2. **THEORETICAL ADVANCES QUERY**: Recent breakthroughs, new paradigms, and foundational papers (2023-2025)
+
+3. **METHODS & TECHNIQUES QUERY**: How cutting-edge approaches work conceptually
+
+4. **OPEN PROBLEMS QUERY**: Current challenges, limitations, and active research directions
+
+5. **PRACTICAL IMPLEMENTATIONS QUERY** (for technical topics): Real-world applications,
+   production systems, and case studies
 
 Each question should be:
 - Conceptually focused (asking about IDEAS and METHODS, not statistics)
@@ -33,7 +42,8 @@ DO NOT ask about:
 - Company valuations or funding
 - Popularity rankings
 
-The goal is to discover knowledge that will help write an educational, cutting-edge book."""
+The goal is to discover knowledge that will help write an educational, cutting-edge book
+that practitioners can actually USE (with real frameworks and tools)."""
 
 
 async def build_query_generator_program(

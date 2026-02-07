@@ -164,6 +164,42 @@ class CitationManager:
             lines.append("")
         return "\n".join(lines)
 
+    def get_chapter_references(self, chapter: str) -> List[str]:
+        """
+        Get references used in a specific chapter.
+
+        Returns deduplicated, sorted list of full references for the chapter.
+        """
+        # Find all claims in this chapter
+        chapter_claims = [c for c in self.claims if c.chapter == chapter]
+
+        seen = set()
+        references = []
+
+        for claim in chapter_claims:
+            citation = self._citation_by_claim.get(claim.id)
+            if citation and citation.full_reference and citation.full_reference not in seen:
+                seen.add(citation.full_reference)
+                references.append(citation.full_reference)
+
+        return sorted(references)
+
+    def get_chapter_bibliography_markdown(self, chapter: str) -> str:
+        """
+        Get formatted bibliography for a specific chapter.
+
+        Returns markdown with "### References" header and bullet list.
+        """
+        references = self.get_chapter_references(chapter)
+        if not references:
+            return ""
+
+        lines = ["### References", ""]
+        for ref in references:
+            lines.append(f"- {ref}")
+            lines.append("")
+        return "\n".join(lines)
+
 
 def format_strict_citation_instructions(
     subsection_name: str,
@@ -186,20 +222,45 @@ You are writing content for this subsection. You MUST follow these rules EXACTLY
 """)
 
     if verified_claims:
-        claims_text = "\n".join([
-            f"  [{i+1}] CLAIM: \"{c['claim']}\"\n      CITE AS: ({c['citation']})\n      SOURCE: \"{c['source_quote'][:150]}...\""
-            for i, c in enumerate(verified_claims)
-        ])
+        # Parse author/year from citation for proper formatting
+        claims_text_parts = []
+        for i, c in enumerate(verified_claims):
+            citation = c['citation']
+            # Extract author and year for in-text citation format guidance
+            author_part = citation.split(',')[0].strip() if ',' in citation else citation.split('(')[0].strip()
+            year_part = ""
+            if '(' in citation:
+                year_part = citation.split('(')[-1].replace(')', '').strip()
+            elif ',' in citation:
+                parts_split = citation.split(',')
+                if len(parts_split) > 1:
+                    year_part = parts_split[-1].strip().replace(')', '')
+
+            claims_text_parts.append(
+                f"  [{i+1}] CLAIM: \"{c['claim']}\"\n"
+                f"      CITE AS: ({c['citation']})\n"
+                f"      AUTHOR: {author_part}\n"
+                f"      YEAR: {year_part}\n"
+                f"      SOURCE: \"{c['source_quote'][:150]}...\""
+            )
+        claims_text = "\n".join(claims_text_parts)
 
         parts.append(f"""
 === VERIFIED CLAIMS (you MAY use these - MUST cite) ===
 
 {claims_text}
 
+RULES FOR IN-TEXT CITATIONS:
+- Use (Author, Year) format: (Smith, 2023) or (Smith et al., 2023)
+- For multiple authors: (Smith & Jones, 2023) or (Smith et al., 2023) for 3+
+- When citing in sentence: "Smith et al. (2023) showed that..."
+- Multiple citations in same parentheses: (Smith, 2023; Jones, 2024)
+- NEVER use footnotes, superscripts, or [1] style numeric citations
+- Use the exact author name and year provided in CITE AS above
+
 RULES FOR VERIFIED CLAIMS:
 - You MAY include any of these claims in your text
-- When you use a claim, you MUST include its citation
-- Use the exact citation format provided
+- When you use a claim, you MUST include its citation using (Author, Year) format
 - You may paraphrase slightly, but keep the factual content accurate
 """)
     else:

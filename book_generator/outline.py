@@ -3,6 +3,12 @@ Outline generation and reorganization.
 
 This module handles the creation of the book's hierarchical outline
 and its optional reorganization based on conceptual evolution.
+
+Key features:
+- Vision-guided outline generation
+- Research-informed outline generation (post-research)
+- Role-tagged chapters for better critique
+- Organization logic based on reader mode
 """
 
 import logging
@@ -26,8 +32,16 @@ from .models import (
     ChapterPrioritizationInput,
     PrioritizedChapters,
     VisionGuidedConceptInput,
+    # New research-informed models
+    ReaderMode,
+    ChapterRole,
+    RoleTaggedChapter,
+    ResearchInformedOutline,
+    ResearchInformedOutlineInput,
+    TaxonomyDetectionInput,
+    TaxonomyDetectionOutput,
 )
-from .utils import build_outline_text
+from .utils import build_outline_text, output_exists, load_json_from_file, save_json_to_file, save_to_file
 from .vision import format_book_vision
 
 logger = logging.getLogger(__name__)
@@ -856,3 +870,423 @@ IMPORTANT:
         logger.info(f"  {i+1}. {concept_name} - {reason}")
 
     return {"concepts": selected_concepts}
+
+
+# =============================================================================
+# Research-Informed Outline Generation
+# =============================================================================
+
+PROBLEM_CENTRIC_INSTRUCTIONS = """Generate a PROBLEM-CENTRIC outline for PRACTITIONERS.
+
+Organization Logic: Group by CAPABILITY/PROBLEM
+- "What can I build with this?"
+- "How do I solve this problem?"
+- Chapters should be somewhat self-sufficient (can read out of order)
+
+Example structure:
+- Chapter: "Building Explainable AI Systems" (IMPLEMENTATION role)
+  - Using Logic Tensor Networks
+  - Using Scallop
+  - Choosing your approach
+- Chapter: "Adding Reasoning to LLMs" (DEEP_METHOD role)
+  - Chain-of-Thought patterns
+  - Tool use and function calling
+
+Assign appropriate ROLES to chapters:
+- PROBLEM_MOTIVATION: Why this matters
+- ESSENTIAL_BACKGROUND: Just-enough theory
+- LANDSCAPE: Survey of approaches
+- DEEP_METHOD: Detailed key approach
+- IMPLEMENTATION: Code and patterns
+- CASE_STUDY: Real applications
+- FRONTIERS: Open problems
+
+CRITICAL - PAPER ASSIGNMENT:
+For each chapter, you MUST populate the `relevant_papers` field with papers from the research.
+- Look at the KEY PAPERS/METHODS list in the research findings
+- Assign each paper to the ONE chapter where it's most relevant
+- Each paper should appear in only ONE chapter (no duplicates)
+- Use exact paper titles from the research
+- This prevents repetition during content generation
+
+IMPORTANT: Base structure on the RESEARCH FINDINGS provided."""
+
+EVOLUTION_CENTRIC_INSTRUCTIONS = """Generate an EVOLUTION-CENTRIC outline for ACADEMICS.
+
+Organization Logic: Group by TEMPORAL/CONCEPTUAL EVOLUTION
+- "How did ideas develop?"
+- "What's the intellectual lineage?"
+- Chapters should build sequentially on each other
+
+Example structure:
+- Chapter: "The Symbolic AI Era (1956-1987)" (HISTORICAL role)
+  - Logic programming
+  - Expert systems
+  - The knowledge acquisition bottleneck
+- Chapter: "The Connectionist Revolution (1986-2012)" (HISTORICAL role)
+  - Backpropagation and neural networks
+  - The statistical learning paradigm
+- Chapter: "The Neuro-Symbolic Synthesis (2018-present)" (LANDSCAPE role)
+  - Differentiable logic
+  - Neural theorem proving
+
+Assign appropriate ROLES to chapters:
+- PROBLEM_MOTIVATION: Why this matters
+- PREREQUISITES: Formal background
+- HISTORICAL: Field evolution
+- LANDSCAPE: Survey of approaches
+- DEEP_METHOD: Detailed key approach
+- FORMAL_THEORY: Proofs
+- FRONTIERS: Open problems
+
+CRITICAL - PAPER ASSIGNMENT:
+For each chapter, you MUST populate the `relevant_papers` field with papers from the research.
+- Look at the KEY PAPERS/METHODS list in the research findings
+- Assign each paper to the ONE chapter where it's most relevant
+- Each paper should appear in only ONE chapter (no duplicates)
+- Use exact paper titles from the research
+- This prevents repetition during content generation
+
+IMPORTANT: Base structure on the RESEARCH FINDINGS provided."""
+
+TAXONOMY_BASED_INSTRUCTIONS = """Generate a TAXONOMY-BASED outline using categories from research.
+
+The research revealed a natural taxonomy/categorization for this field.
+Use that taxonomy as the organizing principle.
+
+Example (if research revealed Kautz's 6 types for neuro-symbolic AI):
+- Chapter: "Type 1: Symbolic[Neuro]" (DEEP_METHOD role)
+- Chapter: "Type 2: Neuro|Symbolic" (DEEP_METHOD role)
+- Chapter: "Type 3: Neuro:Symbolic→" (DEEP_METHOD role)
+...
+
+Assign appropriate ROLES to chapters based on their function.
+
+CRITICAL - PAPER ASSIGNMENT:
+For each chapter, you MUST populate the `relevant_papers` field with papers from the research.
+- Look at the KEY PAPERS/METHODS list in the research findings
+- Assign each paper to the ONE chapter where it's most relevant
+- Each paper should appear in only ONE chapter (no duplicates)
+- Use exact paper titles from the research
+- This prevents repetition during content generation
+
+IMPORTANT: The taxonomy should come from the RESEARCH FINDINGS.
+Cite the source of the taxonomy in your output."""
+
+
+async def generate_research_informed_outline(
+    topic_data: dict,
+    book_vision: dict,
+    research_manager,
+    initial_outline: dict,
+    language_model,
+    output_dir: str = None,
+) -> dict:
+    """
+    Generate a NEW outline informed by research findings.
+
+    This is the "real" outline - the initial outline exists only to
+    generate research queries. This outline reflects what research discovered.
+
+    Uses synalinks.Branch to select organization logic based on reader_mode:
+    - practitioner → Problem-Centric
+    - academic → Evolution-Centric
+    - If research reveals a natural taxonomy → Taxonomy-Based
+
+    Args:
+        topic_data: Dict with topic, goal, book_name
+        book_vision: The generated book vision (contains reader_mode)
+        research_manager: ResearchManager with parsed research
+        initial_outline: The draft outline used for research queries
+        language_model: The LLM to use
+        output_dir: Optional directory to save outputs
+
+    Returns:
+        ResearchInformedOutline dict with role-tagged chapters
+    """
+    # Check for existing research-informed outline
+    if output_dir and output_exists(output_dir, "01_research_informed_outline.json"):
+        existing = load_json_from_file(output_dir, "01_research_informed_outline.json")
+        if existing:
+            logger.info("Loaded existing research-informed outline")
+            return existing
+
+    logger.info("Generating research-informed outline...")
+
+    reader_mode = book_vision.get('reader_mode', 'academic')
+
+    # Build research context
+    research_summary = research_manager.summary if research_manager else ""
+    research_themes = research_manager.get_themes() if research_manager else []
+    research_papers = research_manager.get_all_papers() if research_manager else []
+
+    themes_text = "\n".join(f"- {t}" for t in research_themes)
+    papers_text = "\n".join([
+        f"- {p.get('title', 'Unknown')} ({p.get('year', 'N/A')}): {p.get('method', 'N/A')}"
+        for p in research_papers[:20]
+    ])
+
+    # Summarize initial outline
+    initial_chapters = []
+    for concept in initial_outline.get('concepts', []):
+        sections = [s.get('subconcept', '') for s in concept.get('subconcepts', [])]
+        initial_chapters.append(f"- {concept.get('concept', '')}: {', '.join(sections[:3])}")
+    initial_outline_text = "\n".join(initial_chapters)
+
+    # Build research context block
+    research_context = f"""
+=== RESEARCH FINDINGS ===
+
+FIELD SUMMARY:
+{research_summary}
+
+KEY THEMES DISCOVERED:
+{themes_text}
+
+KEY PAPERS/METHODS:
+{papers_text}
+
+INITIAL OUTLINE (for reference, can be restructured):
+{initial_outline_text}
+
+=== END RESEARCH ===
+
+Generate a NEW outline structure based on these research findings.
+The structure should reflect what research actually discovered about the field.
+"""
+
+    input_data = ResearchInformedOutlineInput(
+        topic=topic_data["topic"],
+        goal=topic_data["goal"],
+        book_name=topic_data["book_name"],
+        reader_mode=reader_mode,
+        initial_outline_summary=initial_outline_text,
+        research_summary=research_summary,
+        research_papers=papers_text,
+        research_themes=themes_text,
+    )
+
+    # Check if research revealed a natural taxonomy using LLM decision
+    has_taxonomy, taxonomy_name, taxonomy_categories = await detect_taxonomy_in_research(
+        research_manager, language_model
+    )
+
+    if has_taxonomy:
+        # Use taxonomy-based organization with discovered taxonomy info
+        logger.info(f"Using taxonomy-based organization: {taxonomy_name}")
+        categories_text = "\n".join(f"- {c}" for c in taxonomy_categories) if taxonomy_categories else "N/A"
+        taxonomy_instructions = f"""
+DISCOVERED TAXONOMY: {taxonomy_name}
+CATEGORIES:
+{categories_text}
+
+Use these categories from the research as the organizing principle for chapters.
+Each major category should typically become a chapter (or part of a chapter).
+
+""" + TAXONOMY_BASED_INSTRUCTIONS
+
+        generator = synalinks.Generator(
+            data_model=ResearchInformedOutline,
+            language_model=language_model,
+            temperature=1.0,
+            instructions=research_context + taxonomy_instructions,
+        )
+        result = await generator(input_data)
+    else:
+        # Use Branch to select organization based on reader_mode
+        (practitioner_outline, academic_outline, hybrid_outline) = await synalinks.Branch(
+            question=f"""The reader_mode is "{reader_mode}". Which organization logic should be used?
+
+If reader_mode is "practitioner" → choose "problem_centric"
+If reader_mode is "academic" → choose "evolution_centric"
+If reader_mode is "hybrid" → choose "evolution_centric" (with practical examples)""",
+            labels=["problem_centric", "evolution_centric", "hybrid"],
+            branches=[
+                synalinks.Generator(
+                    data_model=ResearchInformedOutline,
+                    language_model=language_model,
+                    temperature=1.0,
+                    instructions=research_context + PROBLEM_CENTRIC_INSTRUCTIONS,
+                ),
+                synalinks.Generator(
+                    data_model=ResearchInformedOutline,
+                    language_model=language_model,
+                    temperature=1.0,
+                    instructions=research_context + EVOLUTION_CENTRIC_INSTRUCTIONS,
+                ),
+                synalinks.Generator(
+                    data_model=ResearchInformedOutline,
+                    language_model=language_model,
+                    temperature=1.0,
+                    instructions=research_context + EVOLUTION_CENTRIC_INSTRUCTIONS,  # Hybrid uses evolution with practical focus
+                ),
+            ],
+            language_model=language_model,
+            temperature=1.0,
+            return_decision=False,
+            inject_decision=False,
+        )(input_data)
+
+        # Merge branches - only one should be non-None
+        # Note: Python's | operator doesn't work on None, so check explicitly
+        if practitioner_outline is not None:
+            result = practitioner_outline
+        elif academic_outline is not None:
+            result = academic_outline
+        elif hybrid_outline is not None:
+            result = hybrid_outline
+        else:
+            result = None
+
+    if result is None:
+        logger.warning("Research-informed outline generation failed, using initial outline")
+        return initial_outline
+
+    result_dict = result.get_json()
+
+    # Save the outline
+    if output_dir:
+        save_json_to_file(output_dir, "01_research_informed_outline.json", result_dict)
+        save_to_file(output_dir, "01_research_informed_outline.txt",
+                     format_research_informed_outline(result_dict))
+
+    logger.info(f"Generated research-informed outline with {len(result_dict.get('chapters', []))} chapters")
+
+    return result_dict
+
+
+async def detect_taxonomy_in_research(
+    research_manager,
+    language_model
+) -> tuple:
+    """
+    Detect if research revealed a natural taxonomy using LLM Branch.
+
+    This replaces the Python keyword-matching approach with a proper
+    LLM decision via synalinks.Branch.
+
+    Args:
+        research_manager: ResearchManager with parsed research
+        language_model: The LLM to use for decision
+
+    Returns:
+        Tuple of (has_taxonomy: bool, taxonomy_name: str, categories: list)
+    """
+    if not research_manager:
+        return (False, "N/A", [])
+
+    # Build research context
+    themes = research_manager.get_themes() if hasattr(research_manager, 'get_themes') else []
+    summary = research_manager.summary if hasattr(research_manager, 'summary') else ""
+    papers = research_manager.get_all_papers() if hasattr(research_manager, 'get_all_papers') else []
+
+    themes_text = "\n".join(f"- {t}" for t in themes)
+    papers_text = "\n".join([
+        f"- {p.get('title', 'Unknown')} ({p.get('year', 'N/A')}): {p.get('method', 'N/A')}"
+        for p in papers[:15]
+    ])
+
+    input_data = TaxonomyDetectionInput(
+        research_summary=summary,
+        research_themes=themes_text,
+        research_papers=papers_text,
+    )
+
+    # Use LLM to detect taxonomy - this is more robust than keyword matching
+    generator = synalinks.Generator(
+        data_model=TaxonomyDetectionOutput,
+        language_model=language_model,
+        temperature=1.0,
+        instructions="""Analyze the research findings to determine if they reveal a natural
+taxonomy or categorization scheme that should organize the book structure.
+
+A taxonomy is detected if:
+1. Research explicitly mentions a classification (e.g., "Kautz's 6 types of neuro-symbolic AI")
+2. There's a widely-accepted categorization scheme in the field
+3. The research reveals clear, non-overlapping categories that practitioners use
+
+A taxonomy is NOT detected if:
+- Categories are just loose thematic groupings
+- The classification is not widely adopted
+- Categories overlap significantly
+
+Examples of taxonomies:
+- "Kautz's 6 types of neuro-symbolic AI" → has_taxonomy=True
+- "Three paradigms of machine learning: supervised, unsupervised, reinforcement" → has_taxonomy=True
+- "Various approaches to NLP" (no specific scheme) → has_taxonomy=False
+
+Be conservative - only return has_taxonomy=True if there's a CLEAR, NAMED taxonomy."""
+    )
+
+    result = await generator(input_data)
+    result_dict = result.get_json()
+
+    has_taxonomy = result_dict.get("has_taxonomy", False)
+    taxonomy_name = result_dict.get("taxonomy_name", "N/A")
+    categories = result_dict.get("taxonomy_categories", [])
+
+    if has_taxonomy:
+        logger.info(f"Taxonomy detected via LLM: {taxonomy_name} with {len(categories)} categories")
+    else:
+        logger.info("No taxonomy detected - will use reader_mode organization")
+
+    return (has_taxonomy, taxonomy_name, categories)
+
+
+def format_research_informed_outline(outline: dict) -> str:
+    """Format research-informed outline as readable text."""
+    lines = [
+        "RESEARCH-INFORMED OUTLINE",
+        "=" * 50,
+        "",
+        f"Organization Logic: {outline.get('organization_logic', 'N/A')}",
+        f"Taxonomy Source: {outline.get('taxonomy_source', 'N/A')}",
+        "",
+        "CHAPTERS:",
+        "-" * 40,
+    ]
+
+    for i, chapter in enumerate(outline.get('chapters', []), 1):
+        lines.append(f"\n{i}. {chapter.get('chapter_name', 'Unknown')} [{chapter.get('role', 'N/A')}]")
+        lines.append(f"   Key concepts: {', '.join(chapter.get('key_concepts', []))}")
+        if chapter.get('relevant_papers'):
+            lines.append(f"   Papers: {', '.join(chapter.get('relevant_papers', [])[:3])}")
+        if chapter.get('sections'):
+            for section in chapter.get('sections', []):
+                lines.append(f"   - {section}")
+
+    return "\n".join(lines)
+
+
+def convert_research_outline_to_hierarchy(research_outline: dict) -> dict:
+    """
+    Convert ResearchInformedOutline to standard DeepHierarchy format.
+
+    This allows the research-informed outline to be used by the rest of
+    the pipeline which expects the standard format.
+
+    Args:
+        research_outline: ResearchInformedOutline dict
+
+    Returns:
+        Dict in DeepHierarchy format (concepts with subconcepts)
+    """
+    concepts = []
+
+    for chapter in research_outline.get('chapters', []):
+        concept_entry = {
+            "concept": chapter.get('chapter_name', ''),
+            "role": chapter.get('role', 'DEEP_METHOD'),
+            "subconcepts": []
+        }
+
+        for section in chapter.get('sections', []):
+            subconcept_entry = {
+                "subconcept": section,
+                "subsubconcepts": []  # Will be generated later
+            }
+            concept_entry["subconcepts"].append(subconcept_entry)
+
+        concepts.append(concept_entry)
+
+    return {"concepts": concepts}
