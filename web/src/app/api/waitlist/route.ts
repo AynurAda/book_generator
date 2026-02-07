@@ -1,10 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 // In-memory storage for demo (replace with database in production)
 const waitlist: string[] = [];
 
+// Rate limit: 5 waitlist signups per IP per hour
+const WAITLIST_RATE_LIMIT = { limit: 5, windowSec: 3600 };
+
 export async function POST(request: NextRequest) {
   try {
+    // --- Rate limit ---
+    const ip = getClientIp(request);
+    const rl = rateLimit(ip, "waitlist", WAITLIST_RATE_LIMIT);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests. Please try again later." },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
     const { email } = body;
 

@@ -10,8 +10,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
 parts/
 sdist/
 var/
@@ -31,6 +31,7 @@ book_gen_venv/
 .env
 .env.local
 .env.*.local
+!*.example
 
 # IDE
 .idea/

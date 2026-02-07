@@ -7,7 +7,7 @@ Tracking file for identified issues from code review (2026-02-07).
 - [x] **#2 XSS Vulnerability in ConceptGraph3D.tsx** — String interpolation with unsanitized node data into HTML labels. Fixed: escape HTML entities before rendering.
 - [x] **#3 CORS Misconfiguration in api_server.py** — `allow_methods=["*"]` too permissive, origins hardcoded. Fixed: explicit methods, env-driven origins.
 - [ ] **#1 Exposed API Keys in .env** — Real API keys (OpenAI, Gemini, Perplexity, OpenRouter) present in .env file. Rotate all keys immediately and verify they were never committed to git history.
-- [ ] **#4 No Authentication on API Server** — Anyone can submit generation requests and download outputs. No rate limiting.
+- [x] **#4 No Authentication on API Server** — Added IP-based rate limiting (3 generations/hr, 5 waitlist signups/hr) on Next.js API routes. Added shared `API_SECRET` between Next.js and FastAPI so only the frontend server can trigger generations. Read-only endpoints (status, download) stay open.
 
 ## HIGH
 

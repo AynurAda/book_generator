@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 // FastAPI backend URL - configurable via environment variable
 const API_BASE_URL = process.env.BACKEND_URL || "http://localhost:8001";
+const API_SECRET = process.env.API_SECRET || "";
+
+// Rate limit: 3 generation requests per IP per hour
+const GENERATE_RATE_LIMIT = { limit: 3, windowSec: 3600 };
 
 const VALID_TIERS = ["primer", "deep_dive", "masterwork"] as const;
 
@@ -52,6 +57,17 @@ function validateString(
  */
 export async function POST(request: NextRequest) {
   try {
+    // --- Rate limit ---
+    const ip = getClientIp(request);
+    const rl = rateLimit(ip, "generate", GENERATE_RATE_LIMIT);
+    if (!rl.allowed) {
+      const retryAfter = Math.ceil((rl.resetAt - Date.now()) / 1000);
+      return NextResponse.json(
+        { error: `Rate limit exceeded. Try again in ${Math.ceil(retryAfter / 60)} minutes.` },
+        { status: 429, headers: { "Retry-After": String(retryAfter) } }
+      );
+    }
+
     const body = await request.json();
 
     // --- Validate required string fields ---
@@ -93,9 +109,12 @@ export async function POST(request: NextRequest) {
     }
 
     // --- Forward sanitised payload to backend ---
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (API_SECRET) headers["X-API-Secret"] = API_SECRET;
+
     const response = await fetch(`${API_BASE_URL}/api/generate`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({
         topic: String(body.topic).trim(),
         domain: String(body.domain).trim(),

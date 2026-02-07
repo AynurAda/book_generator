@@ -16,7 +16,7 @@ from enum import Enum
 from typing import Optional
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field, field_validator
@@ -52,8 +52,21 @@ app.add_middleware(
     allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization"],
+    allow_headers=["Content-Type", "Authorization", "X-API-Secret"],
 )
+
+# Shared secret: when set, only requests with a matching X-API-Secret header
+# can create generation jobs.  Read-only endpoints (status, download) stay open.
+API_SECRET = os.environ.get("API_SECRET", "")
+
+
+def _verify_secret(request: Request):
+    """Raise 403 if API_SECRET is configured and the header doesn't match."""
+    if not API_SECRET:
+        return  # no secret configured — allow (local dev)
+    header = request.headers.get("X-API-Secret", "")
+    if header != API_SECRET:
+        raise HTTPException(status_code=403, detail="Forbidden")
 
 
 # =============================================================================
@@ -204,7 +217,7 @@ The book should speak the professional language of this domain.
             audience=request["background"],
             num_chapters=num_chapters,
             focus=request.get("focus"),
-            model_name="gemini-2.0-flash",  # Default model
+            model_name="gemini/gemini-3-flash-preview",  # Default model
             interactive_outline_approval=False,  # API mode - no interactive approval
         )
 
@@ -275,13 +288,16 @@ async def health():
 @app.post("/api/generate", response_model=GenerateResponse)
 async def create_generation_job(
     request: GenerateRequest,
-    background_tasks: BackgroundTasks
+    background_tasks: BackgroundTasks,
+    raw_request: Request,
 ):
     """
     Start a new book generation job.
 
     Returns a job ID that can be used to check progress and download the result.
     """
+    _verify_secret(raw_request)
+
     # Create job
     job_id = str(uuid.uuid4())
     job_store.create(job_id, request.model_dump(mode="json"))
@@ -388,13 +404,15 @@ async def download_markdown(job_id: str):
 
 
 @app.delete("/api/generate/{job_id}")
-async def cancel_job(job_id: str):
+async def cancel_job(job_id: str, raw_request: Request):
     """
     Cancel a pending or running job.
 
     Note: This doesn't stop an already-running generation,
     but marks it as cancelled.
     """
+    _verify_secret(raw_request)
+
     job = job_store.get(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
