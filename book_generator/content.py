@@ -36,6 +36,12 @@ from .utils import (
     save_json_to_file,
     build_outline_text,
 )
+from .constants import (
+    MAX_BANNED_CONCEPTS_DISPLAY,
+    MAX_QUALITY_CHECK_ATTEMPTS,
+    RESEARCH_CONTEXT_CHAR_LIMIT,
+    SECTION_NUMBERING_MULTIPLIER,
+)
 from .planning import (
     format_book_plan,
     format_chapters_overview,
@@ -324,10 +330,10 @@ def format_assigned_research(
             parts.append("║ BANNED CONCEPTS (assigned to other subsections - DO NOT      ║")
             parts.append("║ explain these, just reference them if needed):               ║")
             parts.append("╚══════════════════════════════════════════════════════════════╝")
-            for concept in other_concepts[:10]:  # Limit to avoid token overflow
+            for concept in other_concepts[:MAX_BANNED_CONCEPTS_DISPLAY]:
                 parts.append(f"  ✗ {concept}")
-            if len(other_concepts) > 10:
-                parts.append(f"  ... and {len(other_concepts) - 10} more")
+            if len(other_concepts) > MAX_BANNED_CONCEPTS_DISPLAY:
+                parts.append(f"  ... and {len(other_concepts) - MAX_BANNED_CONCEPTS_DISPLAY} more")
             parts.append("")
 
     # Show assigned domain
@@ -343,7 +349,7 @@ def format_assigned_research(
 
     # Include research for reference
     parts.append("RESEARCH CONTEXT (for reference - but only cover YOUR assigned concepts):")
-    parts.append(full_research[:6000])  # Slightly reduced to make room for banned concepts
+    parts.append(full_research[:RESEARCH_CONTEXT_CHAR_LIMIT])
 
     return "\n".join(parts)
 
@@ -798,7 +804,7 @@ async def write_section_with_subsections(
     section_plan_text = format_section_plan(section_plan) if section_plan else "No specific plan"
     quality_feedback = ""
     attempt = 0
-    max_attempts = 5  # Safety limit
+    max_attempts = MAX_QUALITY_CHECK_ATTEMPTS
 
     # Get research context ONCE for the entire section (outside the loop)
     full_research_context = None
@@ -1014,7 +1020,7 @@ async def write_chapter_with_sections(
 
     # Generate each section
     section_contents = []
-    section_counter = (chapter_number - 1) * 100  # Section numbering for file naming
+    section_counter = (chapter_number - 1) * SECTION_NUMBERING_MULTIPLIER
 
     for i, (section_name, subsection_names) in enumerate(chapter_sections.items()):
         if not subsection_names:

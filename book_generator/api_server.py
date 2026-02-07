@@ -19,10 +19,11 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from .config import Config
 from .pipeline import generate_book
+from .job_store import JobStore
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -73,15 +74,29 @@ class JobStatus(str, Enum):
     FAILED = "failed"
 
 
+class Tier(str, Enum):
+    """Valid pricing tiers."""
+    PRIMER = "primer"
+    DEEP_DIVE = "deep_dive"
+    MASTERWORK = "masterwork"
+
+
 class GenerateRequest(BaseModel):
     """Request body for starting a book generation."""
-    topic: str = Field(..., description="The topic to learn about")
-    domain: str = Field(..., description="User's professional domain for contextual examples")
-    goal: str = Field(..., description="What the user wants to be able to DO after reading")
-    background: str = Field(..., description="User's existing knowledge and experience")
-    focus: Optional[str] = Field(None, description="Specific areas to prioritize")
-    num_chapters: Optional[int] = Field(None, description="Limit number of chapters (for faster generation)")
-    tier: str = Field("deep_dive", description="Pricing tier: primer, deep_dive, or masterwork")
+    topic: str = Field(..., min_length=2, max_length=200, description="The topic to learn about")
+    domain: str = Field(..., min_length=2, max_length=200, description="User's professional domain for contextual examples")
+    goal: str = Field(..., min_length=10, max_length=2000, description="What the user wants to be able to DO after reading")
+    background: str = Field(..., min_length=10, max_length=2000, description="User's existing knowledge and experience")
+    focus: Optional[str] = Field(None, max_length=500, description="Specific areas to prioritize")
+    num_chapters: Optional[int] = Field(None, ge=1, le=50, description="Limit number of chapters (for faster generation)")
+    tier: Tier = Field(Tier.DEEP_DIVE, description="Pricing tier: primer, deep_dive, or masterwork")
+
+    @field_validator("topic", "domain", "goal", "background", "focus", mode="before")
+    @classmethod
+    def strip_whitespace(cls, v):
+        if isinstance(v, str):
+            return v.strip()
+        return v
 
 
 class GenerateResponse(BaseModel):
@@ -119,63 +134,45 @@ class OutlineApprovalRequest(BaseModel):
 
 
 # =============================================================================
-# In-Memory Job Store (replace with Redis/DB in production)
+# Persistent Job Store (SQLite)
 # =============================================================================
 
-class Job:
-    """Represents a book generation job."""
-    def __init__(self, job_id: str, request: GenerateRequest):
-        self.job_id = job_id
-        self.request = request
-        self.status = JobStatus.PENDING
-        self.progress = 0
-        self.current_stage = "Initializing"
-        self.message = "Job created, waiting to start"
-        self.created_at = datetime.utcnow()
-        self.updated_at = datetime.utcnow()
-        self.book_name: Optional[str] = None
-        self.pdf_path: Optional[str] = None
-        self.error: Optional[str] = None
-        self.outline: Optional[dict] = None
-        self.awaiting_approval = False
-
-    def update(self, status: JobStatus, progress: int, stage: str, message: str):
-        self.status = status
-        self.progress = progress
-        self.current_stage = stage
-        self.message = message
-        self.updated_at = datetime.utcnow()
-
-    def to_response(self) -> JobStatusResponse:
-        return JobStatusResponse(
-            job_id=self.job_id,
-            status=self.status,
-            progress=self.progress,
-            current_stage=self.current_stage,
-            message=self.message,
-            created_at=self.created_at.isoformat(),
-            updated_at=self.updated_at.isoformat(),
-            book_name=self.book_name,
-            pdf_path=self.pdf_path,
-            error=self.error,
-        )
+DB_PATH = os.environ.get("JOB_STORE_DB", "data/jobs.db")
+job_store = JobStore(DB_PATH)
 
 
-# Simple in-memory store (use Redis in production)
-jobs: dict[str, Job] = {}
+def _job_to_response(job: dict) -> JobStatusResponse:
+    """Convert a job dict from the store into the API response model."""
+    return JobStatusResponse(
+        job_id=job["job_id"],
+        status=job["status"],
+        progress=job["progress"],
+        current_stage=job["current_stage"],
+        message=job["message"],
+        created_at=job["created_at"],
+        updated_at=job["updated_at"],
+        book_name=job.get("book_name"),
+        pdf_path=job.get("pdf_path"),
+        error=job.get("error"),
+    )
 
 
 # =============================================================================
 # Background Task: Book Generation
 # =============================================================================
 
-async def run_generation(job: Job):
+async def run_generation(job_id: str):
     """
     Run the book generation pipeline in the background.
-    Updates job status as it progresses through stages.
+    Updates job status in the SQLite store as it progresses.
     """
     try:
-        request = job.request
+        job = job_store.get(job_id)
+        if not job:
+            logger.error(f"Job {job_id} not found in store")
+            return
+
+        request = job["request"]
 
         # Map tier to chapter count
         tier_chapters = {
@@ -183,67 +180,76 @@ async def run_generation(job: Job):
             "deep_dive": 15,
             "masterwork": 25,
         }
-        num_chapters = request.num_chapters or tier_chapters.get(request.tier, 15)
+        num_chapters = request.get("num_chapters") or tier_chapters.get(request.get("tier", "deep_dive"), 15)
 
         # Create book name from topic and domain
-        book_name = f"{request.topic} for {request.domain}"
-        job.book_name = book_name
+        book_name = f"{request['topic']} for {request['domain']}"
+        job_store.update(job_id, book_name=book_name)
 
         # Build goal with domain context
         full_goal = f"""
-Target audience: {request.background}
+Target audience: {request['background']}
 
-Learning goal: {request.goal}
+Learning goal: {request['goal']}
 
-Domain context: All examples, case studies, and applications should be drawn from {request.domain}.
+Domain context: All examples, case studies, and applications should be drawn from {request['domain']}.
 The book should speak the professional language of this domain.
 """
 
         # Create config
         config = Config(
-            topic=request.topic,
+            topic=request["topic"],
             goal=full_goal,
             book_name=book_name,
-            audience=request.background,
+            audience=request["background"],
             num_chapters=num_chapters,
-            focus=request.focus,
+            focus=request.get("focus"),
             model_name="gemini-2.0-flash",  # Default model
             interactive_outline_approval=False,  # API mode - no interactive approval
         )
 
         # Progress callback: pipeline calls this at each stage transition
-        stage_to_status = {
-            "generating_vision": JobStatus.GENERATING_VISION,
-            "generating_outline": JobStatus.GENERATING_OUTLINE,
-            "planning": JobStatus.PLANNING,
-            "writing_content": JobStatus.WRITING_CONTENT,
-            "generating_illustrations": JobStatus.GENERATING_ILLUSTRATIONS,
-            "generating_cover": JobStatus.GENERATING_COVER,
-            "assembling_pdf": JobStatus.ASSEMBLING_PDF,
-        }
-
         async def on_progress(stage: str, progress: int, message: str):
-            status = stage_to_status.get(stage, JobStatus.PENDING)
-            job.update(status, progress, stage, message)
-            logger.info(f"Job {job.job_id} progress: {stage} ({progress}%) - {message}")
+            job_store.update(
+                job_id,
+                status=stage,
+                progress=progress,
+                current_stage=stage,
+                message=message,
+            )
+            logger.info(f"Job {job_id} progress: {stage} ({progress}%) - {message}")
 
         # Run the generation pipeline with progress reporting
         pdf_path = await generate_book(config, progress_callback=on_progress)
 
         if pdf_path:
-            job.pdf_path = pdf_path
-            job.update(JobStatus.COMPLETED, 100, "Complete", "Book generation complete!")
-            logger.info(f"Job {job.job_id} completed: {pdf_path}")
+            job_store.update(
+                job_id,
+                status=JobStatus.COMPLETED.value,
+                progress=100,
+                current_stage="Complete",
+                message="Book generation complete!",
+                pdf_path=pdf_path,
+            )
+            logger.info(f"Job {job_id} completed: {pdf_path}")
         else:
-            job.update(JobStatus.FAILED, 0, "Failed", "Generation returned no output")
-            job.error = "Pipeline returned None"
+            job_store.update(
+                job_id,
+                status=JobStatus.FAILED.value,
+                progress=0,
+                current_stage="Failed",
+                message="Generation returned no output",
+                error="Pipeline returned None",
+            )
 
     except Exception as e:
-        logger.exception(f"Job {job.job_id} failed with error: {e}")
-        job.status = JobStatus.FAILED
-        job.error = str(e)
-        job.message = f"Generation failed: {str(e)}"
-        job.updated_at = datetime.utcnow()
+        logger.exception(f"Job {job_id} failed with error: {e}")
+        job_store.update(
+            job_id,
+            status=JobStatus.FAILED.value,
+            message=f"Generation failed: {str(e)}",
+            error=str(e),
+        )
 
 
 # =============================================================================
@@ -261,7 +267,7 @@ async def health():
     """Detailed health check."""
     return {
         "status": "healthy",
-        "jobs_in_memory": len(jobs),
+        "total_jobs": job_store.count(),
         "timestamp": datetime.utcnow().isoformat(),
     }
 
@@ -278,17 +284,16 @@ async def create_generation_job(
     """
     # Create job
     job_id = str(uuid.uuid4())
-    job = Job(job_id, request)
-    jobs[job_id] = job
+    job_store.create(job_id, request.model_dump(mode="json"))
 
     logger.info(f"Created job {job_id} for topic: {request.topic}")
 
     # Start generation in background
-    background_tasks.add_task(run_generation, job)
+    background_tasks.add_task(run_generation, job_id)
 
     return GenerateResponse(
         job_id=job_id,
-        status=job.status,
+        status=JobStatus.PENDING,
         message="Generation job created. Use the job ID to check progress."
     )
 
@@ -300,10 +305,11 @@ async def get_job_status(job_id: str):
 
     Poll this endpoint to track progress.
     """
-    if job_id not in jobs:
+    job = job_store.get(job_id)
+    if not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    return jobs[job_id].to_response()
+    return _job_to_response(job)
 
 
 @app.get("/api/generate/{job_id}/download")
@@ -313,26 +319,27 @@ async def download_book(job_id: str):
 
     Only available after job status is COMPLETED.
     """
-    if job_id not in jobs:
+    job = job_store.get(job_id)
+    if not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    job = jobs[job_id]
-
-    if job.status != JobStatus.COMPLETED:
+    if job["status"] != JobStatus.COMPLETED.value:
         raise HTTPException(
             status_code=400,
-            detail=f"Book not ready. Current status: {job.status}"
+            detail=f"Book not ready. Current status: {job['status']}"
         )
 
-    if not job.pdf_path or not os.path.exists(job.pdf_path):
+    pdf_path = job.get("pdf_path")
+    if not pdf_path or not os.path.exists(pdf_path):
         raise HTTPException(status_code=404, detail="PDF file not found")
 
     # Create a safe filename
-    safe_name = "".join(c for c in job.book_name if c.isalnum() or c in (' ', '-', '_')).rstrip()
+    book_name = job.get("book_name") or "book"
+    safe_name = "".join(c for c in book_name if c.isalnum() or c in (' ', '-', '_')).rstrip()
     filename = f"{safe_name}.pdf"
 
     return FileResponse(
-        job.pdf_path,
+        pdf_path,
         media_type="application/pdf",
         filename=filename
     )
@@ -345,31 +352,32 @@ async def download_markdown(job_id: str):
 
     Only available after job status is COMPLETED.
     """
-    if job_id not in jobs:
+    job = job_store.get(job_id)
+    if not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    job = jobs[job_id]
-
-    if job.status != JobStatus.COMPLETED:
+    if job["status"] != JobStatus.COMPLETED.value:
         raise HTTPException(
             status_code=400,
-            detail=f"Book not ready. Current status: {job.status}"
+            detail=f"Book not ready. Current status: {job['status']}"
         )
 
-    if not job.pdf_path:
+    pdf_path = job.get("pdf_path")
+    if not pdf_path:
         raise HTTPException(status_code=404, detail="Output not found")
 
     # Markdown is stored alongside PDF
-    md_path = job.pdf_path.replace(".pdf", ".txt")
+    md_path = pdf_path.replace(".pdf", ".txt")
     if not os.path.exists(md_path):
         # Try the full book file
-        output_dir = os.path.dirname(job.pdf_path)
+        output_dir = os.path.dirname(pdf_path)
         md_path = os.path.join(output_dir, "06_full_book.txt")
 
     if not os.path.exists(md_path):
         raise HTTPException(status_code=404, detail="Markdown file not found")
 
-    safe_name = "".join(c for c in job.book_name if c.isalnum() or c in (' ', '-', '_')).rstrip()
+    book_name = job.get("book_name") or "book"
+    safe_name = "".join(c for c in book_name if c.isalnum() or c in (' ', '-', '_')).rstrip()
     filename = f"{safe_name}.md"
 
     return FileResponse(
@@ -387,17 +395,19 @@ async def cancel_job(job_id: str):
     Note: This doesn't stop an already-running generation,
     but marks it as cancelled.
     """
-    if job_id not in jobs:
+    job = job_store.get(job_id)
+    if not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    job = jobs[job_id]
-
-    if job.status == JobStatus.COMPLETED:
+    if job["status"] == JobStatus.COMPLETED.value:
         raise HTTPException(status_code=400, detail="Cannot cancel completed job")
 
-    job.status = JobStatus.FAILED
-    job.message = "Cancelled by user"
-    job.error = "Job cancelled"
+    job_store.update(
+        job_id,
+        status=JobStatus.FAILED.value,
+        message="Cancelled by user",
+        error="Job cancelled",
+    )
 
     return {"message": "Job cancelled", "job_id": job_id}
 

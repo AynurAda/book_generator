@@ -150,6 +150,43 @@ class Config:
         "Begin by stating the main claim and indicating how it will be supported",
     ])
 
+    # Allowed values for validated fields
+    VALID_COVER_STYLES = {
+        "humorous", "abstract", "cyberpunk", "minimalist", "watercolor",
+        "vintage", "blueprint", "surreal", "isometric", "papercraft",
+        "neon_noir", "botanical", "bauhaus", "pixel_art", "art_deco",
+    }
+    VALID_READER_MODES = {"practitioner", "academic", "hybrid"}
+
+    def __post_init__(self):
+        """Validate field values after initialisation."""
+        if self.cover_style not in self.VALID_COVER_STYLES:
+            logger.warning(
+                f"Unknown cover_style '{self.cover_style}', falling back to 'abstract'"
+            )
+            self.cover_style = "abstract"
+
+        if self.reader_mode_override and self.reader_mode_override not in self.VALID_READER_MODES:
+            raise ValueError(
+                f"reader_mode_override must be one of {self.VALID_READER_MODES}, "
+                f"got '{self.reader_mode_override}'"
+            )
+
+        if not (0.0 <= self.citation_confidence_threshold <= 1.0):
+            raise ValueError(
+                f"citation_confidence_threshold must be 0.0–1.0, "
+                f"got {self.citation_confidence_threshold}"
+            )
+
+        if self.plan_critique_max_attempts < 1:
+            raise ValueError("plan_critique_max_attempts must be >= 1")
+
+        if self.research_max_queries < 1:
+            raise ValueError("research_max_queries must be >= 1")
+
+        if self.num_chapters is not None and self.num_chapters < 1:
+            raise ValueError("num_chapters must be >= 1")
+
     def setup_output_dir(self, base_path: str = ".") -> str:
         """Create or use output directory for this run."""
         if self.resume_from_dir:

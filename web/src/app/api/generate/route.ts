@@ -1,7 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 
 // FastAPI backend URL - configurable via environment variable
-const API_BASE_URL = process.env.BACKEND_URL || "http://localhost:8000";
+const API_BASE_URL = process.env.BACKEND_URL || "http://localhost:8001";
+
+const VALID_TIERS = ["primer", "deep_dive", "masterwork"] as const;
+
+const LIMITS = {
+  topic: { min: 2, max: 200 },
+  domain: { min: 2, max: 200 },
+  goal: { min: 10, max: 2000 },
+  background: { min: 10, max: 2000 },
+  focus: { max: 500 },
+  num_chapters: { min: 1, max: 50 },
+} as const;
 
 export interface GenerateRequest {
   topic: string;
@@ -10,7 +21,7 @@ export interface GenerateRequest {
   background: string;
   focus?: string;
   num_chapters?: number;
-  tier?: "primer" | "deep_dive" | "masterwork";
+  tier?: (typeof VALID_TIERS)[number];
 }
 
 export interface GenerateResponse {
@@ -19,37 +30,79 @@ export interface GenerateResponse {
   message: string;
 }
 
+function validateString(
+  value: unknown,
+  field: string,
+  limits: { min?: number; max: number }
+): string | null {
+  if (typeof value !== "string") return `${field} must be a string`;
+  const trimmed = value.trim();
+  if (limits.min && trimmed.length < limits.min)
+    return `${field} must be at least ${limits.min} characters`;
+  if (trimmed.length > limits.max)
+    return `${field} must be at most ${limits.max} characters`;
+  return null;
+}
+
 /**
  * POST /api/generate
  *
  * Start a new book generation job.
- * Proxies to the FastAPI backend.
+ * Validates input, then proxies to the FastAPI backend.
  */
 export async function POST(request: NextRequest) {
   try {
-    const body: GenerateRequest = await request.json();
+    const body = await request.json();
 
-    // Validate required fields
-    if (!body.topic || !body.domain || !body.goal || !body.background) {
-      return NextResponse.json(
-        { error: "Missing required fields: topic, domain, goal, background" },
-        { status: 400 }
+    // --- Validate required string fields ---
+    const errors: string[] = [];
+    for (const field of ["topic", "domain", "goal", "background"] as const) {
+      if (!body[field]) {
+        errors.push(`${field} is required`);
+        continue;
+      }
+      const err = validateString(
+        body[field],
+        field,
+        LIMITS[field]
       );
+      if (err) errors.push(err);
     }
 
-    // Forward to FastAPI backend
+    // --- Validate optional fields ---
+    if (body.focus != null) {
+      const err = validateString(body.focus, "focus", LIMITS.focus);
+      if (err) errors.push(err);
+    }
+
+    if (body.num_chapters != null) {
+      const n = Number(body.num_chapters);
+      if (!Number.isInteger(n) || n < LIMITS.num_chapters.min || n > LIMITS.num_chapters.max) {
+        errors.push(
+          `num_chapters must be an integer between ${LIMITS.num_chapters.min} and ${LIMITS.num_chapters.max}`
+        );
+      }
+    }
+
+    if (body.tier != null && !VALID_TIERS.includes(body.tier)) {
+      errors.push(`tier must be one of: ${VALID_TIERS.join(", ")}`);
+    }
+
+    if (errors.length > 0) {
+      return NextResponse.json({ error: errors.join("; ") }, { status: 400 });
+    }
+
+    // --- Forward sanitised payload to backend ---
     const response = await fetch(`${API_BASE_URL}/api/generate`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        topic: body.topic,
-        domain: body.domain,
-        goal: body.goal,
-        background: body.background,
-        focus: body.focus,
-        num_chapters: body.num_chapters,
+        topic: String(body.topic).trim(),
+        domain: String(body.domain).trim(),
+        goal: String(body.goal).trim(),
+        background: String(body.background).trim(),
+        focus: body.focus ? String(body.focus).trim() : undefined,
+        num_chapters: body.num_chapters ? Number(body.num_chapters) : undefined,
         tier: body.tier || "deep_dive",
       }),
     });

@@ -13,17 +13,17 @@ Tracking file for identified issues from code review (2026-02-07).
 
 - [ ] **#5 `pipeline.py` generate_book() is 750+ lines** — Should be broken into stage-specific functions or modules.
 - [ ] **#6 Inconsistent Error Handling** — Mix of return None, raise, and log-and-continue. `traceback.print_exc()` in pipeline.py should use `logger.exception()`.
-- [ ] **#7 In-Memory Job Store** — `api_server.py` uses a dict for jobs; not thread-safe, data lost on restart. Needs Redis or DB for production.
-- [ ] **#8 No Input Validation on API Routes** — Backend `from_dict()` doesn't validate config values. Frontend forwards user input without schema validation. No max field lengths.
-- [ ] **#9 Hardcoded Magic Numbers in content.py** — `full_research[:6000]`, `max_attempts = 5`, etc. Should be configurable constants.
+- [x] **#7 In-Memory Job Store** — Replaced in-memory dict with SQLite-backed `JobStore` (`job_store.py`). WAL mode, thread-safe, survives restarts. DB path configurable via `JOB_STORE_DB` env var.
+- [x] **#8 No Input Validation on API Routes** — Added Pydantic validators with length limits and enum constraints on `GenerateRequest`. Added `Config.__post_init__()` validation. Frontend routes now validate lengths, types, UUID format, and email format before forwarding.
+- [x] **#9 Hardcoded Magic Numbers in content.py** — `full_research[:6000]`, `max_attempts = 5`, etc. Fixed: extracted to `constants.py`.
 - [ ] **#10 No Test Suite** — Only 2 integration tests, no unit tests, no pytest config, no CI/CD.
 
 ## MODERATE
 
 - [ ] **#11 models.py is 1000+ lines** — Should split into submodules (models/vision.py, models/outline.py, etc.).
-- [ ] **#12 Frontend page.tsx is 850+ lines** — All sections in one file. Extract Hero, UserStories, ComparisonSection, etc.
-- [ ] **#13 No Form Persistence in Builder** — Navigating away loses form data. Job ID not persisted across page crashes.
-- [ ] **#14 Frontend Polling is Too Aggressive** — 3-second interval for 30-60 min jobs. Should use exponential backoff.
+- [x] **#12 Frontend page.tsx is 850+ lines** — Extracted into 7 component files (`HeroSection`, `UserStoriesSection`, `SynthesisSection`, `RoadmapSection`, `WaitlistSection`, `Footer`) + `constants/userStories.ts`. `page.tsx` reduced to ~100-line composition shell.
+- [x] **#13 No Form Persistence in Builder** — Added localStorage persistence (`polaris-builder` key). Form data, job ID, and step restored on mount, persisted on change, cleared on reset.
+- [x] **#14 Frontend Polling is Too Aggressive** — Replaced fixed 3s `setInterval` with exponential backoff `setTimeout` chain (3s initial, 1.5x multiplier, 30s cap, 10 error max).
 - [ ] **#15 Missing Accessibility** — No form labels, 3D graph inaccessible, color-only indicators, broken heading hierarchy.
 - [ ] **#16 No Image Optimization** — Uses `<img>` instead of Next.js `<Image>`. No lazy loading or WebP.
 - [ ] **#17 Waitlist API is a Stub** — In-memory storage, no database, no email service.

@@ -8,7 +8,13 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { email } = body;
 
-    if (!email || !email.includes("@")) {
+    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (
+      !email ||
+      typeof email !== "string" ||
+      email.length > 254 ||
+      !EMAIL_RE.test(email.trim())
+    ) {
       return NextResponse.json(
         { error: "Invalid email address" },
         { status: 400 }

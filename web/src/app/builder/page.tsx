@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +44,12 @@ interface JobStatus {
   book_name?: string;
   error?: string;
 }
+
+const STORAGE_KEY = "polaris-builder";
+const POLL_INITIAL_MS = 3_000;
+const POLL_MAX_MS = 30_000;
+const POLL_BACKOFF = 1.5;
+const POLL_MAX_ERRORS = 10;
 
 const focusOptions = [
   "Theoretical foundations",
@@ -96,6 +102,31 @@ const statusMessages: Record<string, { stage: string; description: string }> = {
   },
 };
 
+function loadSaved(): { formData?: FormData; jobId?: string; step?: Step } {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function persist(data: { formData: FormData; jobId: string | null; step: Step }) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch {
+    // localStorage full or unavailable — ignore
+  }
+}
+
+function clearPersisted() {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // ignore
+  }
+}
+
 export default function BuilderPage() {
   const [step, setStep] = useState<Step>(1);
   const [formData, setFormData] = useState<FormData>({
@@ -109,6 +140,19 @@ export default function BuilderPage() {
   const [jobStatus, setJobStatus] = useState<JobStatus | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // --- Restore from localStorage on mount ---
+  useEffect(() => {
+    const saved = loadSaved();
+    if (saved.formData) setFormData(saved.formData);
+    if (saved.jobId) setJobId(saved.jobId);
+    if (saved.step) setStep(saved.step);
+  }, []);
+
+  // --- Persist on every meaningful change ---
+  useEffect(() => {
+    persist({ formData, jobId, step });
+  }, [formData, jobId, step]);
 
   const updateField = (field: keyof FormData, value: string | string[]) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -152,44 +196,52 @@ export default function BuilderPage() {
     }
   };
 
-  // Poll for job status
+  // --- Exponential-backoff polling ---
+  const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const errorCountRef = useRef(0);
+  const intervalRef = useRef(POLL_INITIAL_MS);
+
   const pollJobStatus = useCallback(async () => {
     if (!jobId) return;
 
     try {
       const response = await fetch(`/api/generate/${jobId}`);
-      if (!response.ok) {
-        throw new Error("Failed to get job status");
-      }
+      if (!response.ok) throw new Error("Failed to get job status");
+
       const data: JobStatus = await response.json();
       setJobStatus(data);
+      errorCountRef.current = 0; // reset on success
 
-      // Stop polling if completed or failed
       if (data.status === "completed" || data.status === "failed") {
-        return false;
+        return; // done — don't schedule next poll
       }
-      return true;
     } catch (err) {
       console.error("Error polling status:", err);
-      return true; // Continue polling on error
+      errorCountRef.current += 1;
+      if (errorCountRef.current >= POLL_MAX_ERRORS) {
+        setError("Lost connection to the server. Your job is still running — refresh to check.");
+        return;
+      }
     }
+
+    // Schedule next poll with backoff
+    intervalRef.current = Math.min(intervalRef.current * POLL_BACKOFF, POLL_MAX_MS);
+    pollRef.current = setTimeout(pollJobStatus, intervalRef.current);
   }, [jobId]);
 
   useEffect(() => {
     if (!jobId || step !== 6) return;
 
-    // Initial poll
+    // Reset backoff state
+    intervalRef.current = POLL_INITIAL_MS;
+    errorCountRef.current = 0;
+
+    // Start first poll immediately
     pollJobStatus();
 
-    // Set up polling interval
-    const interval = setInterval(async () => {
-      const shouldContinue = await pollJobStatus();
-      if (!shouldContinue) {
-        clearInterval(interval);
-      }
-    }, 3000); // Poll every 3 seconds
-
-    return () => clearInterval(interval);
+    return () => {
+      if (pollRef.current) clearTimeout(pollRef.current);
+    };
   }, [jobId, step, pollJobStatus]);
 
   const handleSubmit = async () => {

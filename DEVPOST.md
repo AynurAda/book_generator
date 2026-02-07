@@ -14,7 +14,7 @@ Polaris orchestrates **four Gemini 3 capabilities** across a 16-stage neuro-symb
 
 **Gemini Deep Research** (`deep-research-pro-preview`) discovers cutting-edge papers and frameworks *before* the outline is finalized — so every book reflects frontier knowledge, not yesterday's textbooks. This is critical: structure follows research, not the other way around.
 
-**Gemini 3 Flash** powers 30+ type-safe generators built on the Synalinks neuro-symbolic framework — from book vision and reader mode decision (practitioner vs. academic vs. hybrid via Branch control flow) to hierarchical planning with self-critique loops and bottom-up content assembly. Every subsection receives full book context, preventing the fragmentation typical of LLM-generated content.
+**Gemini 3 Flash** powers 90+ type-safe DataModels built on the Synalinks neuro-symbolic framework — using Generators, Branch (reader mode decision: practitioner vs. academic vs. hybrid), and Decision (LLM-based paper-to-chapter matching) for hierarchical planning with self-critique loops and bottom-up content assembly. Every subsection receives full book context, preventing the fragmentation typical of LLM-generated content.
 
 **Gemini 3 Pro Image** generates custom book covers and in-chapter illustrations, with 15 artistic styles and dynamic prompts tailored to each book's specific content.
 

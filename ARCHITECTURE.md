@@ -1,93 +1,161 @@
-# Book Generator Architecture
+# Polaris Architecture
 
-A neuro-symbolic book generation system built on the Synalinks framework. Generates comprehensive, well-structured books from a topic specification with optional deep research, citation verification, and knowledge graph integration.
+A neuro-symbolic book generation platform built on the Synalinks framework. Synthesizes personalized, research-backed books from a topic specification using Gemini 3, with deep research, citation verification, and an optional knowledge graph.
 
 ## Overview
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                           BOOK GENERATOR                                 │
-├─────────────────────────────────────────────────────────────────────────┤
-│  Config (YAML)  →  Research  →  Pipeline  →  Content  →  PDF Assembly   │
-└─────────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                              POLARIS PLATFORM                                │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌──────────────┐     ┌────────────────────────────────────────────────┐     │
+│  │  Next.js Web  │────▶│  FastAPI Server (api_server.py)                │     │
+│  │  (Builder UI) │◀────│  POST /api/generate → Background Job          │     │
+│  └──────────────┘     └────────────────────┬───────────────────────────┘     │
+│                                             │                                │
+│  ┌──────────────┐                          ▼                                │
+│  │  CLI          │────▶ ┌──────────────────────────────────────────┐        │
+│  │  (main.py)    │      │  Generation Pipeline (pipeline.py)       │        │
+│  └──────────────┘      │                                          │        │
+│                         │  Research → Vision → Outline → Planning  │        │
+│                         │  → Citations → Content → PDF Assembly    │        │
+│                         └──────────────────────────────────────────┘        │
+│                                                                              │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  Gemini 3 Flash │ Gemini Deep Research │ Gemini 3 Pro Image │ Gemini Search │
+└──────────────────────────────────────────────────────────────────────────────┘
 ```
+
+## Gemini 3 Integration
+
+Four distinct Gemini capabilities power the platform:
+
+| Capability | Model / API | Usage |
+|---|---|---|
+| **Content Generation** | `gemini-3-flash-preview` | All Synalinks Generators (vision, outline, planning, content, critique) |
+| **Deep Research** | `deep-research-pro-preview-12-2025` | Discover cutting-edge papers and frameworks via Interactions API |
+| **Image Generation** | `gemini-3-pro-image-preview` | Book covers (15 styles) and in-chapter illustrations |
+| **Search Grounding** | Gemini + Google Search | Citation verification and arXiv ID resolution |
 
 ## Pipeline Stages
 
-The generation flows through these stages:
+The generation flows through 16 stages:
 
 ```
-1. DEEP RESEARCH (Stage 1)   Gemini Deep Research for cutting-edge content
-        ↓
-2. BOOK VISION               Generate vision with reader_mode (Branch decision)
-        ↓
-3. DRAFT OUTLINE             Initial outline for research query generation
-        ↓
-4. RESEARCH-INFORMED OUTLINE New outline based on discovered papers/themes
-        ↓
-5. OUTLINE APPROVAL          Interactive: approve / edit / regenerate
-        ↓
-6. REORGANIZATION            Reorder chapters for conceptual flow
-        ↓
-7. PRIORITIZATION            Select N most important chapters (optional)
-        ↓
-8. SUBSUBCONCEPTS            Generate subsections for each section
-        ↓
-9. PAPER ASSIGNMENT          Assign papers to chapters (prevents repetition)
-        ↓
-10. HIERARCHICAL PLANNING    Book plan → Chapter plans → Section plans
-        ↓
-11. STAGE 2 RESEARCH         arXiv papers + Knowledge Graph (optional)
-        ↓
-12. CITATION PIPELINE        Plan claims → Verify with sources (optional)
-        ↓
-13. CONTENT GENERATION       Write subsections → Assemble sections → Chapters
-                             (with subsection-level research distribution)
-        ↓
-13. ILLUSTRATIONS            Add Mermaid diagrams / AI images (optional)
-        ↓
-14. INTRODUCTION             Generate book introduction
-        ↓
-15. COVER GENERATION         AI-generated book cover
-        ↓
-16. PDF ASSEMBLY             Markdown → HTML → PDF with WeasyPrint
+ 1. DEEP RESEARCH (Stage 1)     Gemini Deep Research for cutting-edge content
+         ↓
+ 2. BOOK VISION                 Generate vision with reader_mode (Branch decision)
+         ↓
+ 3. DRAFT OUTLINE               Initial outline for research query generation
+         ↓
+ 4. RESEARCH-INFORMED OUTLINE   New outline based on discovered papers/themes
+         ↓
+ 5. OUTLINE APPROVAL            Interactive: approve / edit / regenerate
+         ↓
+ 6. REORGANIZATION              Reorder chapters for conceptual flow
+         ↓
+ 7. PRIORITIZATION              Select N most important chapters (optional)
+         ↓
+ 8. SUBSUBCONCEPTS              Generate subsections for each section
+         ↓
+ 9. PAPER ASSIGNMENT            Assign papers to chapters (prevents repetition)
+         ↓
+10. HIERARCHICAL PLANNING       Book plan → Chapter plans → Section plans
+         ↓
+11. STAGE 2 RESEARCH            arXiv papers + Knowledge Graph (optional)
+         ↓
+12. CITATION PIPELINE           Plan claims → Verify with sources (optional)
+         ↓
+13. CONTENT GENERATION          Write subsections → Assemble sections → Chapters
+                                (with subsection-level research distribution)
+         ↓
+14. ILLUSTRATIONS               Add Mermaid diagrams / AI images (optional)
+         ↓
+15. INTRODUCTION + COVER        Generate book intro and AI-generated cover
+         ↓
+16. PDF ASSEMBLY                Markdown → HTML → PDF with WeasyPrint
 ```
 
 ## Directory Structure
 
 ```
-book_generator/
-├── __init__.py
-├── config.py           # Configuration dataclass, YAML parsing
-├── pipeline.py         # Main orchestration (generate_book)
-├── models.py           # Synalinks DataModels for all inputs/outputs
-├── outline.py          # Concept extraction, hierarchy building
-├── planning.py         # Book/chapter/section plan generation
-├── content.py          # Subsection/section/chapter writing
-├── vision.py           # Book vision generation with reader_mode
-├── pdf.py              # Markdown → PDF conversion
-├── cover.py            # Cover image generation
-├── authors.py          # Author profiles and styling
-├── illustrations.py    # Mermaid diagrams and AI images
-├── utils.py            # File I/O, formatting utilities
-│
-├── research/           # Deep research subsystem (NEW)
+polaris/
+├── book_generator/                 # Core Python package
 │   ├── __init__.py
-│   ├── models.py       # Paper, Framework, FieldKnowledge DataModels
-│   ├── gemini_client.py    # Gemini Deep Research API client
-│   ├── query_generator.py  # Generate research queries from outline
-│   ├── parser.py           # Parse research results into structured data
-│   ├── manager.py          # ResearchManager - orchestrates research
-│   ├── arxiv_fetcher.py    # arXiv API client (Stage 2)
-│   └── stage2.py           # MCP-based knowledge graph pipeline
+│   ├── config.py                   # Configuration dataclass, YAML parsing
+│   ├── pipeline.py                 # Main orchestration (generate_book)
+│   ├── models.py                   # 90+ Synalinks DataModels
+│   ├── outline.py                  # Concept extraction, hierarchy, coverage
+│   ├── planning.py                 # Book/chapter/section plans with critique
+│   ├── content.py                  # Subsection/section/chapter writing
+│   ├── vision.py                   # Book vision with reader_mode (Branch)
+│   ├── pdf.py                      # Markdown → PDF conversion (WeasyPrint)
+│   ├── cover.py                    # AI-generated cover (15 styles)
+│   ├── authors.py                  # Writing styles (waitbutwhy, oreilly, etc.)
+│   ├── illustrations.py            # Mermaid diagrams and AI images
+│   ├── utils.py                    # File I/O, formatting utilities
+│   ├── api_server.py               # FastAPI server with job tracking
+│   │
+│   ├── research/                   # Deep research subsystem
+│   │   ├── __init__.py
+│   │   ├── models.py               # Paper, Framework, FieldKnowledge
+│   │   ├── gemini_client.py        # Gemini Deep Research API client
+│   │   ├── query_generator.py      # Generate research queries from outline
+│   │   ├── parser.py               # Parse research results → structured data
+│   │   ├── manager.py              # ResearchManager orchestration
+│   │   ├── arxiv_fetcher.py        # arXiv API + Gemini Search for ID resolution
+│   │   └── stage2.py               # MCP-based knowledge graph pipeline
+│   │
+│   └── citations/                  # Citation verification subsystem
+│       ├── __init__.py
+│       ├── models.py               # Claim, VerifiedCitation, SubsectionClaimPlan
+│       ├── pipeline.py             # CitationManager orchestration
+│       ├── claim_planning.py       # Plan claims per subsection
+│       ├── verification.py         # Verify claims with Gemini Search Grounding
+│       ├── injection.py            # Format citation constraints for generators
+│       ├── extraction.py           # Extract claims from text
+│       ├── discovery.py            # Source discovery
+│       ├── documents.py            # Document management
+│       └── knowledge_base.py       # Citation knowledge base
 │
-└── citations/          # Citation verification subsystem
-    ├── __init__.py
-    ├── models.py       # Claim, VerifiedCitation, etc.
-    ├── pipeline.py     # Citation pipeline orchestration
-    ├── claim_planning.py   # Plan claims per subsection
-    ├── verification.py     # Verify claims with Gemini Search
-    └── injection.py        # Format citation instructions
+├── web/                            # Next.js 14 frontend
+│   ├── src/
+│   │   ├── app/
+│   │   │   ├── page.tsx            # Landing page (Polaris brand)
+│   │   │   ├── builder/page.tsx    # 5-step book builder wizard
+│   │   │   ├── layout.tsx          # Root layout
+│   │   │   └── api/                # Next.js API routes
+│   │   │       ├── generate/       # Proxy to FastAPI backend
+│   │   │       └── waitlist/       # Waitlist signup
+│   │   └── components/
+│   │       ├── ConceptGraph3D.tsx   # 3D concept visualization
+│   │       └── ui/                 # Shadcn/ui components
+│   ├── public/avatars/             # User story avatars
+│   └── package.json
+│
+├── configs/                        # YAML configuration files
+│   ├── neurosymbolic.yaml
+│   ├── neurosymbolic_finance.yaml
+│   ├── ai_agent_memory.yaml
+│   └── embedded_systems.yaml
+│
+├── tests/                          # Test suite
+│   ├── test_deep_research.py       # Gemini Deep Research API tests
+│   └── test_gemini_grounding.py    # Citation verification tests
+│
+├── tools/                          # Utility scripts
+│   ├── convert_to_pdf.py           # Standalone Markdown → PDF
+│   └── visualize_pipeline.py       # Pipeline visualization
+│
+├── output/                         # Generated books (timestamped)
+├── examples/                       # Sample outputs
+│
+├── main.py                         # CLI entry point
+├── run_api.py                      # FastAPI server launcher
+├── requirements.txt                # Python dependencies
+├── .env.example                    # Environment variables template
+└── LICENSE                         # MIT
 ```
 
 ## Configuration (YAML)
@@ -101,10 +169,12 @@ audience: "Target readers"
 
 # Model settings
 model_name: "gemini/gemini-3-flash-preview"
+image_model: "gemini/gemini-3-pro-image-preview"
 
 # Generation options
 num_chapters: 5              # Limit chapters (optional)
 focus: "specific focus"      # Guide chapter selection
+author_key: "waitbutwhy"     # Writing style (optional)
 
 # Deep research (Stage 1)
 enable_research: true        # Enable Gemini Deep Research
@@ -112,17 +182,18 @@ research_max_queries: 5      # Maximum research queries
 research_cache: true         # Cache research results
 
 # Stage 2 research (requires mcp-graphiti)
-enable_stage2_research: false    # Enable arXiv + Knowledge Graph
-graphiti_mcp_url: "http://localhost:8000/sse"
+enable_stage2_research: false
+graphiti_mcp_url: "http://localhost:8000/mcp/"
 graphiti_group_id: "book_research"
 
 # Reader mode override (for testing)
 reader_mode_override: null   # 'practitioner', 'academic', or 'hybrid'
 
 # Features
-enable_citations: true       # Enable citation verification
-enable_illustrations: true   # Add diagrams
-cover_style: "abstract"      # Cover style
+enable_citations: true       # Citation verification pipeline
+enable_chapter_references: true  # Fast: add references from research papers
+enable_illustrations: true   # Add diagrams and AI images
+cover_style: "abstract"      # Cover style (15 options)
 
 # Quality control
 plan_critique_enabled: true
@@ -130,6 +201,16 @@ plan_critique_max_attempts: 5
 
 # Resume from previous run
 resume_from_dir: "output/20260204_160106"
+
+# Default outline (optional) - skip outline generation
+use_default_outline: true
+default_outline:
+  - concept: "Chapter Name"
+    subconcepts:
+      - subconcept: "Section Name"
+        subsubconcepts:
+          - "Subsection 1"
+          - "Subsection 2"
 ```
 
 ## Core Components
@@ -143,7 +224,7 @@ Two-stage research pipeline for cutting-edge content:
 │ STAGE 1: GEMINI DEEP RESEARCH                                       │
 │                                                                     │
 │ Input: topic, goal, draft outline                                   │
-│ Process: Gemini searches web for papers, methods, frameworks        │
+│ Process: Gemini Deep Research API (Interactions API, async polling)  │
 │ Output: FieldKnowledge {papers, frameworks, themes, open_problems}  │
 │                                                                     │
 │ Parsing (LLM):                                                      │
@@ -172,59 +253,71 @@ Two-stage research pipeline for cutting-edge content:
 │ STAGE 2: arXiv + KNOWLEDGE GRAPH (Optional)                         │
 │                                                                     │
 │ For each chapter's relevant_papers:                                 │
-│   1. Search arXiv by paper title                                    │
-│   2. Fetch full abstract, authors, PDF link                         │
-│   3. Optionally download PDF + extract full text (PyMuPDF)          │
-│   4. Add to Graphiti knowledge graph (if mcp-graphiti running)      │
+│   1. Find arXiv ID via Gemini with Google Search (most reliable)    │
+│   2. Search arXiv by ID, fetch abstract + metadata                  │
+│   3. Download PDF + extract full text (arxiv2text)                  │
+│   4. Add to Graphiti knowledge graph via MCP (if available)         │
 │                                                                     │
-│ Uses: arxiv Python library (handles rate limits automatically)      │
-│ Uses: Synalinks MultiServerMCPClient for mcp-graphiti               │
+│ Smart querying: LLM generates targeted queries, not keyword concat  │
+│ Graceful fallback: Works without mcp-graphiti (arXiv data only)     │
 └─────────────────────────────────────────────────────────────────────┘
+```
+
+#### ResearchManager (`manager.py`)
+
+Provides context for each pipeline stage using **LLM-based matching** (synalinks.Decision), not keyword matching:
+
+```python
+research_manager.for_vision()                       # High-level field summary
+research_manager.for_outline()                      # Summary + themes + open problems
+research_manager.for_chapter_planning(chapter_name) # Top-10 papers, top-5 frameworks
+research_manager.for_section_writing(section_name, assigned_papers=["Paper A"]) # Filtered papers
 ```
 
 #### arXiv Fetcher (`arxiv_fetcher.py`)
 
 ```python
-from book_generator.research import search_arxiv, search_arxiv_by_id
+# Find arXiv ID using Gemini with Google Search (more reliable than title matching)
+arxiv_id = await search_arxiv_with_gemini("Attention Is All You Need")
 
-# Search by title
-papers = await search_arxiv("Attention Is All You Need", max_results=5)
+# Batch search with rate limiting
+papers = await batch_search_arxiv_with_gemini(paper_titles, batch_size=5)
 
-# Fetch by arXiv ID
-paper = await search_arxiv_by_id("1706.03762")
-
-# Download PDF and extract text
-paper = await download_and_extract_pdf(paper, cache_dir="/tmp/arxiv")
-print(paper.full_text)       # Extracted text
-print(paper.sections)        # {abstract, introduction, method, results, conclusion}
+# Download PDF and extract full text
+paper = await download_and_extract_pdf(paper, cache_dir="arxiv_cache/")
+# paper.full_text, paper.sections (abstract, introduction, method, results, conclusion)
 ```
 
 #### Stage 2 MCP Pipeline (`stage2.py`)
 
 ```python
-from book_generator.research import Stage2MCPPipeline
-
 # Initialize (connects to mcp-graphiti if running)
 stage2 = Stage2MCPPipeline(
-    graphiti_url="http://localhost:8000/sse",
+    graphiti_url="http://localhost:8000/mcp/",
     group_id="book_research",
 )
-await stage2.initialize()  # Returns False if mcp-graphiti unavailable
+await stage2.initialize()
 
-# Add paper to knowledge graph
-await stage2.add_paper({"title": "...", "abstract": "..."})
-
-# Search knowledge graph
-facts = await stage2.search_research("attention mechanisms")
-
-# Get context for chapter writing
-context = await stage2.get_context_for_chapter(
-    chapter_name="Transformer Architecture",
-    key_concepts=["attention", "self-attention", "multi-head"],
+# Smart queries generated by LLM, not keyword concatenation
+context = await stage2.get_context_for_section(
+    section_name="Transformer Architecture",
+    section_plan="...",
+    book_topic="Deep Learning",
 )
 ```
 
-### 2. Reader Modes
+### 2. Synalinks Framework Usage
+
+The pipeline uses four core Synalinks primitives:
+
+| Primitive | Usage |
+|---|---|
+| **DataModel** | 90+ type-safe structured outputs for all LLM interactions |
+| **Generator** | Content generation with instructions, temperature, and data models |
+| **Branch** | Reader mode decision (practitioner/academic/hybrid), outline organization |
+| **Decision** | Paper-to-chapter matching, subsection-to-research assignment, quality routing |
+
+### 3. Reader Modes
 
 Reader mode is inferred from the goal using a Synalinks Branch:
 
@@ -235,15 +328,12 @@ Reader mode is inferred from the goal using a Synalinks Branch:
 | **Hybrid** | Mixed | Both practical and theoretical emphasis |
 
 ```python
-# Inferred from goal keywords:
-# Practitioner: "build", "implement", "deploy", "hands-on", "tutorial"
-# Academic: "understand", "research", "comprehensive", "theory"
-
+# Inferred at vision stage from goal keywords
 # Can be overridden in config:
 reader_mode_override: "practitioner"
 ```
 
-### 3. Chapter Roles
+### 4. Chapter Roles
 
 Each chapter is tagged with a role for mode-aware critique:
 
@@ -260,134 +350,84 @@ Each chapter is tagged with a role for mode-aware critique:
 | `FORMAL_THEORY` | Proofs (academic) |
 | `FRONTIERS` | Open problems |
 
-### 4. Synalinks DataModels (`models.py`)
-
-All structured data uses Synalinks DataModels for type-safe LLM interactions:
-
-```python
-class BookVision(synalinks.DataModel):
-    """Book vision with reader mode."""
-    reader_mode: str = synalinks.Field(
-        description="Reader mode: practitioner, academic, or hybrid"
-    )
-    core_thesis: str
-    reader_journey: str
-    key_themes: list[str]
-    scope_boundaries: str
-    unique_angle: str
-
-class RoleTaggedChapter(synalinks.DataModel):
-    """Chapter with role for mode-aware critique."""
-    chapter_name: str
-    role: str  # PROBLEM_MOTIVATION, LANDSCAPE, DEEP_METHOD, etc.
-    key_concepts: list[str]
-    relevant_papers: list[str]  # Assigned by LLM from research
-    sections: list[str]
-
-class ResearchInformedOutline(synalinks.DataModel):
-    """Outline generated with research context."""
-    organization_logic: str  # taxonomy, problem_centric, evolution_centric
-    taxonomy_source: str     # If taxonomy-based, cite source
-    chapters: list[RoleTaggedChapter]
-
-# Research distribution for subsections (prevents repetition)
-class SubsectionResearchAssignment(synalinks.DataModel):
-    """Research assignment for a single subsection."""
-    subsection_name: str
-    assigned_concepts: list[str]   # Concepts this subsection covers
-    example_domain: str            # Unique domain (healthcare, robotics, etc.)
-    focus_area: str                # What aspect to emphasize
-
-class ResearchDistributionPlan(synalinks.DataModel):
-    """Plan for distributing research across subsections."""
-    assignments: list[SubsectionResearchAssignment]
-```
-
 ### 5. Hierarchical Planning (`planning.py`)
 
-Planning follows a top-down hierarchy with mode-aware critique:
+Top-down planning with mode-aware self-critique loops:
 
 ```
-Book Plan (overall narrative arc)
+Book Plan (overall narrative arc, critique ≤ 5 attempts)
     ↓
-Chapters Overview (how chapters connect)
+Chapters Overview (how chapters connect, builds_on / leads_to)
     ↓
-Chapter Plans (per-chapter goals, connections)
+Chapter Plans (per-chapter goals, connections, research context)
     ↓
 Section Plans (per-section details, subsection flow)
 ```
 
 Each plan includes:
-- **Thinking**: Step-by-step reasoning (chain-of-thought)
-- **Content**: The actual plan details
-- **Critique loop**: Role-aware self-assessment and revision
+- **Thinking**: Chain-of-thought reasoning
+- **Content**: The actual plan
+- **Critique loop**: Role-aware self-assessment (PRACTITIONER chapters not judged for formal proofs)
 
 ### 6. Content Generation (`content.py`)
 
-Content is generated bottom-up with full context and **two-level research distribution planning**:
+Bottom-up assembly with two-level research distribution:
 
 ```
-Subsection (atomic unit)
+Subsection (atomic unit, 800-1500 words)
     ↓ concatenate
-Section (intro + subsections)
+Section (intro + subsections + quality check)
     ↓ concatenate
-Chapter (intro + sections + conclusion)
+Chapter (intro + sections + conclusion + references)
 ```
 
 #### Two-Level Research Distribution (Prevents Repetition)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                    CHAPTER-LEVEL (Outline Stage)                    │
+│                    CHAPTER-LEVEL (Outline Stage)                     │
 │                                                                     │
-│  generate_research_informed_outline()                               │
-│    → RoleTaggedChapter.relevant_papers = ["Paper A", "Paper B"]     │
-│    → Each paper assigned to ONE chapter only                        │
-│                                                                     │
-│  Result: chapter_paper_assignments = {                              │
-│    "Chapter 1: Differentiable Logic": ["Paper A", "Paper B"],       │
-│    "Chapter 2: LLMs as Workers": ["Paper C", "Paper D"],            │
-│  }                                                                  │
+│  RoleTaggedChapter.relevant_papers = ["Paper A", "Paper B"]         │
+│  Each paper assigned to ONE chapter only                            │
 └────────────────────────────┬────────────────────────────────────────┘
                              │
                              ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                    SECTION-LEVEL (Content Stage)                    │
-│                                                                     │
-│  for_section_writing(chapter, section, assigned_papers=["A", "B"])  │
-│    → Only Paper A and Paper B returned as context                   │
-│    → Not all papers from research                                   │
-└────────────────────────────┬────────────────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                    SUBSECTION-LEVEL (Content Stage)                 │
+│                    SUBSECTION-LEVEL (Content Stage)                  │
 │                                                                     │
 │  plan_research_distribution(research_context, subsections)          │
-│    → Subsection 1: concepts=["LoCo-LMs"], domain="healthcare"       │
+│    → Subsection 1: concepts=["LoCo-LMs"], domain="healthcare"      │
 │    → Subsection 2: concepts=["DeepLog"], domain="robotics"          │
 │    → Subsection 3: concepts=["Semantic Loss"], domain="finance"     │
 │                                                                     │
-│  Each subsection gets ONLY its assigned concepts and domain         │
+│  CONCEPT EXCLUSIVITY: Each concept → ONE subsection only            │
+│  DOMAIN EXCLUSIVITY: Each subsection → unique example domain        │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-This prevents:
-- Same papers being explained in every chapter
-- Same research concepts being repeated in every subsection
-- Same example domains being reused
-
 Each subsection generator receives:
-- Full book outline
-- Book plan and vision (including reader_mode)
-- **Assigned** research context (only papers/concepts for this subsection)
+- Full book outline, plan, and vision (including reader_mode)
+- **Exclusive** research context (only papers/concepts for THIS subsection)
 - Chapter and section plans
 - Citation constraints (if enabled)
-- Previous subsections (for flow and safety check)
+- Previous subsections (for flow and anti-repetition)
+- Writing style instructions (if configured)
+
+#### Quality Control
+
+**Prevention (before generation):**
+1. Chapter-level paper assignment (each paper → one chapter)
+2. Subsection-level research distribution (concepts → specific subsections)
+3. Example domain assignment (each subsection → unique domain)
+
+**Detection (after generation):**
+1. Check for repeated examples, concepts, and style issues
+2. Check for coverage gaps against section plan
+3. Regenerate with feedback if quality fails (up to 5 attempts)
 
 ### 7. Citation Pipeline (`citations/`)
 
-Optional claim-first citation system:
+Claim-first citation system using Gemini Search Grounding:
 
 ```
 PHASE 1: Claim Planning
@@ -395,17 +435,74 @@ PHASE 1: Claim Planning
 ├── Claims categorized: critical / high / medium / low importance
 └── Saved to: citations/01_planned_claims.json
 
-PHASE 2: Verification (Gemini Search Grounding)
+PHASE 2: Verification (Gemini + Google Search)
 ├── Each claim verified against web sources
-├── Must find ORIGINAL/PRIMARY sources
-├── Wikipedia and secondary sources rejected
+├── Must find ORIGINAL/PRIMARY sources (not blogs, not Wikipedia)
+├── Confidence scoring with configurable threshold (default 0.75)
+├── Grounding metadata extracted for source URLs
 └── Saved to: citations/02_verified_citations.json
 
 PHASE 3: Content Constraints
-├── Verified claims → ALLOWED (must cite)
-├── Unverified claims → FORBIDDEN
-└── Original analysis/speculation → ALLOWED (framed appropriately)
+├── Verified claims → ALLOWED (must cite with in-text reference)
+├── Unverified claims → FORBIDDEN (must not appear in content)
+├── Original analysis/speculation → ALLOWED (framed appropriately)
+└── Per-subsection citation instructions injected into generators
 ```
+
+### 8. Writing Styles (`authors.py`)
+
+Configurable writing styles applied inline during content generation:
+
+| Style Key | Description |
+|---|---|
+| `waitbutwhy` | Tim Urban's WaitButWhy blog style — conversational, genuine humor |
+| `for_dummies` | For Dummies series — accessible, step-by-step, not patronizing |
+| `oreilly` | O'Reilly technical book — practical, clear, for practitioners |
+| `textbook` | Academic textbook — rigorous, structured, formal |
+| `practical` | Practical guide — application-focused, minimal theory |
+
+### 9. Cover Generation (`cover.py`)
+
+Dynamic cover prompts generated by Synalinks, rendered by Gemini 3 Pro Image:
+
+**Available styles:** humorous, abstract, cyberpunk, minimalist, watercolor, vintage, blueprint, surreal, isometric, papercraft, neon_noir, botanical, bauhaus, pixel_art, art_deco
+
+Each cover includes AI-generated illustration + programmatic text overlay (title, subtitle, author) via Pillow.
+
+### 10. Illustrations (`illustrations.py`)
+
+Two types of in-chapter illustrations:
+
+1. **Mermaid diagrams** — LLM analyzes content, generates Mermaid syntax for flowcharts, sequence diagrams, etc.
+2. **AI images** — Gemini 3 Pro Image generates concept visualizations with content-specific prompts
+
+## Web Platform
+
+### Frontend (Next.js 14)
+
+- **Landing page** (`/`) — Polaris brand, user stories (12 personas), pricing tiers, waitlist
+- **Book Builder** (`/builder`) — 5-step guided wizard:
+  1. Topic — What to learn
+  2. Domain — Professional context for examples
+  3. Goal — What you want to be able to DO
+  4. Background — Existing knowledge (skip what you know)
+  5. Focus — Optional emphasis areas
+  6. Generation tracking — Real-time progress with stage indicators
+- **Tech:** App Router, Tailwind CSS, Shadcn/ui, Framer Motion
+
+### Backend (FastAPI)
+
+```
+POST /api/generate          Start generation job (background task)
+GET  /api/generate/{id}     Poll job status and progress
+GET  /api/generate/{id}/download    Download PDF
+GET  /api/generate/{id}/markdown    Download Markdown
+DELETE /api/generate/{id}   Cancel job
+GET  /health                Health check
+GET  /docs                  Swagger API docs
+```
+
+Job status tracks: PENDING → GENERATING_VISION → GENERATING_OUTLINE → PLANNING → WRITING_CONTENT → GENERATING_ILLUSTRATIONS → GENERATING_COVER → ASSEMBLING_PDF → COMPLETED
 
 ## Data Flow
 
@@ -413,7 +510,7 @@ PHASE 3: Content Constraints
 
 ```python
 {
-    "organization_logic": "problem_centric",
+    "organization_logic": "problem_centric",  # or evolution_centric, taxonomy_based
     "taxonomy_source": "",
     "chapters": [
         {
@@ -430,45 +527,37 @@ PHASE 3: Content Constraints
 }
 ```
 
-### Research Context for Writing
-
-```python
-# ResearchManager provides context for each stage:
-research_manager.for_vision()         # High-level themes
-research_manager.for_outline()        # Papers + themes for structure
-research_manager.for_section_writing(section_name)  # Relevant papers
-```
-
 ## Output Files
 
 Each run creates a timestamped directory:
 
 ```
-output/20260204_160106/
-├── 00_topic.txt                    # Input topic
-├── 00_book_vision.json             # Vision with reader_mode
-├── 00_research/                    # Research artifacts (if enabled)
-│   ├── queries.json                # Generated research queries
-│   ├── raw_research_*.json         # Raw Gemini responses
-│   ├── field_knowledge.json        # Parsed papers, frameworks, themes
-│   └── arxiv_cache/                # Downloaded PDFs and extracted text
-├── 01_outline.json                 # Initial outline
-├── 01_research_informed_outline.json   # After research (NEW)
-├── 01_outline_reorganized.json     # After reorganization
-├── 01_outline_prioritized.json     # After chapter selection
-├── 01_outline_final.json           # With subsubconcepts
-├── 02_book_plan.json               # Book-level plan
-├── 02_chapters_overview.json       # All chapters overview
-├── 02_chapter_plans.json           # Individual chapter plans
-├── 02_section_plans_*.json         # Section plans per chapter
-├── 03_stage2_research.json         # Stage 2 results (if enabled)
-├── 03_section_*.txt                # Generated sections
-├── 04_chapter_*.txt                # Assembled chapters
-├── 06_full_book.txt                # Complete book (markdown)
-├── 06_full_book.pdf                # Final PDF
-├── book_cover.png                  # Generated cover
+output/20260207_192742/
+├── 00_topic.txt                        # Input topic
+├── 00_book_vision.json                 # Vision with reader_mode
+├── 00_research/                        # Research artifacts (if enabled)
+│   ├── queries.json                    # Generated research queries
+│   ├── raw_research_*.json             # Raw Gemini Deep Research responses
+│   ├── field_knowledge.json            # Parsed papers, frameworks, themes
+│   └── arxiv_cache/                    # Downloaded PDFs and extracted text
+├── 01_outline.json                     # Initial outline
+├── 01_research_informed_outline.json   # After research
+├── 01_outline_reorganized.json         # After reorganization
+├── 01_outline_prioritized.json         # After chapter selection
+├── 01_outline_final.json               # With subsubconcepts
+├── 02_book_plan.json                   # Book-level plan
+├── 02_chapters_overview.json           # All chapters overview
+├── 02_chapter_plans.json               # Individual chapter plans
+├── 02_section_plans_*.json             # Section plans per chapter
+├── 03_stage2_research.json             # Stage 2 results (if enabled)
+├── 03_section_*.txt                    # Generated sections
+├── 04_chapter_*.txt                    # Assembled chapters
+├── 06_full_book.txt                    # Complete book (markdown)
+├── 06_full_book.pdf                    # Final PDF
+├── book_cover.png                      # Generated cover
+├── cover_prompt.txt                    # Cover generation prompt (debug)
 │
-└── citations/                      # If citations enabled
+└── citations/                          # If citations enabled
     ├── 01_planned_claims.json
     ├── 01_subsection_plans.json
     ├── 02_verified_citations.json
@@ -482,7 +571,7 @@ Stage 2 research uses mcp-graphiti for knowledge graph functionality via Synalin
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                    BOOK GENERATOR (Python)                          │
+│                    BOOK GENERATOR (Python)                           │
 │                                                                     │
 │  Stage2MCPPipeline                                                  │
 │    │                                                                │
@@ -490,16 +579,16 @@ Stage 2 research uses mcp-graphiti for knowledge graph functionality via Synalin
 │        (connects to MCP server)                         │           │
 └─────────────────────────────────────────────────────────│───────────┘
                                                           │ MCP Protocol
-                                                          │ (HTTP SSE)
+                                                          │ (HTTP)
                                                           ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │                mcp-graphiti (Docker Container)                       │
 │                                                                     │
-│  MCP Server (http://localhost:8000/sse)                             │
-│    ├── add_episode    - Add paper to knowledge graph                │
-│    ├── search_nodes   - Find entities                               │
-│    ├── search_facts   - Find relationships                          │
-│    └── get_episodes   - Retrieve recent additions                   │
+│  MCP Server (http://localhost:8000/mcp/)                            │
+│    ├── graphiti_add_memory     - Add paper to knowledge graph       │
+│    ├── graphiti_search_nodes   - Find entities                      │
+│    ├── graphiti_search_memory_facts  - Find relationships           │
+│    └── graphiti_get_episodes   - Retrieve recent additions          │
 │                                                                     │
 │  Neo4j Database (graph storage)                                     │
 └─────────────────────────────────────────────────────────────────────┘
@@ -507,132 +596,100 @@ Stage 2 research uses mcp-graphiti for knowledge graph functionality via Synalin
 
 **Starting mcp-graphiti:**
 ```bash
-# Clone mcp-graphiti repo
 git clone https://github.com/rawr-ai/mcp-graphiti
 cd mcp-graphiti
-
-# Start with Docker Compose
 docker compose up -d
 ```
 
-**Graceful fallback:** If mcp-graphiti is not running, Stage 2 continues with arXiv data only.
+**Graceful fallback:** If mcp-graphiti is not running, Stage 2 continues with arXiv data only via `Stage2ArxivFallback`.
 
 ## Resume Capability
 
 The pipeline supports resuming from any point:
 
 ```bash
-python main.py --config config.yaml --resume output/20260204_160106
+python main.py --config config.yaml --resume output/20260207_192742
 ```
 
-Cached artifacts:
-- ✅ Book vision (with reader_mode)
-- ✅ Research results (papers, themes, queries)
-- ✅ Outline (all stages including research-informed)
-- ✅ All plans (book, chapter, section)
-- ✅ Stage 2 research (arXiv papers, KG additions)
-- ✅ Claims and verification results
-- ✅ Generated sections and chapters
-
-## Writing Style
-
-Content is generated in **WaitButWhy + Textbook hybrid** style:
-
-**WaitButWhy elements:**
-- Conversational, engaging tone
-- Analogies and thought experiments
-- "Explaining to a smart friend"
-
-**Textbook rigor:**
-- Technically precise
-- Actual mechanisms and algorithms
-- Comprehensive coverage
-
-**Original thinking encouraged:**
-- Novel interpretations: "One way to think about this is..."
-- Speculation: "This opens the possibility that..."
-- Just not presented as established fact
-
-## Quality Control
-
-### Plan Critique Loop (Mode-Aware)
-
-Each major plan goes through role-aware self-critique:
-
-```python
-for attempt in range(max_attempts):  # default: 5
-    plan = generate_plan()
-    critique = critique_plan(book_vision=book_vision)  # Passes reader_mode
-
-    if critique.verdict == "pass":
-        break
-    else:
-        plan = revise_plan(critique.guidance)
-```
-
-Critique adapts based on:
-- **Chapter role**: IMPLEMENTATION chapters checked for code examples
-- **Reader mode**: Practitioner chapters don't require formal proofs
-
-### Section Quality Check
-
-**Prevention (before generation):**
-1. Chapter-level paper assignment (each paper → one chapter)
-2. Subsection-level research distribution (concepts → specific subsections)
-3. Example domain assignment (each subsection → unique domain)
-
-**Detection (after generation):**
-1. Check for repeated examples
-2. Check for repeated concepts
-3. Check for style issues
-4. Check for coverage gaps
-5. Regenerate if needed (up to 5 attempts)
+All intermediate artifacts are cached to disk. The pipeline detects existing files and skips completed stages.
 
 ## Key Design Decisions
 
 1. **Research-First Structure**: Discover cutting-edge papers BEFORE finalizing outline. Structure reflects actual field state, not LLM priors.
 
-2. **Reader Mode via Branch**: LLM decides practitioner/academic based on goal. Organization adapts accordingly.
+2. **Reader Mode via Branch**: LLM decides practitioner/academic/hybrid based on goal. Organization adapts accordingly. Fixed at vision stage, does not change after research.
 
-3. **Role-Tagged Chapters**: Each chapter has a purpose (IMPLEMENTATION, LANDSCAPE, etc.). Critique checks role fulfillment.
+3. **Role-Tagged Chapters**: Each chapter has a purpose (IMPLEMENTATION, LANDSCAPE, etc.). Critique checks role fulfillment, not generic quality.
 
-4. **Claim-First Citations**: Plan factual claims BEFORE writing, verify them, then constrain generation. Prevents hallucinated citations.
+4. **Claim-First Citations**: Plan factual claims BEFORE writing, verify with Gemini Search Grounding, then constrain generation. Prevents hallucinated citations.
 
 5. **Hierarchical Planning**: Top-down planning ensures coherence. Each level provides context for the next.
 
 6. **Bottom-Up Assembly**: Write atomic subsections, concatenate up. No rewriting = preserves verified content.
 
-7. **Full Context**: Every generator receives the complete book context (outline, plans, research, etc.) for coherent output.
+7. **Full Context**: Every generator receives the complete book context (outline, plans, research) for coherent output.
 
 8. **Caching Everything**: All intermediate artifacts saved to disk. Resume from any point.
 
-9. **Graceful Degradation**: Each optional feature (research, Stage 2, citations) falls back gracefully if unavailable.
+9. **Graceful Degradation**: Each optional feature (research, Stage 2, citations, illustrations) falls back gracefully if unavailable.
+
+10. **LLM-Based Matching**: All paper/concept matching uses synalinks.Decision, never keyword matching.
 
 ## Environment Variables
 
 ```bash
-GEMINI_API_KEY=your_key_here  # For content generation, research, and verification
+GEMINI_API_KEY=your_key_here  # Required: content generation, research, verification, images
 ```
 
 ## Running
 
+### CLI
+
 ```bash
 # New generation
-caffeinate -i venv/bin/python main.py --config configs/your_config.yaml
+python main.py --config configs/neurosymbolic.yaml
 
-# Resume from previous
-caffeinate -i venv/bin/python main.py --config configs/your_config.yaml --resume output/TIMESTAMP
+# Limit chapters
+python main.py --config configs/neurosymbolic.yaml --chapters 5
+
+# Resume from previous run
+python main.py --config configs/neurosymbolic.yaml --resume output/20260207_192742
 
 # List available configs
 python main.py --list
 ```
 
+### Web Platform
+
+```bash
+# Start FastAPI backend
+python run_api.py  # Starts on port 8000
+
+# Start Next.js frontend (in separate terminal)
+cd web && npm run dev  # Starts on port 3000
+```
+
 ## Dependencies
 
-- **synalinks**: Neuro-symbolic LLM framework
-- **litellm**: Multi-provider LLM routing
-- **arxiv**: arXiv API client (Stage 2 research)
-- **pymupdf**: PDF text extraction (optional, for full paper text)
-- **weasyprint**: HTML → PDF conversion
-- **pyyaml**: Configuration parsing
-- **python-dotenv**: Environment variable loading
+**Core:**
+- `synalinks>=0.1.0` — Neuro-symbolic LLM framework
+- `python-dotenv>=1.0.0` — Environment variable loading
+- `google-genai>=0.1.0` — Gemini API (Deep Research, Image Gen, Search Grounding)
+
+**PDF Generation:**
+- `markdown>=3.5.0` — Markdown processing
+- `weasyprint>=60.0` — HTML → PDF (requires system deps: pango, libcairo)
+- `latex2mathml>=3.0.0` — Math equation rendering
+
+**Citation Pipeline:**
+- `PyMuPDF>=1.23.0` — PDF text extraction
+- `beautifulsoup4>=4.12.0` — HTML parsing
+- `openai>=1.0.0` — Embeddings
+
+**API Server:**
+- `fastapi>=0.109.0` — REST API framework
+- `uvicorn[standard]>=0.27.0` — ASGI server
+- `pydantic>=2.0.0` — Data validation
+
+**Frontend (web/):**
+- Next.js 14, React, Tailwind CSS, Shadcn/ui, Framer Motion

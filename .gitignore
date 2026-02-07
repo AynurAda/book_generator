@@ -59,6 +59,7 @@ output/
 *.sqlite
 *.sqlite3
 milvus_lite.db
+data/
 
 # Logs
 *.log

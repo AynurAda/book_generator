@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 // FastAPI backend URL
-const API_BASE_URL = process.env.BACKEND_URL || "http://localhost:8000";
+const API_BASE_URL = process.env.BACKEND_URL || "http://localhost:8001";
 
 export interface JobStatusResponse {
   job_id: string;
@@ -26,6 +26,8 @@ export interface JobStatusResponse {
   error?: string;
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
  * GET /api/generate/[jobId]
  *
@@ -36,6 +38,10 @@ export async function GET(
   { params }: { params: Promise<{ jobId: string }> }
 ) {
   const { jobId } = await params;
+
+  if (!UUID_RE.test(jobId)) {
+    return NextResponse.json({ error: "Invalid job ID format" }, { status: 400 });
+  }
 
   try {
     const response = await fetch(`${API_BASE_URL}/api/generate/${jobId}`, {
@@ -77,6 +83,10 @@ export async function DELETE(
   { params }: { params: Promise<{ jobId: string }> }
 ) {
   const { jobId } = await params;
+
+  if (!UUID_RE.test(jobId)) {
+    return NextResponse.json({ error: "Invalid job ID format" }, { status: 400 });
+  }
 
   try {
     const response = await fetch(`${API_BASE_URL}/api/generate/${jobId}`, {

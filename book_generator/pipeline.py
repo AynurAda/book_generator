@@ -317,7 +317,7 @@ The introduction will be placed after the Table of Contents."""
     return introduction
 
 
-async def generate_book(config: Config) -> str:
+async def generate_book(config: Config, progress_callback=None) -> str:
     """
     Generate a complete book from the given configuration.
 
@@ -332,10 +332,15 @@ async def generate_book(config: Config) -> str:
 
     Args:
         config: The book generation configuration
+        progress_callback: Optional async callback(stage, progress, message)
+            for reporting progress to callers (e.g. API server).
 
     Returns:
         Path to the generated PDF
     """
+    async def report_progress(stage: str, progress: int, message: str):
+        if progress_callback:
+            await progress_callback(stage, progress, message)
     # Setup output directory
     base_path = os.path.dirname(os.path.dirname(__file__))
     output_dir = config.setup_output_dir(base_path)
@@ -468,6 +473,7 @@ async def generate_book(config: Config) -> str:
     # ==========================================================================
     # STAGE 0: BOOK VISION (guides all subsequent generation)
     # ==========================================================================
+    await report_progress("generating_vision", 5, "Crafting the book's core thesis and themes...")
     logger.info("Generating book vision...")
 
     # Get research context for vision if available
@@ -497,6 +503,7 @@ async def generate_book(config: Config) -> str:
     # ==========================================================================
     # STAGE 1: OUTLINE GENERATION (vision-guided)
     # ==========================================================================
+    await report_progress("generating_outline", 10, "Designing chapter structure for your domain...")
     logger.info("Starting vision-guided outline generation...")
 
     results = None
@@ -692,6 +699,7 @@ async def generate_book(config: Config) -> str:
     # ==========================================================================
     # STAGE 2: HIERARCHICAL PLANNING
     # ==========================================================================
+    await report_progress("planning", 25, "Creating detailed plans for each chapter...")
     logger.info("Starting hierarchical planning...")
     if config.plan_critique_enabled:
         logger.info(f"Plan critique enabled (max {config.plan_critique_max_attempts} attempts)")
@@ -808,6 +816,7 @@ async def generate_book(config: Config) -> str:
     # ==========================================================================
     # STAGE 3: CONTENT GENERATION (Direct Write with Style)
     # ==========================================================================
+    await report_progress("writing_content", 40, "Synthesizing content tailored to your background...")
 
     # Get writing style if configured (applied during direct write, not as separate pass)
     writing_style = None
@@ -950,6 +959,7 @@ async def generate_book(config: Config) -> str:
     # ==========================================================================
     # STAGE 5c: ILLUSTRATION GENERATION (Optional)
     # ==========================================================================
+    await report_progress("generating_illustrations", 75, "Creating diagrams and visualizations...")
     if config.enable_illustrations:
         logger.info("Adding illustrations to chapters...")
 
@@ -988,6 +998,7 @@ async def generate_book(config: Config) -> str:
     # ==========================================================================
     # STAGE 7: COVER GENERATION
     # ==========================================================================
+    await report_progress("generating_cover", 85, "Designing your book cover...")
     logger.info("Generating book cover...")
 
     # Use style's name for author display if configured
@@ -1017,6 +1028,7 @@ async def generate_book(config: Config) -> str:
     # ==========================================================================
     # STAGE 8: FINAL ASSEMBLY & PDF
     # ==========================================================================
+    await report_progress("assembling_pdf", 92, "Assembling the final PDF...")
     logger.info("Assembling final book...")
 
     # Build the book content
