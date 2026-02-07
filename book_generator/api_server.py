@@ -35,16 +35,23 @@ app = FastAPI(
 )
 
 # CORS middleware for frontend access
+_default_origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+_cors_origins_env = os.environ.get("CORS_ALLOWED_ORIGINS", "")
+CORS_ORIGINS = (
+    [o.strip() for o in _cors_origins_env.split(",") if o.strip()]
+    if _cors_origins_env
+    else _default_origins
+)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "https://learner.dev",  # Production domain
-    ],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 
@@ -204,13 +211,24 @@ The book should speak the professional language of this domain.
             interactive_outline_approval=False,  # API mode - no interactive approval
         )
 
-        # Update job status as we progress
-        job.update(JobStatus.GENERATING_VISION, 5, "Vision", "Generating book vision...")
+        # Progress callback: pipeline calls this at each stage transition
+        stage_to_status = {
+            "generating_vision": JobStatus.GENERATING_VISION,
+            "generating_outline": JobStatus.GENERATING_OUTLINE,
+            "planning": JobStatus.PLANNING,
+            "writing_content": JobStatus.WRITING_CONTENT,
+            "generating_illustrations": JobStatus.GENERATING_ILLUSTRATIONS,
+            "generating_cover": JobStatus.GENERATING_COVER,
+            "assembling_pdf": JobStatus.ASSEMBLING_PDF,
+        }
 
-        # Run the generation pipeline
-        # Note: The pipeline itself handles all stages internally
-        # In a more sophisticated implementation, we'd hook into each stage
-        pdf_path = await generate_book(config)
+        async def on_progress(stage: str, progress: int, message: str):
+            status = stage_to_status.get(stage, JobStatus.PENDING)
+            job.update(status, progress, stage, message)
+            logger.info(f"Job {job.job_id} progress: {stage} ({progress}%) - {message}")
+
+        # Run the generation pipeline with progress reporting
+        pdf_path = await generate_book(config, progress_callback=on_progress)
 
         if pdf_path:
             job.pdf_path = pdf_path
@@ -390,4 +408,4 @@ async def cancel_job(job_id: str):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8001)

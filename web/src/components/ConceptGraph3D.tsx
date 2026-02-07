@@ -172,6 +172,15 @@ const graphDatasets: Record<string, GraphData> = {
   },
 };
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 const nodeColors: Record<string, string> = {
   topic: "#a855f7", // Purple
   concept: "#3b82f6", // Blue
@@ -296,8 +305,8 @@ export function ConceptGraph3D({
         height={dimensions.height}
         graphData={graphData}
         nodeLabel={(node: any) => `<div class="bg-slate-900/90 px-3 py-2 rounded-lg text-sm">
-          <div class="font-semibold text-white">${node.name}</div>
-          <div class="text-slate-400 text-xs capitalize">${node.type}</div>
+          <div class="font-semibold text-white">${escapeHtml(String(node.name))}</div>
+          <div class="text-slate-400 text-xs capitalize">${escapeHtml(String(node.type))}</div>
         </div>`}
         nodeColor={(node: any) => nodeColors[node.type] || "#ffffff"}
         nodeVal={(node: any) => node.val || 10}
