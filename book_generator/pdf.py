@@ -335,11 +335,7 @@ BOOK_CSS = '''
     size: A4;
     margin: 2.5cm 2cm;
     @top-center {
-        content: string(chapter-title);
-        font-family: Helvetica, Arial, sans-serif;
-        font-size: 9pt;
-        color: #888;
-        font-style: italic;
+        content: none;
     }
     @bottom-center {
         content: counter(page);
@@ -370,6 +366,7 @@ BOOK_CSS = '''
     margin: 0;
     padding: 0;
     text-align: center;
+    string-set: chapter-title "";
     width: 210mm;
     height: 297mm;
     overflow: hidden;
@@ -510,6 +507,7 @@ li > ul, li > ol {
 }
 .toc {
     page: toc;
+    string-set: chapter-title "";
 }
 .toc h2 {
     text-align: center;
