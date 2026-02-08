@@ -5,8 +5,8 @@ import { rateLimit, getClientIp } from "@/lib/rate-limit";
 const API_BASE_URL = (process.env.BACKEND_URL || "http://localhost:8001").replace(/\/+$/, "");
 const API_SECRET = process.env.API_SECRET || "";
 
-// Rate limit: 3 generation requests per IP per hour
-const GENERATE_RATE_LIMIT = { limit: 3, windowSec: 3600 };
+// Rate limit: disabled (set very high)
+const GENERATE_RATE_LIMIT = { limit: 9999, windowSec: 3600 };
 
 const VALID_TIERS = ["primer", "deep_dive", "masterwork"] as const;
 
