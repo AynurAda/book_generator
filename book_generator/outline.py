@@ -1026,14 +1026,23 @@ async def generate_research_informed_outline(
         for p in research_papers[:20]
     ])
 
-    # Summarize initial outline
-    initial_chapters = []
-    for concept in initial_outline.get('concepts', []):
-        sections = [s.get('subconcept', '') for s in concept.get('subconcepts', [])]
-        initial_chapters.append(f"- {concept.get('concept', '')}: {', '.join(sections[:3])}")
-    initial_outline_text = "\n".join(initial_chapters)
+    # Summarize initial outline (if provided)
+    initial_outline_text = ""
+    if initial_outline:
+        initial_chapters = []
+        for concept in initial_outline.get('concepts', []):
+            sections = [s.get('subconcept', '') for s in concept.get('subconcepts', [])]
+            initial_chapters.append(f"- {concept.get('concept', '')}: {', '.join(sections[:3])}")
+        initial_outline_text = "\n".join(initial_chapters)
 
     # Build research context block
+    initial_outline_section = ""
+    if initial_outline_text:
+        initial_outline_section = f"""
+INITIAL OUTLINE (for reference, can be restructured):
+{initial_outline_text}
+"""
+
     research_context = f"""
 === RESEARCH FINDINGS ===
 
@@ -1045,10 +1054,7 @@ KEY THEMES DISCOVERED:
 
 KEY PAPERS/METHODS:
 {papers_text}
-
-INITIAL OUTLINE (for reference, can be restructured):
-{initial_outline_text}
-
+{initial_outline_section}
 === END RESEARCH ===
 
 Generate a NEW outline structure based on these research findings.

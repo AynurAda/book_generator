@@ -22,6 +22,7 @@ import {
   AlertCircle,
   RefreshCw,
   Star,
+  Key,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -33,6 +34,7 @@ interface FormData {
   goal: string;
   background: string;
   focus: string[];
+  geminiApiKey: string;
 }
 
 interface JobStatus {
@@ -64,6 +66,10 @@ const focusOptions = [
 
 const statusMessages: Record<string, { stage: string; description: string }> = {
   pending: { stage: "Queued", description: "Your book is in the queue..." },
+  researching: {
+    stage: "Research",
+    description: "Researching cutting-edge papers and breakthroughs...",
+  },
   generating_vision: {
     stage: "Vision",
     description: "Crafting the book's core thesis and themes...",
@@ -75,6 +81,10 @@ const statusMessages: Record<string, { stage: string; description: string }> = {
   planning: {
     stage: "Planning",
     description: "Creating detailed plans for each chapter...",
+  },
+  quality_review: {
+    stage: "Quality Review",
+    description: "Reviewing plans for coherence and completeness...",
   },
   writing_content: {
     stage: "Writing",
@@ -135,6 +145,7 @@ export default function BuilderPage() {
     goal: "",
     background: "",
     focus: [],
+    geminiApiKey: "",
   });
   const [jobId, setJobId] = useState<string | null>(null);
   const [jobStatus, setJobStatus] = useState<JobStatus | null>(null);
@@ -178,7 +189,7 @@ export default function BuilderPage() {
       case 4:
         return formData.background.trim().length > 0;
       case 5:
-        return true; // Focus is optional
+        return formData.geminiApiKey.trim().length > 0;
       default:
         return false;
     }
@@ -260,7 +271,8 @@ export default function BuilderPage() {
           goal: formData.goal,
           background: formData.background,
           focus: formData.focus.length > 0 ? formData.focus.join(", ") : undefined,
-          tier: "deep_dive", // Default tier for now
+          tier: "primer", // Demo mode: primer only (4 chapters)
+          api_key: formData.geminiApiKey || undefined,
         }),
       });
 
@@ -573,6 +585,36 @@ export default function BuilderPage() {
                         ))}
                       </div>
 
+                      {/* Gemini API Key */}
+                      <div className="pt-4 border-t border-slate-200">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Key className="h-4 w-4 text-slate-500" />
+                          <label htmlFor="gemini-api-key" className="text-sm font-semibold text-slate-700">
+                            Gemini API Key
+                          </label>
+                        </div>
+                        <p className="text-xs text-slate-500 mb-2">
+                          Enter your own Google Gemini API key. Get one free at{" "}
+                          <a
+                            href="https://aistudio.google.com/apikey"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline"
+                          >
+                            aistudio.google.com
+                          </a>
+                        </p>
+                        <Input
+                          id="gemini-api-key"
+                          type="password"
+                          placeholder="AIza..."
+                          aria-label="Gemini API Key"
+                          value={formData.geminiApiKey}
+                          onChange={(e) => updateField("geminiApiKey", e.target.value)}
+                          className="font-mono text-sm"
+                        />
+                      </div>
+
                       {error && (
                         <div className="flex items-center gap-2 text-red-600 bg-red-50 p-4 rounded-lg">
                           <AlertCircle className="h-5 w-5" />
@@ -629,6 +671,7 @@ export default function BuilderPage() {
                                 goal: "",
                                 background: "",
                                 focus: [],
+                                geminiApiKey: "",
                               });
                             }}
                           >
@@ -690,24 +733,52 @@ export default function BuilderPage() {
                           </div>
 
                           {/* Stage indicators */}
-                          <div className="grid grid-cols-4 gap-2 text-xs text-slate-500">
+                          <div className="grid grid-cols-9 gap-1 text-xs text-slate-400">
                             {[
-                              "Vision",
-                              "Planning",
-                              "Writing",
-                              "Assembly",
-                            ].map((stage, i) => (
-                              <div
-                                key={stage}
-                                className={`${
-                                  (jobStatus?.progress || 0) > i * 25
-                                    ? "text-slate-900 font-medium"
-                                    : ""
-                                }`}
-                              >
-                                {stage}
-                              </div>
-                            ))}
+                              { key: "researching", label: "Research" },
+                              { key: "generating_vision", label: "Vision" },
+                              { key: "generating_outline", label: "Outline" },
+                              { key: "planning", label: "Planning" },
+                              { key: "quality_review", label: "QA" },
+                              { key: "writing_content", label: "Writing" },
+                              { key: "generating_illustrations", label: "Illustrate" },
+                              { key: "generating_cover", label: "Cover" },
+                              { key: "assembling_pdf", label: "Assembly" },
+                            ].map((stage, i) => {
+                              const current = jobStatus?.status;
+                              const stageOrder = [
+                                "pending", "researching", "generating_vision", "generating_outline",
+                                "planning", "quality_review", "writing_content",
+                                "generating_illustrations", "generating_cover", "assembling_pdf",
+                              ];
+                              const currentIdx = stageOrder.indexOf(current || "");
+                              const stageIdx = stageOrder.indexOf(stage.key);
+                              const isActive = current === stage.key;
+                              const isDone = currentIdx > stageIdx;
+                              return (
+                                <div
+                                  key={stage.key}
+                                  className={`flex flex-col items-center gap-1 ${
+                                    isActive
+                                      ? "text-teal-600 font-semibold"
+                                      : isDone
+                                        ? "text-slate-900 font-medium"
+                                        : ""
+                                  }`}
+                                >
+                                  <div
+                                    className={`w-2 h-2 rounded-full ${
+                                      isActive
+                                        ? "bg-teal-500 animate-pulse"
+                                        : isDone
+                                          ? "bg-slate-900"
+                                          : "bg-slate-300"
+                                    }`}
+                                  />
+                                  {stage.label}
+                                </div>
+                              );
+                            })}
                           </div>
 
                           <p className="text-sm text-slate-500">

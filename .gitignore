@@ -86,6 +86,7 @@ synalinks-skills/
 web/node_modules/
 web/.next/
 web/out/
+web/backups/
 
 # Playwright
 .playwright-mcp/

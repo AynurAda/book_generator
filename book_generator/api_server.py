@@ -76,9 +76,11 @@ def _verify_secret(request: Request):
 class JobStatus(str, Enum):
     """Possible states for a generation job."""
     PENDING = "pending"
+    RESEARCHING = "researching"
     GENERATING_VISION = "generating_vision"
     GENERATING_OUTLINE = "generating_outline"
     PLANNING = "planning"
+    QUALITY_REVIEW = "quality_review"
     WRITING_CONTENT = "writing_content"
     GENERATING_ILLUSTRATIONS = "generating_illustrations"
     GENERATING_COVER = "generating_cover"
@@ -103,6 +105,7 @@ class GenerateRequest(BaseModel):
     focus: Optional[str] = Field(None, max_length=500, description="Specific areas to prioritize")
     num_chapters: Optional[int] = Field(None, ge=1, le=50, description="Limit number of chapters (for faster generation)")
     tier: Tier = Field(Tier.DEEP_DIVE, description="Pricing tier: primer, deep_dive, or masterwork")
+    api_key: Optional[str] = Field(None, min_length=1, max_length=256, description="User-provided Gemini API key")
 
     @field_validator("topic", "domain", "goal", "background", "focus", mode="before")
     @classmethod
@@ -179,6 +182,9 @@ async def run_generation(job_id: str):
     Run the book generation pipeline in the background.
     Updates job status in the SQLite store as it progresses.
     """
+    user_api_key = None
+    original_api_key = os.environ.get("GEMINI_API_KEY")
+
     try:
         job = job_store.get(job_id)
         if not job:
@@ -187,13 +193,13 @@ async def run_generation(job_id: str):
 
         request = job["request"]
 
-        # Map tier to chapter count
-        tier_chapters = {
-            "primer": 8,
-            "deep_dive": 15,
-            "masterwork": 25,
-        }
-        num_chapters = request.get("num_chapters") or tier_chapters.get(request.get("tier", "deep_dive"), 15)
+        # Set user-provided Gemini API key for this job
+        user_api_key = request.get("api_key")
+        if user_api_key:
+            os.environ["GEMINI_API_KEY"] = user_api_key
+
+        # Demo mode: always use primer (4 chapters)
+        num_chapters = request.get("num_chapters") or 4
 
         # Create book name from topic and domain
         book_name = f"{request['topic']} for {request['domain']}"
@@ -209,7 +215,7 @@ Domain context: All examples, case studies, and applications should be drawn fro
 The book should speak the professional language of this domain.
 """
 
-        # Create config
+        # Create config (defaults from neurosymbolic.yaml)
         config = Config(
             topic=request["topic"],
             goal=full_goal,
@@ -217,8 +223,33 @@ The book should speak the professional language of this domain.
             audience=request["background"],
             num_chapters=num_chapters,
             focus=request.get("focus"),
-            model_name="gemini/gemini-3-flash-preview",  # Default model
+            # Model
+            model_name="gemini/gemini-3-flash-preview",
+            # Writing style
+            author_key="waitbutwhy",
+            # Interactive / plan settings
             interactive_outline_approval=False,  # API mode - no interactive approval
+            plan_critique_enabled=True,
+            plan_critique_max_attempts=1,
+            # Illustrations
+            enable_illustrations=False,
+            enable_generated_images=False,
+            image_model="gemini/gemini-3-pro-image-preview",
+            # Cover
+            cover_style="humorous",
+            # Research
+            enable_research=True,
+            research_max_queries=1,
+            skip_draft_outline=True,
+            # Stage 2 research (knowledge graph) - disabled for demo
+            enable_stage2_research=False,
+            graphiti_mcp_url="http://localhost:8000/mcp/",
+            graphiti_group_id="neurosymbolic_book",
+            # Citations
+            enable_citations=False,
+            enable_chapter_references=True,
+            citation_confidence_threshold=0.75,
+            skip_low_importance_claims=True,
         )
 
         # Progress callback: pipeline calls this at each stage transition
@@ -233,7 +264,15 @@ The book should speak the professional language of this domain.
             logger.info(f"Job {job_id} progress: {stage} ({progress}%) - {message}")
 
         # Run the generation pipeline with progress reporting
-        pdf_path = await generate_book(config, progress_callback=on_progress)
+        try:
+            pdf_path = await generate_book(config, progress_callback=on_progress)
+        finally:
+            # Restore original API key (or remove if there wasn't one)
+            if user_api_key:
+                if original_api_key is not None:
+                    os.environ["GEMINI_API_KEY"] = original_api_key
+                else:
+                    os.environ.pop("GEMINI_API_KEY", None)
 
         if pdf_path:
             job_store.update(
@@ -257,6 +296,12 @@ The book should speak the professional language of this domain.
 
     except Exception as e:
         logger.exception(f"Job {job_id} failed with error: {e}")
+        # Restore original API key on failure
+        if user_api_key:
+            if original_api_key is not None:
+                os.environ["GEMINI_API_KEY"] = original_api_key
+            else:
+                os.environ.pop("GEMINI_API_KEY", None)
         job_store.update(
             job_id,
             status=JobStatus.FAILED.value,

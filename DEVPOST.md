@@ -30,7 +30,7 @@ Polaris has two main components: a **Python generation engine** and a **Next.js 
 
 ### Generation Engine (Python)
 
-Built on the **Synalinks** neuro-symbolic LLM framework, which provides type-safe structured outputs via DataModels and intelligent control flow via Branch operators. The pipeline has 16 stages:
+Built on the **Synalinks** neuro-symbolic LLM framework, which provides type-safe structured outputs via DataModels (90+), intelligent control flow via Branch operators, and LLM-based routing via Decision. The pipeline has 16 stages:
 
 1. **Deep Research** — Gemini Deep Research API (Interactions API) discovers latest papers, frameworks, and field knowledge
 2. **Book Vision** — Determines reader mode (practitioner/academic/hybrid) using Synalinks Branch, shaping the entire book's structure
@@ -39,7 +39,7 @@ Built on the **Synalinks** neuro-symbolic LLM framework, which provides type-saf
 5. **Chapter Prioritization** — Role-tagged chapters (IMPLEMENTATION, LANDSCAPE, FRONTIERS, etc.) selected based on reader's goal
 6. **Hierarchical Planning** — Book plan → chapter plans → section plans, each with self-critique loops
 7. **Two-Level Research Distribution** — Each paper assigned to exactly ONE chapter, each subsection gets ONLY its assigned concepts — prevents repetition
-8. **Stage 2 Research** — arXiv API fetching and optional knowledge graph integration via MCP
+8. **Stage 2 Research** — arXiv ID resolution via Gemini Search, PDF extraction, and optional knowledge graph integration via MCP (mcp-graphiti)
 9. **Citation Pipeline** — Claims planned per subsection → verified with Gemini Search Grounding → injected as formatted references
 10. **Content Generation** — Bottom-up assembly: atomic subsections → sections → chapters, with full book context at every level
 11. **Illustrations** — Mermaid diagrams and AI-generated images via Gemini 3 Pro Image
@@ -56,15 +56,42 @@ All intermediates are cached, enabling resume from any stage. Served via **FastA
 - **Download** — PDF and Markdown formats
 
 ### Tech Stack
-- **Synalinks** — Neuro-symbolic LLM framework (DataModels, Generators, Branch)
-- **Gemini 3 Flash** — Content generation
-- **Gemini 3 Pro Image** — Cover and illustration generation
-- **Gemini Deep Research** — Cutting-edge paper discovery (Interactions API)
-- **Gemini Search Grounding** — Citation verification
-- **FastAPI** — REST API with job tracking
-- **Next.js 14** — Web platform (App Router, Tailwind, Shadcn/ui, Framer Motion)
-- **WeasyPrint** — PDF generation
-- **arXiv API** — Stage 2 paper fetching
+- **Synalinks** — Neuro-symbolic LLM framework (90+ DataModels, Generator, Branch, Decision)
+- **Gemini 3 Flash** — Content generation (via Synalinks)
+- **Gemini 3 Pro Image** — Book covers (15 styles) and in-chapter illustrations
+- **Gemini Deep Research** — Cutting-edge paper discovery (Interactions API, async polling)
+- **Gemini Search Grounding** — Citation verification and arXiv ID resolution
+- **FastAPI** — REST API with background job tracking
+- **Next.js 14** — Web platform (App Router, Tailwind CSS, Shadcn/ui, Framer Motion)
+- **WeasyPrint** — PDF generation with LaTeX math support
+- **arXiv API + arxiv2text** — Stage 2 paper fetching and full-text PDF extraction
+- **mcp-graphiti** — Optional knowledge graph via MCP protocol (Neo4j backend)
+
+---
+
+## Demo Scope & Roadmap
+
+The demo showcases the **full end-to-end pipeline** — from topic input to downloadable PDF. All 16 pipeline stages are implemented and functional. Here's what's live in the demo vs. what's architected for production:
+
+| Feature | Demo Status | Notes |
+|---------|------------|-------|
+| **Gemini Deep Research** | Live | Discovers papers before outline finalization |
+| **Gemini 3 Flash (90+ DataModels)** | Live | Full neuro-symbolic pipeline via Synalinks |
+| **Gemini Search Grounding (Citations)** | Live | Claim-first verification pipeline |
+| **Gemini 3 Pro Image (Covers)** | Live | 15 cover styles, dynamic prompts |
+| **Reader Mode (Branch)** | Live | Practitioner/academic/hybrid decision |
+| **Hierarchical Planning + Self-Critique** | Live | Book → chapter → section plans |
+| **Two-Level Research Distribution** | Live | Paper and concept exclusivity |
+| **Web Platform (Next.js + FastAPI)** | Live | Builder wizard, progress tracking, download |
+| **In-Chapter Illustrations** | Implemented, disabled in demo | Mermaid diagrams + Gemini 3 Pro Image |
+| **Knowledge Graph (mcp-graphiti)** | Implemented, requires infra | Needs Neo4j + mcp-graphiti server |
+| **arXiv Full-Text Extraction** | Implemented | PDF download + arxiv2text parsing |
+
+The **knowledge graph integration** (Stage 11) uses MCP protocol to connect to [mcp-graphiti](https://github.com/rawr-ai/mcp-graphiti) for building a persistent knowledge graph across research papers. The code is fully implemented (`book_generator/research/stage2.py`) but requires a Neo4j instance and mcp-graphiti server — disabled in the demo to avoid infrastructure dependencies.
+
+**In-chapter illustrations** are fully implemented (`book_generator/illustrations.py`) with both Mermaid diagram generation and Gemini 3 Pro Image rendering, but disabled in demo for faster generation times.
+
+All features flagged above are **code-complete and tested** — they are configuration toggles, not missing functionality.
 
 ---
 
@@ -85,10 +112,11 @@ We collapse this entire pipeline to hours. But more importantly, we don't adapt 
 
 ### Technical Innovation
 1. **Research-first structure** — Papers discovered BEFORE outline finalized (most tools do the opposite)
-2. **Neuro-symbolic pipeline** — 30+ type-safe DataModels prevent the hallucination cascade that breaks long-form generation
-3. **Two-level research distribution** — Solves the repetition problem in multi-chapter LLM content
-4. **Reader mode intelligence** — LLM decides practitioner/academic/hybrid mode, reshaping the entire book
-5. **Claim-first citations** — Plan what needs citing BEFORE writing, then verify with real sources
+2. **Neuro-symbolic pipeline** — 90+ type-safe DataModels with Branch and Decision operators prevent the hallucination cascade that breaks long-form generation
+3. **Two-level research distribution** — Solves the repetition problem in multi-chapter LLM content (concept exclusivity + domain exclusivity per subsection)
+4. **Reader mode intelligence** — LLM decides practitioner/academic/hybrid mode via Branch, reshaping the entire book's organization and critique criteria
+5. **Claim-first citations** — Plan what needs citing BEFORE writing, verify with Gemini Search Grounding against primary sources only
+6. **LLM-based matching everywhere** — All paper/concept matching uses synalinks.Decision, never keyword matching
 
 ---
 
@@ -106,10 +134,12 @@ We collapse this entire pipeline to hours. But more importantly, we don't adapt 
 
 ## What We Learned
 
-- Type-safe structured outputs (via Synalinks DataModels) are essential for reliable multi-stage LLM pipelines — without them, errors cascade unpredictably
+- Type-safe structured outputs (via Synalinks DataModels) are essential for reliable multi-stage LLM pipelines — without them, errors cascade unpredictably across 16 stages
 - Research-first architecture fundamentally changes output quality compared to generate-then-research
-- Conservative citation verification (reject when uncertain) produces far more trustworthy results than aggressive citation
+- Conservative citation verification (reject when uncertain) produces far more trustworthy results than aggressive citation — we reject Wikipedia, blogs, and secondary sources
 - The two-level distribution pattern (chapter-level assignment + subsection-level scoping) generalizes beyond books to any long-form structured generation
+- LLM-based matching (synalinks.Decision) vastly outperforms keyword matching for paper-to-chapter assignment
+- Gemini with Google Search grounding is the most reliable method for resolving arXiv paper IDs — more reliable than fuzzy title matching
 
 ---
 

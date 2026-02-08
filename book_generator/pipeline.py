@@ -371,6 +371,7 @@ async def generate_book(config: Config, progress_callback=None) -> str:
     research_manager = None
 
     if config.enable_research:
+        await report_progress("researching", 2, "Researching cutting-edge papers and breakthroughs...")
         logger.info("Starting deep research phase...")
 
         research_dir = os.path.join(output_dir, "00_research")
@@ -501,12 +502,12 @@ async def generate_book(config: Config, progress_callback=None) -> str:
     print(f"{'='*60}\n")
 
     # ==========================================================================
-    # STAGE 1: OUTLINE GENERATION (vision-guided)
+    # STAGE 1: OUTLINE GENERATION
     # ==========================================================================
     await report_progress("generating_outline", 10, "Designing chapter structure for your domain...")
-    logger.info("Starting vision-guided outline generation...")
 
     results = None
+    chapter_paper_assignments = {}  # chapter_name -> list of paper titles
 
     # Check for default outline in config first
     if config.default_outline:
@@ -518,8 +519,49 @@ async def generate_book(config: Config, progress_callback=None) -> str:
         if results:
             logger.info("Loaded existing outline from file")
 
+    # If research enabled and skip_draft_outline=True, go directly to research-informed outline
+    if results is None and research_manager and config.enable_research and config.skip_draft_outline:
+        logger.info("Skipping draft outline, generating directly from research...")
+        print(f"\n{'='*60}")
+        print("Generating research-informed outline...")
+        print(f"{'='*60}\n")
+
+        research_outline = await generate_research_informed_outline(
+            topic_data=topic_data,
+            book_vision=book_vision,
+            research_manager=research_manager,
+            initial_outline=None,  # No draft outline
+            language_model=language_model,
+            output_dir=output_dir,
+        )
+
+        if research_outline and research_outline.get("chapters"):
+            converted_outline = convert_research_outline_to_hierarchy(research_outline)
+            if converted_outline.get("concepts"):
+                results = converted_outline
+                logger.info(f"Generated research-informed outline: {len(results.get('concepts', []))} chapters")
+
+                save_json_to_file(output_dir, "01_outline.json", results)
+                save_to_file(output_dir, "01_outline.txt", build_outline_text(results))
+
+                for chapter in research_outline.get("chapters", []):
+                    chapter_name = chapter.get("chapter_name", "")
+                    papers = chapter.get("relevant_papers", [])
+                    if chapter_name and papers:
+                        chapter_paper_assignments[chapter_name] = papers
+
+                print(f"Research-informed outline:")
+                print(f"  - Chapters: {len(results.get('concepts', []))}")
+                print(f"  - Organization: {research_outline.get('organization_logic', 'N/A')}")
+                print(f"\nChapters:")
+                for i, concept in enumerate(results.get("concepts", []), 1):
+                    ch_name = concept.get("concept", "Unknown")
+                    paper_count = len(chapter_paper_assignments.get(ch_name, []))
+                    print(f"  {i}. {ch_name} ({paper_count} papers)")
+
+    # Fallback: generate draft outline first (if skip_draft_outline=False or research-informed failed)
     if results is None:
-        # Use coverage-checked generation WITH vision guidance
+        logger.info("Generating draft outline...")
         outline_research_context = None
         if research_manager:
             outline_research_context = research_manager.for_outline()
@@ -530,36 +572,27 @@ async def generate_book(config: Config, progress_callback=None) -> str:
             topic_data, language_model, book_vision=book_vision,
             research_context=outline_research_context
         )
-
-        # Save outline
         save_json_to_file(output_dir, "01_outline.json", results)
+        save_to_file(output_dir, "01_outline.txt", build_outline_text(results))
 
-    save_to_file(output_dir, "01_outline.txt", build_outline_text(results))
-
-    # Display outline
-    concepts_list = results.get("concepts", [])
-    outline_source = "default" if config.default_outline else "generated"
-    print(f"\n{'='*60}")
-    print(f"Outline ({outline_source}): {len(concepts_list)} main concepts")
-    print(f"{'='*60}\n")
-
-    for i, concept_data in enumerate(concepts_list, 1):
-        concept_name = concept_data.get("concept", "Unknown")
-        subconcepts = concept_data.get("subconcepts", [])
-        print(f"{i}. {concept_name}")
-        for j, subconcept_data in enumerate(subconcepts, 1):
-            subconcept_name = subconcept_data.get("subconcept", "Unknown")
-            print(f"   {i}.{j} {subconcept_name}")
-        print()
+        concepts_list = results.get("concepts", [])
+        print(f"\n{'='*60}")
+        print(f"Draft Outline: {len(concepts_list)} main concepts")
+        print(f"{'='*60}\n")
+        for i, concept_data in enumerate(concepts_list, 1):
+            concept_name = concept_data.get("concept", "Unknown")
+            subconcepts = concept_data.get("subconcepts", [])
+            print(f"{i}. {concept_name}")
+            for j, subconcept_data in enumerate(subconcepts, 1):
+                subconcept_name = subconcept_data.get("subconcept", "Unknown")
+                print(f"   {i}.{j} {subconcept_name}")
+            print()
 
     # ==========================================================================
-    # STAGE 1b: RESEARCH-INFORMED OUTLINE (replaces initial with research-based structure)
+    # STAGE 1b: RESEARCH-INFORMED OUTLINE (only if draft was generated)
     # ==========================================================================
-    # The initial outline was just LLM's mental model for generating research queries.
-    # After research, we generate a NEW outline based on what research discovered.
-    chapter_paper_assignments = {}  # chapter_name -> list of paper titles
-
-    if research_manager and config.enable_research:
+    # Only run if we have a draft outline and haven't already done research-informed
+    if research_manager and config.enable_research and not config.skip_draft_outline:
         print(f"\n{'='*60}")
         print("Generating research-informed outline...")
         print(f"{'='*60}\n")
@@ -812,6 +845,11 @@ async def generate_book(config: Config, progress_callback=None) -> str:
             print(f"WARNING: Stage 2 research failed: {e}")
             print("Continuing with Stage 1 research only...")
             print(f"{'='*60}\n")
+
+    # ==========================================================================
+    # QUALITY REVIEW
+    # ==========================================================================
+    await report_progress("quality_review", 35, "Reviewing plans for coherence and completeness...")
 
     # ==========================================================================
     # STAGE 3: CONTENT GENERATION (Direct Write with Style)

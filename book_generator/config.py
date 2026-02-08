@@ -88,6 +88,7 @@ class Config:
     enable_research: bool = False  # Enable Gemini Deep Research for cutting-edge content
     research_max_queries: int = 5  # Maximum research queries to run
     research_cache: bool = True  # Cache research results for reuse
+    skip_draft_outline: bool = True  # Skip draft outline when research enabled (saves 2-6 LLM calls)
 
     # Stage 2 research settings (requires mcp-graphiti Docker container running)
     enable_stage2_research: bool = False  # Enable Stage 2 with knowledge graph
@@ -254,6 +255,7 @@ class Config:
             enable_research=data.get("enable_research", False),
             research_max_queries=data.get("research_max_queries", 5),
             research_cache=data.get("research_cache", True),
+            skip_draft_outline=data.get("skip_draft_outline", True),
             enable_stage2_research=data.get("enable_stage2_research", False),
             graphiti_mcp_url=data.get("graphiti_mcp_url", "http://localhost:8000/mcp/"),
             graphiti_group_id=data.get("graphiti_group_id", "book_research"),

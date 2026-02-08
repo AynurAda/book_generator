@@ -27,6 +27,7 @@ export interface GenerateRequest {
   focus?: string;
   num_chapters?: number;
   tier?: (typeof VALID_TIERS)[number];
+  api_key?: string;
 }
 
 export interface GenerateResponse {
@@ -104,6 +105,13 @@ export async function POST(request: NextRequest) {
       errors.push(`tier must be one of: ${VALID_TIERS.join(", ")}`);
     }
 
+    // --- Validate api_key ---
+    if (body.api_key != null) {
+      if (typeof body.api_key !== "string" || body.api_key.trim().length === 0) {
+        errors.push("api_key must be a non-empty string");
+      }
+    }
+
     if (errors.length > 0) {
       return NextResponse.json({ error: errors.join("; ") }, { status: 400 });
     }
@@ -123,6 +131,7 @@ export async function POST(request: NextRequest) {
         focus: body.focus ? String(body.focus).trim() : undefined,
         num_chapters: body.num_chapters ? Number(body.num_chapters) : undefined,
         tier: body.tier || "deep_dive",
+        api_key: body.api_key ? String(body.api_key).trim() : undefined,
       }),
     });
 
