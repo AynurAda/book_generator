@@ -352,22 +352,32 @@ BOOK_CSS = '''
     @top-center { content: none; }
     @bottom-center { content: none; }
 }
+@page cover {
+    margin: 0;
+    @top-center { content: none; }
+    @bottom-center { content: none; }
+}
 @page part {
     @top-center { content: none; }
 }
 @page toc {
     @top-center { content: none; }
+    @bottom-center { content: none; }
 }
 .cover-page {
+    page: cover;
     page-break-after: always;
     margin: 0;
     padding: 0;
     text-align: center;
+    width: 210mm;
+    height: 297mm;
+    overflow: hidden;
 }
 .cover-image {
-    width: 100%;
-    height: 100vh;
-    object-fit: contain;
+    width: 210mm;
+    height: 297mm;
+    object-fit: cover;
 }
 body {
     font-family: 'Palatino Linotype', Palatino, Georgia, 'Times New Roman', serif;
@@ -500,8 +510,6 @@ li > ul, li > ol {
 }
 .toc {
     page: toc;
-    page-break-before: always;
-    page-break-after: always;
 }
 .toc h2 {
     text-align: center;

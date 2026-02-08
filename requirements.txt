@@ -3,21 +3,28 @@
 # Core framework
 synalinks>=0.1.0
 
+# LLM routing (used by Synalinks and arxiv_fetcher)
+litellm>=1.0.0
+
 # Environment and configuration
 python-dotenv>=1.0.0
+PyYAML>=6.0.0
 
 # PDF generation
 markdown>=3.5.0
 weasyprint>=60.0
 latex2mathml>=3.0.0
 
-# Cover image generation (optional)
+# Cover and image generation
 google-genai>=0.1.0
+
+# Research (Stage 2: arXiv paper fetching)
+arxiv>=2.0.0
+arxiv2text>=0.1.0
 
 # Citation verification pipeline
 PyMuPDF>=1.23.0  # PDF text extraction
 beautifulsoup4>=4.12.0  # HTML parsing
-openai>=1.0.0  # Embeddings
 
 # Research pipeline
 arxiv>=2.1.0
