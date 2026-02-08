@@ -5,7 +5,7 @@ goal: |
 
   Cover modern models (e.g., AlphaGeometry) and frameworks (e.g., SymbolicAI, Synalinks).
   Focus on practical applications in quantitative finance, with emphasis on
-  interpretability and regulatory compliance unique to financial domains.
+  interpretability.
 
 book_name: "Neurosymbolic AI for Finance"
 subtitle: "Combining Neural Learning with Symbolic Reasoning for Intelligent Investing"
@@ -18,11 +18,11 @@ test_max_chapters: 2
 resume_from_dir: null
 
 # Interactive settings
-interactive_outline_approval: true  # Prompt user to approve outline
+interactive_outline_approval: false  # Prompt user to approve outline
 
 # Plan quality control
 plan_critique_enabled: true  # Enable self-critique loop for plan generation
-plan_critique_max_attempts: 5  # Max revision attempts per plan
+plan_critique_max_attempts: 1  # Max revision attempts per plan
 
 # Model settings
 model_name: "gemini/gemini-3-flash-preview"
@@ -37,3 +37,23 @@ image_model: "gemini/gemini-3-pro-image-preview"
 
 # Cover settings
 cover_style: "humorous"  # Options: "humorous", "abstract", "cyberpunk"
+
+# Deep research settings (for cutting-edge content)
+enable_research: true
+research_max_queries: 3  # Start with 3 queries for testing
+skip_draft_outline: true  # Skip draft outline generation (saves 2-6 LLM calls)
+
+# Stage 2 research with Graphiti knowledge graph (requires mcp-graphiti Docker)
+enable_stage2_research: true
+graphiti_mcp_url: "http://localhost:8000/mcp/"
+graphiti_group_id: "neurosymbolic_book"
+
+# Citation settings
+enable_citations: false  # Full verification (slow)
+enable_chapter_references: true  # Fast: add references from research at end of chapters
+citation_confidence_threshold: 0.75  # Min confidence to accept a citation
+skip_low_importance_claims: true  # Skip verification for low-importance claims
+
+# Chapter prioritization (optional)
+num_chapters: 12  # Limit to N most important chapters
+focus: "neurosymbolic AI intersection with LLMs and Agentic Reasoning"
