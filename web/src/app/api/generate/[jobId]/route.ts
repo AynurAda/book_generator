@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 // FastAPI backend URL
-const API_BASE_URL = process.env.BACKEND_URL || "http://localhost:8001";
+const API_BASE_URL = (process.env.BACKEND_URL || "http://localhost:8001").replace(/\/+$/, "");
 
 export interface JobStatusResponse {
   job_id: string;

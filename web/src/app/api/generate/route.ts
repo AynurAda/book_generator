@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 // FastAPI backend URL - configurable via environment variable
-const API_BASE_URL = process.env.BACKEND_URL || "http://localhost:8001";
+const API_BASE_URL = (process.env.BACKEND_URL || "http://localhost:8001").replace(/\/+$/, "");
 const API_SECRET = process.env.API_SECRET || "";
 
 // Rate limit: 3 generation requests per IP per hour

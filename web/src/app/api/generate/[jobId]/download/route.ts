@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 // FastAPI backend URL
-const API_BASE_URL = process.env.BACKEND_URL || "http://localhost:8001";
+const API_BASE_URL = (process.env.BACKEND_URL || "http://localhost:8001").replace(/\/+$/, "");
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const VALID_FORMATS = ["pdf", "markdown"] as const;
