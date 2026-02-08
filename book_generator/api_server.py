@@ -105,6 +105,7 @@ class GenerateRequest(BaseModel):
     focus: Optional[str] = Field(None, max_length=500, description="Specific areas to prioritize")
     num_chapters: Optional[int] = Field(None, ge=1, le=50, description="Limit number of chapters (for faster generation)")
     tier: Tier = Field(Tier.DEEP_DIVE, description="Pricing tier: primer, deep_dive, or masterwork")
+    writing_style: Optional[str] = Field(None, description="Writing style key: waitbutwhy, for_dummies, oreilly, textbook, practical")
     api_key: Optional[str] = Field(None, min_length=1, max_length=256, description="User-provided Gemini API key")
 
     @field_validator("topic", "domain", "goal", "background", "focus", mode="before")
@@ -122,6 +123,10 @@ class GenerateResponse(BaseModel):
     message: str
 
 
+class LogEntry(BaseModel):
+    t: str
+    msg: str
+
 class JobStatusResponse(BaseModel):
     """Response for job status queries."""
     job_id: str
@@ -134,6 +139,7 @@ class JobStatusResponse(BaseModel):
     book_name: Optional[str] = None
     pdf_path: Optional[str] = None
     error: Optional[str] = None
+    logs: list[LogEntry] = []
 
 
 class OutlineResponse(BaseModel):
@@ -170,6 +176,7 @@ def _job_to_response(job: dict) -> JobStatusResponse:
         book_name=job.get("book_name"),
         pdf_path=job.get("pdf_path"),
         error=job.get("error"),
+        logs=job.get("logs", []),
     )
 
 
@@ -198,8 +205,8 @@ async def run_generation(job_id: str):
         if user_api_key:
             os.environ["GEMINI_API_KEY"] = user_api_key
 
-        # Demo mode: always use primer (4 chapters)
         num_chapters = request.get("num_chapters") or 4
+        writing_style = request.get("writing_style") or "waitbutwhy"
 
         # Create book name from topic and domain
         book_name = f"{request['topic']} for {request['domain']}"
@@ -226,7 +233,7 @@ The book should speak the professional language of this domain.
             # Model
             model_name="gemini/gemini-3-flash-preview",
             # Writing style
-            author_key="waitbutwhy",
+            author_key=writing_style,
             # Interactive / plan settings
             interactive_outline_approval=False,  # API mode - no interactive approval
             plan_critique_enabled=True,

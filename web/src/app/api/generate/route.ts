@@ -19,6 +19,8 @@ const LIMITS = {
   num_chapters: { min: 1, max: 50 },
 } as const;
 
+const VALID_STYLES = ["waitbutwhy", "for_dummies", "oreilly", "textbook", "practical"] as const;
+
 export interface GenerateRequest {
   topic: string;
   domain: string;
@@ -26,6 +28,7 @@ export interface GenerateRequest {
   background: string;
   focus?: string;
   num_chapters?: number;
+  writing_style?: (typeof VALID_STYLES)[number];
   tier?: (typeof VALID_TIERS)[number];
   api_key?: string;
 }
@@ -105,6 +108,10 @@ export async function POST(request: NextRequest) {
       errors.push(`tier must be one of: ${VALID_TIERS.join(", ")}`);
     }
 
+    if (body.writing_style != null && !VALID_STYLES.includes(body.writing_style)) {
+      errors.push(`writing_style must be one of: ${VALID_STYLES.join(", ")}`);
+    }
+
     // --- Validate api_key ---
     if (body.api_key != null) {
       if (typeof body.api_key !== "string" || body.api_key.trim().length === 0) {
@@ -130,6 +137,7 @@ export async function POST(request: NextRequest) {
         background: String(body.background).trim(),
         focus: body.focus ? String(body.focus).trim() : undefined,
         num_chapters: body.num_chapters ? Number(body.num_chapters) : undefined,
+        writing_style: body.writing_style || undefined,
         tier: body.tier || "deep_dive",
         api_key: body.api_key ? String(body.api_key).trim() : undefined,
       }),

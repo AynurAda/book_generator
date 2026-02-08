@@ -53,9 +53,15 @@ class JobStore:
                         book_name TEXT,
                         pdf_path TEXT,
                         error TEXT,
-                        request_json TEXT NOT NULL
+                        request_json TEXT NOT NULL,
+                        logs_json TEXT NOT NULL DEFAULT '[]'
                     )
                 """)
+                # Add logs_json column to existing tables (idempotent)
+                try:
+                    conn.execute("ALTER TABLE jobs ADD COLUMN logs_json TEXT NOT NULL DEFAULT '[]'")
+                except sqlite3.OperationalError:
+                    pass  # column already exists
                 conn.commit()
             finally:
                 conn.close()
@@ -109,7 +115,8 @@ class JobStore:
         if not to_set:
             return self.get(job_id)
 
-        to_set["updated_at"] = datetime.utcnow().isoformat()
+        now = datetime.utcnow().isoformat()
+        to_set["updated_at"] = now
 
         set_clause = ", ".join(f"{k} = ?" for k in to_set)
         values = list(to_set.values()) + [job_id]
@@ -121,6 +128,20 @@ class JobStore:
                     f"UPDATE jobs SET {set_clause} WHERE job_id = ?",
                     values,
                 )
+                # Append to log if message is provided
+                if "message" in fields:
+                    row = conn.execute(
+                        "SELECT logs_json FROM jobs WHERE job_id = ?", (job_id,)
+                    ).fetchone()
+                    logs = json.loads(row[0]) if row and row[0] else []
+                    logs.append({"t": now, "msg": fields["message"]})
+                    # Keep last 50 entries
+                    if len(logs) > 50:
+                        logs = logs[-50:]
+                    conn.execute(
+                        "UPDATE jobs SET logs_json = ? WHERE job_id = ?",
+                        (json.dumps(logs), job_id),
+                    )
                 conn.commit()
             finally:
                 conn.close()
@@ -151,4 +172,5 @@ class JobStore:
     def _row_to_dict(row: sqlite3.Row) -> dict:
         d = dict(row)
         d["request"] = json.loads(d.pop("request_json"))
+        d["logs"] = json.loads(d.pop("logs_json", "[]") or "[]")
         return d
