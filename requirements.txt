@@ -19,6 +19,12 @@ PyMuPDF>=1.23.0  # PDF text extraction
 beautifulsoup4>=4.12.0  # HTML parsing
 openai>=1.0.0  # Embeddings
 
+# Research pipeline
+arxiv>=2.1.0
+arxiv2text>=0.1.0
+litellm>=1.0.0
+pyyaml>=6.0.0
+
 # API Server
 fastapi>=0.109.0
 uvicorn[standard]>=0.27.0
